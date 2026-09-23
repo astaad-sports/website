@@ -31,12 +31,12 @@ Postgres on [Neon](https://neon.com), queried with [Drizzle ORM](https://orm.dri
 3. **Firebase**: create a project and add a Web app. Copy its config into the `NEXT_PUBLIC_FIREBASE_*` values.
 4. In Firebase, open Authentication, then Sign-in method, and enable **Email/Password** and **Google**.
 5. In Project settings, open Service accounts and generate a private key. Copy `client_email` and `private_key` from the JSON into `FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY`. Keep the key out of git.
-6. Create the tables: `bun run db:migrate`.
+6. Start the app with `bun run dev`. It applies any pending migrations first, which creates the tables on the first run.
 7. Before going live, add the production domain under Authentication, then Settings, then Authorized domains. Set the same env values on the host, such as Vercel project settings, and run `bun run db:migrate` against production before deploying schema changes.
 
 ### Changing the schema
 
-Edit [`src/db/schema.ts`](src/db/schema.ts), run `bun run db:generate` to write a migration, review the SQL in `drizzle/`, then run `bun run db:migrate`.
+Edit [`src/db/schema.ts`](src/db/schema.ts), run `bun run db:generate` to write a migration, and review the SQL in `drizzle/`. The next `bun run dev` applies it, or run `bun run db:migrate` to apply it straight away.
 
 ### Local auth without Firebase
 
@@ -56,10 +56,10 @@ The brand book, tokens and component guidelines are in [`src/components/astaad/R
 
 | Command | What it does |
 | --- | --- |
-| `bun run dev` | Start the dev server |
+| `bun run dev` | Apply pending migrations, then start the dev server. Migrations are skipped until `DATABASE_URL` is set; a failed migration stops the start. |
 | `bun run build` | Production build |
 | `bun run start` | Serve the production build |
 | `bun run lint` | ESLint |
 | `bun run db:generate` | Write a SQL migration from changes to `src/db/schema.ts` |
-| `bun run db:migrate` | Apply pending migrations to `DATABASE_URL_UNPOOLED` (or `DATABASE_URL`) |
+| `bun run db:migrate` | Apply pending migrations to `DATABASE_URL_UNPOOLED` (or `DATABASE_URL`) with [`scripts/migrate.ts`](scripts/migrate.ts); fails if neither is set |
 | `bun run db:studio` | Browse the database in Drizzle Studio |
