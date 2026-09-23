@@ -244,6 +244,60 @@ export const GEAR: GearProduct[] = [
   { slug: "players-cricket-kitbag", categorySlug: "cricket-kitbags", category: "Cricket Kitbag", line: "Players", name: "Players Cricket Kitbag", note: "Wheelie · two-kit · bat sleeve", price: 7999, placeholder: true, ...KITBAG_IMAGE },
 ];
 
+export function gearHref(product: Pick<GearProduct, "categorySlug" | "slug">): string {
+  return `/shop/${product.categorySlug}/${product.slug}`;
+}
+
+for (const product of GEAR) {
+  product.href = gearHref(product);
+}
+
+export interface GearCategoryContent {
+  /** Size options, if the category is sized. */
+  sizes?: string[];
+  defaultSize?: string;
+  /** Right / left hand choice for pads and gloves. */
+  hands?: boolean;
+  /** One sentence used in the "Product details" row. */
+  summary: string;
+  sizing?: string;
+  care: string;
+}
+
+/** Category-level copy for the gear product pages. Placeholder until the real range lands. */
+export const GEAR_CATEGORY_CONTENT: Record<GearCategorySlug, GearCategoryContent> = {
+  "batting-pads": {
+    sizes: ["Boys", "Youth", "Men\u2019s"],
+    defaultSize: "Men\u2019s",
+    hands: true,
+    summary: "Batting pads with a right- or left-hand cut, sized for boys, youth and men.",
+    sizing:
+      "Boys, Youth and Men\u2019s follow standard cricket sizing. Between two sizes? Choose the smaller one for a snug fit that will not slip on the run.",
+    care: "Air dry after play, brush off dirt and keep out of direct sun. Store flat with the straps undone.",
+  },
+  "batting-gloves": {
+    sizes: ["Boys", "Youth", "Men\u2019s"],
+    defaultSize: "Men\u2019s",
+    hands: true,
+    summary: "Batting gloves cut for the right or left hand, sized for boys, youth and men.",
+    sizing:
+      "Boys, Youth and Men\u2019s follow standard cricket sizing. Between two sizes? Choose the smaller one so the fingers sit fully in the finger rolls.",
+    care: "Air dry palm-up after every innings and keep out of direct sun. Never machine wash.",
+  },
+  helmets: {
+    sizes: ["Small", "Medium", "Large"],
+    defaultSize: "Medium",
+    summary: "A cricket helmet with a steel grille and an adjustable fit, in small, medium and large shells.",
+    sizing:
+      "Measure around the head just above the ears. Between two sizes? Choose the smaller shell and open the adjuster.",
+    care: "Wipe the shell and liner after play, check the grille bolts before each season, and replace the helmet after any hard impact.",
+  },
+  "cricket-kitbags": {
+    summary: "A wheeled cricket kitbag with room for a full kit, in one size.",
+    care: "Empty and air the bag after wet days, wipe the wheels and store it unzipped.",
+  },
+};
+
 export function getGear(slug: string): GearProduct | undefined {
   return GEAR.find((item) => item.slug === slug);
 }

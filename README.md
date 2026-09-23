@@ -13,7 +13,7 @@ Open [http://localhost:3000](http://localhost:3000) for the home page, [http://l
 
 ## Storefront
 
-The home page and the six English Willow product pages (`/bats/<slug>`) implement the Astaad Sports homepage and product-page design; the four gear category pages (`/shop/batting-pads`, `/shop/batting-gloves`, `/shop/helmets`, `/shop/cricket-kitbags`) follow the same language. Their sections live in [`src/components/storefront`](src/components/storefront); the catalogue data (categories, bats, gear, kit items, sizes, configurator options) is in [`src/lib/catalogue.ts`](src/lib/catalogue.ts), and the product images in `public/images`. Gear models marked `placeholder` in the catalogue stand in for the real range. Cart, wishlist and account actions are wired to buttons but have no backend yet, and the support, legal, Kashmir Willow and Tennis bat links point at routes that do not exist yet.
+The home page and the six English Willow product pages (`/bats/<slug>`) implement the Astaad Sports homepage and product-page design; the four gear category pages (`/shop/batting-pads`, `/shop/batting-gloves`, `/shop/helmets`, `/shop/cricket-kitbags`) and the gear product pages (`/shop/<category>/<slug>`) follow the same language. Their sections live in [`src/components/storefront`](src/components/storefront); the catalogue data (categories, bats, gear, kit items, sizes, configurator options) is in [`src/lib/catalogue.ts`](src/lib/catalogue.ts), and the product images in `public/images`. Gear models marked `placeholder` in the catalogue stand in for the real range. Cart, wishlist and account actions are wired to buttons but have no backend yet, and the support, legal, Kashmir Willow and Tennis bat links point at routes that do not exist yet.
 
 ## Design system
 
