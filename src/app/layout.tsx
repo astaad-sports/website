@@ -34,12 +34,18 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // Browser extensions (ColorZilla, Grammarly, dark-mode tools) add attributes
+  // to <html> and <body> before React hydrates. suppressHydrationWarning
+  // ignores attribute differences on these two elements only, not their children.
   return (
     <html
       lang="en"
       className={`${inter.variable} ${montserrat.variable} ${caveat.variable} h-full`}
+      suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

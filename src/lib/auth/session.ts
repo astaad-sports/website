@@ -8,7 +8,11 @@ import type { User } from "@/db/schema";
 import { getUserByFirebaseUid } from "@/db/users";
 import { adminAuth } from "@/lib/firebase/admin";
 
-export const SESSION_COOKIE = "__session";
+/**
+ * Named for this store: browsers share localhost cookies across ports, and
+ * other local apps (Firebase's convention is "__session") would collide.
+ */
+export const SESSION_COOKIE = "astaad_session";
 
 /** Two weeks, the longest session cookie Firebase will issue. */
 export const SESSION_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;

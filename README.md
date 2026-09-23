@@ -20,7 +20,7 @@ The home page and the six English Willow product pages (`/bats/<slug>`) implemen
 Postgres on [Neon](https://neon.com), queried with [Drizzle ORM](https://orm.drizzle.team), and [Firebase Authentication](https://firebase.google.com/docs/auth) for sign-in.
 
 - **Database**: the schema is [`src/db/schema.ts`](src/db/schema.ts) and the pooled client is `getDb()` in [`src/db/index.ts`](src/db/index.ts). It uses node-postgres over TCP, which Neon recommends for Node servers and Vercel. Migrations are SQL files in [`drizzle/`](drizzle); commit them.
-- **Auth**: the browser signs in with Firebase (Google or email and password) at `/login`. The ID token then goes to a Server Action that swaps it for a two-week httpOnly `__session` cookie and records the customer in the `users` table. The browser keeps no Firebase session of its own.
+- **Auth**: the browser signs in with Firebase (Google or email and password) at `/login`. The ID token then goes to a Server Action that swaps it for a two-week httpOnly `astaad_session` cookie and records the customer in the `users` table. The browser keeps no Firebase session of its own.
 - **Reading the session**: in server code, call `getCurrentUser()` or `requireUser(path)` from [`src/lib/auth/session.ts`](src/lib/auth/session.ts). Both verify the cookie with Firebase Admin, including revoked and disabled accounts. `/account` shows the pattern.
 - Orders and addresses should reference `users.id`, not the Firebase UID, so the store never depends on the auth provider.
 
