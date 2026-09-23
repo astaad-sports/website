@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
+import { batCartItem } from "@/lib/cart";
 import { BAT_IMAGE, type Bat } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -66,7 +68,13 @@ export function BatPlate({ bat }: { bat: Bat }) {
         </span>
       </div>
       <div className="flex gap-3">
-        <Button className="h-12 flex-1 rounded-xs font-bold">Add to Cart</Button>
+        <AddToCartButton
+          item={batCartItem(bat.slug)}
+          productName={`Astaad ${bat.name}`}
+          className="h-12 flex-1 rounded-xs font-bold"
+        >
+          Add to Cart
+        </AddToCartButton>
         <Button
           variant="secondary"
           render={<Link href={href} />}

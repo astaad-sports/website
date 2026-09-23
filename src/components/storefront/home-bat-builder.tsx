@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Input } from "@/components/ui/input";
 import {
   BAT_HANDLES,
@@ -13,6 +13,7 @@ import {
   ENGRAVING_MAX,
   getBat,
 } from "@/lib/catalogue";
+import { batCartItem, cleanEngravingInput } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
@@ -113,7 +114,7 @@ export function HomeBatBuilder() {
                   value={config.name}
                   maxLength={ENGRAVING_MAX}
                   placeholder="Your Name"
-                  onChange={(event) => update("name", event.target.value.slice(0, ENGRAVING_MAX))}
+                  onChange={(event) => update("name", cleanEngravingInput(event.target.value))}
                   className="h-11 max-w-[360px] flex-1 rounded-xs border-0 shadow-card"
                 />
                 <span className="text-[13px] leading-[18px] whitespace-nowrap text-ink-muted">
@@ -130,10 +131,15 @@ export function HomeBatBuilder() {
               </OptionGroup>
             </div>
             <div className="flex flex-wrap items-center gap-5">
-              <Button size="lg" className="h-14 rounded-xs px-8 text-[15px] font-bold">
+              <AddToCartButton
+                item={batCartItem(bat.slug, config)}
+                productName={`Astaad ${bat.name}`}
+                size="lg"
+                className="h-14 rounded-xs px-8 text-[15px] font-bold"
+              >
                 <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
                 Add to Cart · {formatPrice(bat.price)}
-              </Button>
+              </AddToCartButton>
               <span className="text-[13px] leading-[18px] text-ink-muted">
                 Only English Willow bats are customizable.
               </span>

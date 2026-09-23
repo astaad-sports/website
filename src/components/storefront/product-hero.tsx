@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Check, Leaf, Scale, ShoppingCart, Star, Target, Zap } from "lucide-react";
 
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
+import { batCartItem } from "@/lib/cart";
 import { type Bat } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 
@@ -91,14 +93,16 @@ export function ProductHero({ bat }: { bat: Bat }) {
             Customize your bat
             <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
           </Button>
-          <Button
+          <AddToCartButton
+            item={batCartItem(bat.slug)}
+            productName={`Astaad ${bat.name}`}
             size="lg"
             variant="secondary"
             className="h-13 w-full rounded-xs border border-border bg-surface-raised text-sm font-bold tracking-[0.1em] uppercase hover:border-border-strong hover:bg-surface-raised"
           >
             <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
-            Add to cart
-          </Button>
+            Add to cart · standard build
+          </AddToCartButton>
         </div>
         <ul aria-label="Highlights" className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3">
           {highlights.map((item) => (

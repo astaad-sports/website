@@ -5,31 +5,13 @@ import { useState } from "react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
 import { RadioGroup } from "@/components/ui/radio-group";
-import { type BatOption } from "@/lib/catalogue";
+import { DEFAULT_BAT_CONFIG, type BatConfig, type BatOption } from "@/lib/catalogue";
 import { cn } from "@/lib/utils";
 
-export interface BatConfig {
-  weight: number;
-  profile: number;
-  handle: number;
-  name: string;
-  knock: boolean;
-  scuff: boolean;
-  size: number;
-}
-
-export const DEFAULT_CONFIG: BatConfig = {
-  weight: 1,
-  profile: 0,
-  handle: 2,
-  name: "",
-  knock: true,
-  scuff: true,
-  size: 2,
-};
+export type { BatConfig };
 
 export function useBatConfig(initial?: Partial<BatConfig>) {
-  const [config, setConfig] = useState<BatConfig>({ ...DEFAULT_CONFIG, ...initial });
+  const [config, setConfig] = useState<BatConfig>({ ...DEFAULT_BAT_CONFIG, ...initial });
   function update<K extends keyof BatConfig>(key: K, value: BatConfig[K]) {
     setConfig((current) => ({ ...current, [key]: value }));
   }

@@ -120,7 +120,12 @@ export function GearHero({
             </li>
           ))}
         </ul>
-        <GearOptions content={content} categoryName={category.name} categoryHref={category.href} />
+        <GearOptions
+          product={{ slug: product.slug, categorySlug: product.categorySlug, name: product.name }}
+          content={content}
+          categoryName={category.name}
+          categoryHref={category.href}
+        />
         <ul aria-label="Highlights" className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3">
           {HIGHLIGHTS[product.categorySlug].map((item) => (
             <li key={item.label} className="flex items-center gap-3 text-sm leading-5 font-semibold">

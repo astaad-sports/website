@@ -11,3 +11,20 @@ export function formatRating(rating: number, count?: number, reviews = false): s
   if (count == null) return value;
   return reviews ? `${value} (${count} reviews)` : `${value} (${count})`;
 }
+
+/** Orders store integer paise, as Razorpay does: 1649900 → "₹ 16,499". */
+export function formatPaise(paise: number): string {
+  return formatPrice(paise / 100);
+}
+
+/** The customer-facing order number: 10001 → "AST-10001". */
+export function formatOrderNumber(number: number): string {
+  return `AST-${number}`;
+}
+
+const orderDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+/** "24 Sept 2026" */
+export function formatOrderDate(date: Date): string {
+  return orderDate.format(date);
+}

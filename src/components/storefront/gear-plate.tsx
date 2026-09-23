@@ -2,7 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
+import { gearCartItem } from "@/lib/cart";
 import { gearHref, type GearProduct } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 
@@ -48,7 +50,13 @@ export function GearPlate({ product }: { product: GearProduct }) {
         )}
       </div>
       <div className="flex gap-3">
-        <Button className="h-12 flex-1 rounded-xs font-bold">Add to Cart</Button>
+        <AddToCartButton
+          item={gearCartItem(product)}
+          productName={`Astaad ${product.name}`}
+          className="h-12 flex-1 rounded-xs font-bold"
+        >
+          Add to Cart
+        </AddToCartButton>
         <Button
           variant="secondary"
           render={<Link href={href} />}

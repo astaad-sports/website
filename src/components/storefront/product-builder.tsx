@@ -4,7 +4,7 @@ import Image from "next/image";
 import { ArrowRight, Lock, Pin, RotateCcw, Truck } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
-import { Button } from "@/components/ui/button";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import {
@@ -16,6 +16,7 @@ import {
   ENGRAVING_MAX,
   type Bat,
 } from "@/lib/catalogue";
+import { batCartItem, cleanEngravingInput } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -160,7 +161,7 @@ export function ProductBuilder({ bat }: { bat: Bat }) {
                         maxLength={ENGRAVING_MAX}
                         placeholder="Enter your name"
                         onChange={(event) =>
-                          update("name", event.target.value.slice(0, ENGRAVING_MAX))
+                          update("name", cleanEngravingInput(event.target.value))
                         }
                         className="h-13 rounded-xs border-2 border-surface-raised bg-surface-raised px-4 pr-16 text-base font-semibold tracking-[0.06em] uppercase shadow-card placeholder:font-normal placeholder:tracking-normal placeholder:normal-case"
                       />
@@ -239,10 +240,15 @@ export function ProductBuilder({ bat }: { bat: Bat }) {
                   Customization included. No extra cost.
                 </span>
               </div>
-              <Button size="lg" className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase">
+              <AddToCartButton
+                item={batCartItem(bat.slug, config)}
+                productName={`Astaad ${bat.name}`}
+                size="lg"
+                className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
+              >
                 Add to cart
                 <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-              </Button>
+              </AddToCartButton>
               <ul className="flex flex-wrap justify-between gap-2 text-[11px] leading-[14px] font-medium text-on-dark-subtle">
                 {[
                   { icon: Truck, label: "Free delivery" },

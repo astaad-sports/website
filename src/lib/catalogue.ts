@@ -395,3 +395,30 @@ export const BAT_HANDLES: BatOption[] = [
 ];
 
 export const ENGRAVING_MAX = 15;
+
+/** A bat's configuration as indices into BAT_SIZES, BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES. */
+export interface BatConfig {
+  weight: number;
+  profile: number;
+  handle: number;
+  /** Engraving text, as typed. */
+  name: string;
+  knock: boolean;
+  scuff: boolean;
+  size: number;
+}
+
+/** The standard build: balanced weight, Duckbill profile, oval handle, knocked, scuff sheet, SH. */
+export const DEFAULT_BAT_CONFIG: BatConfig = {
+  weight: 1,
+  profile: 0,
+  handle: 2,
+  name: "",
+  knock: true,
+  scuff: true,
+  size: 2,
+};
+
+/** Right / left hand choice for pads and gloves. */
+export const HANDS = ["Right hand", "Left hand"] as const;
+export type Hand = (typeof HANDS)[number];

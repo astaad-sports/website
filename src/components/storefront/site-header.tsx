@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Heart, Menu, Search, ShoppingCart, Truck, User } from "lucide-react";
+import { Heart, Menu, Search, Truck, User } from "lucide-react";
 
 import { Crest } from "@/components/astaad";
-import { Badge } from "@/components/ui/badge";
+import { CartLink } from "@/components/cart/cart-link";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -15,35 +15,27 @@ import { STORE_CATEGORIES } from "@/lib/catalogue";
 import { cn } from "@/lib/utils";
 
 const ACTION_ICON = "size-[22px]";
+const ACTION_LINK =
+  "relative flex size-11 items-center justify-center rounded-full text-on-dark transition-colors hover:bg-surface-dark-raised";
 
 function HeaderAction({
   href,
   label,
   icon: Icon,
-  count,
   className,
 }: {
   href: string;
   label: string;
   icon: typeof Truck;
-  count?: number;
   className?: string;
 }) {
   return (
     <Link
       href={href}
       aria-label={label}
-      className={cn(
-        "relative flex size-11 items-center justify-center rounded-full text-on-dark transition-colors hover:bg-surface-dark-raised",
-        className
-      )}
+      className={cn(ACTION_LINK, className)}
     >
       <Icon className={ACTION_ICON} strokeWidth={1.5} aria-hidden="true" />
-      {count != null && (
-        <Badge size="count" className="absolute top-1 right-0.5">
-          {count}
-        </Badge>
-      )}
     </Link>
   );
 }
@@ -147,7 +139,7 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
         <div className="flex items-center gap-1">
           <HeaderAction href="/account" label="Account" icon={User} className="hidden lg:flex" />
           <HeaderAction href="/wishlist" label="Wishlist" icon={Heart} className="hidden lg:flex" />
-          <HeaderAction href="/cart" label="Cart, 1 item" icon={ShoppingCart} count={1} />
+          <CartLink className={ACTION_LINK} iconClassName={ACTION_ICON} />
         </div>
       </div>
     </header>

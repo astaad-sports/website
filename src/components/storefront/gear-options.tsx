@@ -5,11 +5,11 @@ import { useState } from "react";
 import { ArrowRight, ShoppingCart } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
 import { RadioGroup } from "@/components/ui/radio-group";
-import { type GearCategoryContent } from "@/lib/catalogue";
-
-const HANDS = ["Right hand", "Left hand"];
+import { gearCartItem } from "@/lib/cart";
+import { HANDS, type GearCategoryContent, type GearProduct, type Hand } from "@/lib/catalogue";
 
 function OptionPills({
   label,
@@ -47,16 +47,18 @@ function OptionPills({
 
 /** Size and hand choices (where the category has them), the selection line and Add to cart. */
 export function GearOptions({
+  product,
   content,
   categoryName,
   categoryHref,
 }: {
+  product: Pick<GearProduct, "slug" | "categorySlug" | "name">;
   content: GearCategoryContent;
   categoryName: string;
   categoryHref: string;
 }) {
   const [size, setSize] = useState(content.defaultSize ?? content.sizes?.[0] ?? "");
-  const [hand, setHand] = useState(HANDS[0]);
+  const [hand, setHand] = useState<Hand>(HANDS[0]);
   const selection = [content.sizes ? size : null, content.hands ? hand : null].filter(Boolean);
 
   return (
@@ -64,20 +66,24 @@ export function GearOptions({
       {content.sizes && (
         <OptionPills label="Size" options={content.sizes} value={size} onChange={setSize} />
       )}
-      {content.hands && <OptionPills label="Hand" options={HANDS} value={hand} onChange={setHand} />}
+      {content.hands && (
+        <OptionPills label="Hand" options={[...HANDS]} value={hand} onChange={(value) => setHand(value as Hand)} />
+      )}
       {selection.length > 0 && (
         <p className="text-[13px] leading-[18px] text-ink-muted">
           Selected: <span className="font-semibold text-foreground">{selection.join(" · ")}</span>
         </p>
       )}
       <div className="flex flex-col gap-2.5">
-        <Button
+        <AddToCartButton
+          item={gearCartItem(product, { size, hand })}
+          productName={`Astaad ${product.name}`}
           size="lg"
           className="h-15 w-full rounded-xs text-[15px] font-bold tracking-[0.1em] uppercase"
         >
           <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
           Add to cart
-        </Button>
+        </AddToCartButton>
         <Button
           size="lg"
           variant="secondary"
