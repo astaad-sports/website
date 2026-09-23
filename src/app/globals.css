@@ -1,26 +1,358 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   Astaad Sports design tokens
+   Source of truth: the Astaad Sports design system (tokens.json v1).
+   Light = the storefront (categories, grids, product pages, cart).
+   Dark  = the stage (nav bar, hero, promo tiles, footer) in EVERY theme;
+           adding `.dark` to <html> makes the storefront dark as well.
+   `--surface-dark` and the `on-dark` inks keep their values in both themes.
+   ========================================================================== */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand */
+  --brand-yellow: #fec502;
+  --brand-yellow-hover: #e6b100;
+  --brand-gold: #dfba40;
+  --brand-ink: #221f20;
+
+  /* Ink (text) */
+  --ink: #0e0e0e;
+  --ink-muted: #5f5e5e;
+  --ink-subtle: #8a8a8a;
+  --on-yellow: #0e0e0e;
+  --on-dark: #fefefe;
+  --on-dark-muted: #e8e6e2;
+
+  /* Surfaces */
+  --surface: #fefefe;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f5f5f5;
+  --surface-circle: #f8f8f8;
+  --surface-dark: #0e0e0e;
+  --surface-dark-raised: #1d1d1d;
+
+  /* Borders and focus */
+  --border: #ececec;
+  --border-strong: #0e0e0e;
+  --border-on-dark: #3d4241;
+  --focus: #0e0e0e;
+
+  /* States and accents */
+  --rating: #fed325;
+  --success: #1a7f37;
+  --danger: #c62828;
+  --cricket-ball: #8b1a1a;
+
+  /* Elevation */
+  --elevation-card: 0 1px 2px rgba(14, 14, 14, 0.06);
+  --elevation-float: 0 8px 24px rgba(14, 14, 14, 0.12);
+
+  /* shadcn/ui semantic aliases, mapped onto the Astaad tokens */
+  --background: var(--surface);
+  --foreground: var(--ink);
+  --card: var(--surface-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--brand-yellow);
+  --primary-foreground: var(--on-yellow);
+  --secondary: var(--surface-sunken);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-sunken);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--surface-sunken);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --input: var(--border);
+  --ring: var(--focus);
+  --radius: 10px;
+  --chart-1: var(--brand-yellow);
+  --chart-2: var(--ink);
+  --chart-3: var(--ink-muted);
+  --chart-4: var(--ink-subtle);
+  --chart-5: var(--brand-gold);
+  --sidebar: var(--surface-dark);
+  --sidebar-foreground: var(--on-dark);
+  --sidebar-primary: var(--brand-yellow);
+  --sidebar-primary-foreground: var(--on-yellow);
+  --sidebar-accent: var(--surface-dark-raised);
+  --sidebar-accent-foreground: var(--on-dark);
+  --sidebar-border: var(--border-on-dark);
+  --sidebar-ring: var(--brand-yellow);
+}
+
+.dark {
+  --ink: #fefefe;
+  --ink-muted: #b5b3ae;
+  --ink-subtle: #7d7b76;
+  --surface: #0e0e0e;
+  --surface-raised: #1d1d1d;
+  --surface-sunken: #161616;
+  --surface-circle: #242424;
+  --border: #2c2c2c;
+  --border-strong: #fefefe;
+  --focus: #fec502;
+  --success: #4ad07a;
+  --danger: #ff7b72;
+  --elevation-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --elevation-float: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Type families. The font variables are set on <html> by next/font in app/layout.tsx. */
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-montserrat), "Arial Black", Impact, sans-serif;
+  --font-script: var(--font-caveat), "Brush Script MT", cursive;
+  --font-heading: var(--font-inter), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Astaad colours: bg-*, text-*, border-*, fill-*, stroke-* */
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-yellow-hover: var(--brand-yellow-hover);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-ink: var(--brand-ink);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-on-yellow: var(--on-yellow);
+  --color-on-dark: var(--on-dark);
+  --color-on-dark-muted: var(--on-dark-muted);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-circle: var(--surface-circle);
+  --color-surface-dark: var(--surface-dark);
+  --color-surface-dark-raised: var(--surface-dark-raised);
+  --color-border-strong: var(--border-strong);
+  --color-border-on-dark: var(--border-on-dark);
+  --color-focus: var(--focus);
+  --color-rating: var(--rating);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-cricket-ball: var(--cricket-ball);
+
+  /* shadcn/ui semantic colours (resolve to the Astaad tokens above) */
+  --color-background: var(--surface);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface-raised);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--brand-yellow);
+  --color-primary-foreground: var(--on-yellow);
+  --color-secondary: var(--surface-sunken);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--surface-sunken);
+  --color-muted-foreground: var(--ink-muted);
+  --color-accent: var(--surface-sunken);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--danger);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--focus);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Radius: rounded-sm (badges, size cells), rounded-md (buttons, cards, banners),
+     rounded-lg (sheets, promo tiles), rounded-pill, rounded-circle */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+  --radius-4xl: 32px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+
+  /* Elevation: shadow-card (cards at rest), shadow-float (hover, dropdowns, sheets) */
+  --shadow-card: var(--elevation-card);
+  --shadow-float: var(--elevation-float);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Spacing is the 4px scale: space-1 … space-16 map 1:1 onto Tailwind's
+   p-1 … p-16 / gap-1 … gap-16 (space-3 = p-3 = 12px, space-16 = 64px). */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply font-sans antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  /* Every interactive element shows the focus ring: 2px solid, 2px offset. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ==========================================================================
+   Type styles (tokens.json → type.groups). One class per style, responsive
+   variants work as usual (`type-display-xl lg:type-display-hero`).
+   The `type-` prefix keeps these clear of Tailwind's `text-*` colour/size
+   utilities so tailwind-merge never drops them.
+   ========================================================================== */
+
+/* Display — Montserrat 900 italic, uppercase */
+@utility type-display-hero {
+  font-family: var(--font-display);
+  font-size: 88px;
+  line-height: 0.92;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+@utility type-display-xl {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 0.95;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+@utility type-display-lg {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+@utility type-display-md {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.05;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+/* Headings — Inter */
+@utility type-heading-xl {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@utility type-heading-lg {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+@utility type-heading-md {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+@utility type-heading-sm {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+/* Text — Inter */
+@utility type-body-lg {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 400;
+}
+@utility type-body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+}
+@utility type-body-sm {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+@utility type-caption {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+}
+@utility type-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+/* Numbers & labels — Inter */
+@utility type-price-lg {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+}
+@utility type-price {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+}
+@utility type-label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+@utility type-badge {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+/* Script accent — Caveat 700, never below 32px, at most three words */
+@utility type-script-accent {
+  font-family: var(--font-script);
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* The content column: 1440px max, space-4 gutters on mobile, space-6 on desktop. */
+@utility page-shell {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1440px;
+  padding-inline: 16px;
+  @media (width >= 48rem) {
+    padding-inline: 24px;
+  }
 }
