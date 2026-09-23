@@ -22,6 +22,16 @@ export function formatOrderNumber(number: number): string {
   return `AST-${number}`;
 }
 
+const MAX_ORDER_NUMBER = 2_147_483_647; // Postgres integer
+
+/** "10001" or "AST-10001" → 10001; anything else → null. */
+export function parseOrderNumber(value: string): number | null {
+  const digits = value.trim().replace(/^AST-?/i, "");
+  if (!/^\d{1,10}$/.test(digits)) return null;
+  const number = Number(digits);
+  return number > 0 && number <= MAX_ORDER_NUMBER ? number : null;
+}
+
 const orderDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 /** "24 Sept 2026" */

@@ -32,7 +32,19 @@ Postgres on [Neon](https://neon.com), queried with [Drizzle ORM](https://orm.dri
 - **Payment**: when Razorpay returns, `confirmPayment` checks the payment signature and marks the order `paid`. The `order.paid` webhook at `/api/webhooks/razorpay` does the same if the customer closes the tab first. Both are safe to run twice.
 - **Order history**: `/account` lists paid orders and `/account/orders/<number>` shows one, which is also the confirmation page after paying. Orders are numbered from AST-10001, and money is stored in paise.
 - Keep **automatic capture** on in Razorpay (Account & Settings, Payment capture). The store treats a verified payment as paid and has no manual capture step.
-- Not built yet: cash on delivery, stock levels, order emails, and moving orders to shipped or delivered.
+- Not built yet: cash on delivery, stock levels and order emails.
+
+### Shipping with Trackon
+
+Trackon Couriers publishes no developer API; API access needs a Trackon business account. So parcels are booked with Trackon directly, and the store records each AWB (Trackon's consignment number).
+
+1. Paid orders wait under **To ship** at `/admin/orders`, oldest first. Only accounts in `ADMIN_EMAILS` with a verified email can open it; everyone else gets a 404.
+2. The order page lists what to pack, with every option and the engraving, and the delivery address for the consignment note.
+3. Book the parcel with Trackon, enter the AWB and choose **Mark as shipped**. The AWB can be corrected later, and one AWB cannot be used on two orders.
+4. The customer's order page shows the progress, the AWB with a copy button, and a link to [Trackon's tracking page](https://www.trackon.in/courier-tracking). Trackon's page does not take the AWB in its URL, so the customer pastes it. The footer's Track Order link goes to the customer's orders.
+5. When Trackon delivers, choose **Mark as delivered**.
+
+Statuses change by hand today. Automatic updates need a tracking source: Trackon's own API, or a service that tracks Trackon AWBs such as TrackingMore, AfterShip or Shipway. Carriers live in [`src/lib/shipping.ts`](src/lib/shipping.ts).
 
 ### First-time setup
 
@@ -43,6 +55,7 @@ Postgres on [Neon](https://neon.com), queried with [Drizzle ORM](https://orm.dri
 5. In Project settings, open Service accounts and generate a private key. Copy `client_email` and `private_key` from the JSON into `FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY`. Keep the key out of git.
 6. Start the app with `bun run dev`. It applies any pending migrations first, which creates the tables on the first run.
 7. **Razorpay**: create test API keys and put them in `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Until they are set, checkout shows that online payment is not set up.
+   Add your own email to `ADMIN_EMAILS` to ship orders from `/admin/orders`; sign in with Google or verify the email first.
 8. Before going live, switch to live Razorpay keys, add the `order.paid` webhook with `RAZORPAY_WEBHOOK_SECRET`, and add the production domain under Authentication, then Settings, then Authorized domains. Set the same env values on the host, such as Vercel project settings, and run `bun run db:migrate` against production before deploying schema changes.
 
 ### Changing the schema

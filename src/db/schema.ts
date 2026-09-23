@@ -81,9 +81,18 @@ export const orders = pgTable(
     razorpayOrderId: text("razorpay_order_id").unique(),
     razorpayPaymentId: text("razorpay_payment_id").unique(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** A CARRIERS key from src/lib/shipping.ts, set when the order ships. */
+    carrier: text("carrier"),
+    /** The carrier's consignment number: Trackon's AWB. Unique, so one AWB cannot land on two orders. */
+    trackingNumber: text("tracking_number").unique(),
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     ...timestamps,
   },
-  (table) => [index("orders_user_id_created_at_idx").on(table.userId, table.createdAt)]
+  (table) => [
+    index("orders_user_id_created_at_idx").on(table.userId, table.createdAt),
+    index("orders_status_created_at_idx").on(table.status, table.createdAt),
+  ]
 );
 
 export type Order = typeof orders.$inferSelect;

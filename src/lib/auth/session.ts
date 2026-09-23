@@ -1,12 +1,14 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import type { User } from "@/db/schema";
 import { getUserByFirebaseUid } from "@/db/users";
 import { adminAuth } from "@/lib/firebase/admin";
+
+import { isAdmin } from "./admin";
 
 /**
  * Named for this store: browsers share localhost cookies across ports, and
@@ -51,5 +53,12 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 export async function requireUser(returnTo: string): Promise<User> {
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(safeRedirectPath(returnTo))}`);
+  return user;
+}
+
+/** For admin pages: signed-out visitors go to sign in; signed-in non-admins get a 404, so the area stays unadvertised. */
+export async function requireAdmin(returnTo: string): Promise<User> {
+  const user = await requireUser(returnTo);
+  if (!isAdmin(user)) notFound();
   return user;
 }

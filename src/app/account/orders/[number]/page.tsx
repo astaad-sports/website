@@ -3,22 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CircleCheck } from "lucide-react";
 
+import { OrderProgress } from "@/components/orders/order-progress";
 import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { getOrderForUser } from "@/db/orders";
 import { requireUser } from "@/lib/auth/session";
-import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
+import { formatOrderDate, formatOrderNumber, formatPaise, parseOrderNumber } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
 import { cn } from "@/lib/utils";
-
-const MAX_ORDER_NUMBER = 2_147_483_647; // Postgres integer
-
-function parseOrderNumber(value: string): number | null {
-  if (!/^\d{1,10}$/.test(value)) return null;
-  const number = Number(value);
-  return number > 0 && number <= MAX_ORDER_NUMBER ? number : null;
-}
 
 export async function generateMetadata({
   params,
@@ -78,6 +71,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
               </p>
             )}
           </div>
+
+          {confirmed && <OrderProgress order={order} />}
 
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
             <section

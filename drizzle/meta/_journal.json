@@ -15,6 +15,13 @@
       "when": 1790196407500,
       "tag": "0001_create_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790197866069,
+      "tag": "0002_add_shipments",
+      "breakpoints": true
     }
   ]
 }

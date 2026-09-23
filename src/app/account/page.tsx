@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth/actions";
 import { listOrdersForUser, type OrderWithItems } from "@/db/orders";
+import { isAdmin } from "@/lib/auth/admin";
 import { requireUser } from "@/lib/auth/session";
 import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
@@ -98,6 +99,15 @@ export default async function AccountPage() {
             <Eyebrow bar>Your account</Eyebrow>
             <h1 className="type-heading-xl">{firstName ? `Hello, ${firstName}` : "Your account"}</h1>
             {user.email && <p className="type-body text-ink-muted">Signed in as {user.email}</p>}
+            {isAdmin(user) && (
+              <Link
+                href="/admin/orders"
+                className="inline-flex min-h-11 items-center gap-1.5 self-start type-body-sm font-semibold underline underline-offset-4"
+              >
+                Store admin: orders to ship
+                <ChevronRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
+              </Link>
+            )}
           </div>
 
           <OrdersList orders={orders} />
