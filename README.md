@@ -9,7 +9,11 @@ bun install
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the home page and [http://localhost:3000/design-system](http://localhost:3000/design-system) for the live token and component reference.
+Open [http://localhost:3000](http://localhost:3000) for the home page, [http://localhost:3000/bats/run-machine](http://localhost:3000/bats/run-machine) for a product page, and [http://localhost:3000/design-system](http://localhost:3000/design-system) for the live token and component reference.
+
+## Storefront
+
+The home page and the six English Willow product pages (`/bats/<slug>`) implement the Astaad Sports homepage and product-page design. Their sections live in [`src/components/storefront`](src/components/storefront); the catalogue data (categories, bats, kit items, sizes, configurator options) is in [`src/lib/catalogue.ts`](src/lib/catalogue.ts), and the product images in `public/images`. Cart, wishlist and account actions are wired to buttons but have no backend yet, and the category and support links point at routes that do not exist yet.
 
 ## Design system
 

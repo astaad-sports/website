@@ -1,0 +1,328 @@
+"use client";
+
+import Image from "next/image";
+import { ArrowRight, Lock, Pin, RotateCcw, Truck } from "lucide-react";
+import { Radio as RadioPrimitive } from "@base-ui/react/radio";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { RadioGroup } from "@/components/ui/radio-group";
+import {
+  BAT_HANDLES,
+  BAT_IMAGE,
+  BAT_PROFILES,
+  BAT_SIZES,
+  BAT_WEIGHTS,
+  ENGRAVING_MAX,
+  type Bat,
+} from "@/lib/catalogue";
+import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+import {
+  ChoiceButtons,
+  FreeChip,
+  HandleGlyph,
+  OptionGroup,
+  ProfileGlyph,
+  useBatConfig,
+  YesNo,
+} from "./bat-options";
+import { BatSilhouette } from "./bat-silhouette";
+import { Eyebrow } from "./eyebrow";
+import { SectionHeading } from "./section-heading";
+import { SizeGuideDialog } from "./size-guide-dialog";
+
+const SILHOUETTE_HEIGHTS = [
+  "h-[200px] lg:h-[292px]",
+  "h-[224px] lg:h-[326px]",
+  "h-[246px] lg:h-[360px]",
+  "h-[246px] lg:h-[360px]",
+];
+
+function shortRange(age: string, height: string) {
+  return `${age.replace(" years", " yrs")} · ${height.replace(/ /g, "")}`;
+}
+
+/**
+ * The configurator (weight, profile, handle, engraving, knocking, scuff sheet)
+ * with a live preview and a pinned order summary, followed by the size picker.
+ * One state drives both sections.
+ */
+export function ProductBuilder({ bat }: { bat: Bat }) {
+  const { config, update } = useBatConfig();
+  const engraving = config.name.trim().toUpperCase();
+  const size = BAT_SIZES[config.size];
+
+  const summary: [string, string, boolean?][] = [
+    ["Weight", BAT_WEIGHTS[config.weight].label],
+    ["Profile", BAT_PROFILES[config.profile].label],
+    ["Handle shape", BAT_HANDLES[config.handle].label],
+    ["Engraving", engraving || "None", true],
+    ["Knocking", config.knock ? "Yes · Free" : "No"],
+    ["Scuff sheet", config.scuff ? "Yes" : "No"],
+    ["Size", size.label],
+  ];
+
+  return (
+    <>
+      <section id="build" aria-labelledby="build-title" className="bg-surface-sunken">
+        <div className="site-shell flex flex-col gap-10 pt-16 pb-16 md:pt-20">
+          <SectionHeading
+            id="build-title"
+            face="display"
+            eyebrow="Customize · English Willow only"
+            title="Build your bat"
+            aside={
+              <p className="max-w-[420px] text-base leading-6 text-ink-muted md:text-right">
+                Configure your {bat.name} exactly the way you want it. Engraving and knocking
+                are free.
+              </p>
+            }
+          />
+
+          <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)_336px] xl:items-start">
+            {/* Live preview */}
+            <div className="relative h-[560px] overflow-hidden rounded-xs bg-surface-dark text-on-dark xl:h-[780px]">
+              <div
+                aria-hidden="true"
+                className="absolute top-40 left-1/2 size-[300px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.2)_0%,rgba(254,197,2,0)_66%)]"
+              />
+              <span className="absolute top-6 left-6 inline-flex items-center gap-2 text-[11px] leading-[14px] font-semibold tracking-[0.2em] text-on-dark-subtle uppercase">
+                <span aria-hidden="true" className="block size-2 rounded-full bg-success" />
+                Live preview
+              </span>
+              <div className="relative mx-auto mt-14 h-[360px] w-[142px] xl:mt-[70px] xl:h-[482px] xl:w-[190px]">
+                <Image
+                  src={BAT_IMAGE}
+                  alt={`${bat.name} preview with your configuration`}
+                  fill
+                  sizes="190px"
+                  className="object-contain drop-shadow-[0_36px_44px_rgba(0,0,0,0.85)]"
+                />
+                <span
+                  aria-hidden="true"
+                  className="type-display absolute top-[83%] left-[25%] origin-top-left -rotate-90 text-[15px] leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow"
+                >
+                  {engraving || "YOUR NAME"}
+                </span>
+              </div>
+              <dl className="absolute inset-x-6 bottom-6 flex flex-col gap-2.5 text-[13px] leading-[18px]">
+                {summary
+                  .filter(([key]) => ["Weight", "Profile", "Handle shape", "Size"].includes(key))
+                  .map(([key, value]) => (
+                    <div key={key} className="flex justify-between gap-3">
+                      <dt className="text-on-dark-subtle">{key === "Handle shape" ? "Handle" : key}</dt>
+                      <dd className="font-semibold">{value}</dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+
+            {/* Options */}
+            <div className="flex flex-col gap-7">
+              <OptionGroup label="Weight">
+                <ChoiceButtons
+                  variant="card"
+                  label="Weight"
+                  options={BAT_WEIGHTS}
+                  value={config.weight}
+                  onChange={(value) => update("weight", value)}
+                />
+              </OptionGroup>
+              <OptionGroup label="Profile">
+                <ChoiceButtons
+                  variant="card"
+                  label="Profile"
+                  options={BAT_PROFILES}
+                  value={config.profile}
+                  onChange={(value) => update("profile", value)}
+                  glyph={(index) => <ProfileGlyph index={index} />}
+                />
+              </OptionGroup>
+              <OptionGroup label="Handle shape">
+                <ChoiceButtons
+                  variant="card"
+                  label="Handle shape"
+                  options={BAT_HANDLES}
+                  value={config.handle}
+                  onChange={(value) => update("handle", value)}
+                  glyph={(index) => <HandleGlyph index={index} />}
+                />
+              </OptionGroup>
+              <OptionGroup label="Name engraving" badge={<FreeChip tone="yellow" />} htmlFor="engrave">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <div className="relative flex items-center">
+                      <Input
+                        id="engrave"
+                        value={config.name}
+                        maxLength={ENGRAVING_MAX}
+                        placeholder="Enter your name"
+                        onChange={(event) =>
+                          update("name", event.target.value.slice(0, ENGRAVING_MAX))
+                        }
+                        className="h-13 rounded-xs border-2 border-surface-raised bg-surface-raised px-4 pr-16 text-base font-semibold tracking-[0.06em] uppercase shadow-card placeholder:font-normal placeholder:tracking-normal placeholder:normal-case"
+                      />
+                      <span className="absolute right-4 text-xs leading-4 font-semibold text-ink-muted">
+                        {engraving.length} / {ENGRAVING_MAX}
+                      </span>
+                    </div>
+                    <span className="text-xs leading-4 text-ink-muted">
+                      Maximum {ENGRAVING_MAX} letters. Engraved on the lower blade.
+                    </span>
+                  </div>
+                  <div className="flex h-13 w-full items-center justify-center overflow-hidden rounded-xs bg-surface-dark px-4 sm:w-[220px] sm:shrink-0">
+                    <span className="type-display text-base leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow">
+                      {engraving || "YOUR NAME"}
+                    </span>
+                  </div>
+                </div>
+              </OptionGroup>
+              <div className="flex flex-wrap gap-10">
+                <OptionGroup label="Match ready preparation" hint="Professional knocking — free of cost">
+                  <YesNo label="Match ready preparation" value={config.knock} onChange={(value) => update("knock", value)} />
+                </OptionGroup>
+                <OptionGroup label="Clear scuff sheet" hint="Protects the face from day one">
+                  <YesNo label="Clear scuff sheet" value={config.scuff} onChange={(value) => update("scuff", value)} />
+                </OptionGroup>
+              </div>
+            </div>
+
+            {/* Live order summary */}
+            <aside
+              aria-label="Order summary"
+              className="flex flex-col gap-4 rounded-xs bg-surface-dark p-6 text-on-dark xl:sticky xl:top-6"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[11px] leading-[14px] font-semibold tracking-[0.2em] text-on-dark-subtle uppercase">
+                  Your order
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] leading-[14px] font-semibold text-on-dark-subtle">
+                  <Pin className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
+                  Pinned while you build
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="flex h-[72px] w-14 shrink-0 items-center justify-center rounded-xs bg-surface-dark-raised">
+                  <Image src={BAT_IMAGE} alt="" width={24} height={60} className="h-[60px] w-6 object-contain" />
+                </span>
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-lg leading-6 font-bold">{bat.name}</span>
+                  <span className="text-[13px] leading-[18px] text-on-dark-subtle">{bat.grade}</span>
+                </span>
+              </div>
+              <dl className="flex flex-col border-t border-border-dark">
+                {summary.map(([key, value, accent]) => (
+                  <div
+                    key={key}
+                    className="flex justify-between gap-3 border-b border-border-dark py-[9px] text-[13px] leading-[18px]"
+                  >
+                    <dt className="text-on-dark-subtle">{key}</dt>
+                    <dd className={cn("text-right font-semibold", accent && "text-brand-yellow")}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="flex flex-col gap-0.5">
+                <div className="flex flex-wrap items-baseline gap-2.5">
+                  <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">
+                    {formatPrice(bat.price)}
+                  </span>
+                  <span className="text-sm leading-5 text-ink-subtle line-through">
+                    {formatPrice(bat.mrp)}
+                  </span>
+                  <span className="h-[22px] rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold text-on-yellow">
+                    {bat.off}% OFF
+                  </span>
+                </div>
+                <span className="text-xs leading-4 text-on-dark-subtle">
+                  Customization included. No extra cost.
+                </span>
+              </div>
+              <Button size="lg" className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase">
+                Add to cart
+                <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
+              </Button>
+              <ul className="flex flex-wrap justify-between gap-2 text-[11px] leading-[14px] font-medium text-on-dark-subtle">
+                {[
+                  { icon: Truck, label: "Free delivery" },
+                  { icon: Lock, label: "Secure payment" },
+                  { icon: RotateCcw, label: "Easy returns" },
+                ].map((item) => (
+                  <li key={item.label} className="inline-flex items-center gap-1.5">
+                    <item.icon className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="size-title"
+        className="site-shell flex flex-col gap-12 pt-16 pb-16 md:pt-[72px] lg:flex-row lg:items-start xl:h-[560px] xl:pb-0"
+      >
+        <div className="flex w-full flex-col gap-5 lg:w-[340px] lg:shrink-0">
+          <Eyebrow>Step 2 of 2</Eyebrow>
+          <h2 id="size-title" className="type-display text-[40px] leading-[0.95] tracking-[-0.02em] md:text-[48px]">
+            Choose your size
+          </h2>
+          <p className="text-[15px] leading-[22px] text-ink-muted">
+            Most adult players are SH. LH adds an inch to the handle, not the blade. Tap a bat
+            to select it.
+          </p>
+          <div className="flex flex-col gap-1 rounded-xs bg-surface-sunken p-4">
+            <span className="text-[11px] leading-[14px] font-semibold tracking-[0.2em] text-ink-muted uppercase">
+              Selected
+            </span>
+            <span className="text-xl leading-[26px] font-bold">{size.label}</span>
+          </div>
+          <SizeGuideDialog
+            trigger={
+              <button
+                type="button"
+                className="inline-flex h-11 cursor-pointer items-center gap-2.5 self-start border-b-2 border-brand-yellow px-1 text-sm leading-5 font-bold tracking-[0.08em] text-foreground uppercase transition-colors hover:text-ink-muted"
+              >
+                View size guide
+                <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden="true" />
+              </button>
+            }
+          />
+        </div>
+        <RadioGroup
+          aria-label="Bat size"
+          value={String(config.size)}
+          onValueChange={(next) => update("size", Number(next))}
+          className="grid w-full flex-1 grid-cols-2 gap-3 border-b border-border-strong lg:flex lg:items-end"
+        >
+          {BAT_SIZES.map((item, index) => {
+            const selected = index === config.size;
+            return (
+              <RadioPrimitive.Root
+                key={item.code}
+                value={String(index)}
+                className={cn(
+                  "flex h-[300px] cursor-pointer flex-col items-center justify-end gap-3.5 rounded-xs px-2 pt-5 pb-4 text-foreground transition-colors lg:h-[420px] lg:flex-1 lg:basis-0",
+                  selected && "bg-surface-dark text-on-dark"
+                )}
+              >
+                <BatSilhouette
+                  className={SILHOUETTE_HEIGHTS[index]}
+                  longHandle={item.longHandle}
+                  fill={selected ? "var(--brand-yellow)" : "var(--border-dark)"}
+                  handle={selected ? "var(--on-dark)" : "var(--ink)"}
+                />
+                <span className="flex flex-col items-center gap-0.5 text-center">
+                  <span className="text-[15px] leading-5 font-bold">{item.label}</span>
+                  <span className="text-xs leading-4 opacity-70">{shortRange(item.age, item.height)}</span>
+                </span>
+              </RadioPrimitive.Root>
+            );
+          })}
+        </RadioGroup>
+      </section>
+    </>
+  );
+}

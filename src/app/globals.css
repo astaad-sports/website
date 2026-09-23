@@ -27,6 +27,7 @@
   --on-yellow: #0e0e0e;
   --on-dark: #fefefe;
   --on-dark-muted: #e8e6e2;
+  --on-dark-subtle: #b5b3ae;
 
   /* Surfaces */
   --surface: #fefefe;
@@ -35,11 +36,13 @@
   --surface-circle: #f8f8f8;
   --surface-dark: #0e0e0e;
   --surface-dark-raised: #1d1d1d;
+  --surface-dark-sunken: #161616;
 
   /* Borders and focus */
   --border: #ececec;
   --border-strong: #0e0e0e;
   --border-on-dark: #3d4241;
+  --border-dark: #2c2c2c;
   --focus: #0e0e0e;
 
   /* States and accents */
@@ -122,14 +125,17 @@
   --color-on-yellow: var(--on-yellow);
   --color-on-dark: var(--on-dark);
   --color-on-dark-muted: var(--on-dark-muted);
+  --color-on-dark-subtle: var(--on-dark-subtle);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
   --color-surface-sunken: var(--surface-sunken);
   --color-surface-circle: var(--surface-circle);
   --color-surface-dark: var(--surface-dark);
   --color-surface-dark-raised: var(--surface-dark-raised);
+  --color-surface-dark-sunken: var(--surface-dark-sunken);
   --color-border-strong: var(--border-strong);
   --color-border-on-dark: var(--border-on-dark);
+  --color-border-dark: var(--border-dark);
   --color-focus: var(--focus);
   --color-rating: var(--rating);
   --color-success: var(--success);
@@ -171,6 +177,7 @@
 
   /* Radius: rounded-sm (badges, size cells), rounded-md (buttons, cards, banners),
      rounded-lg (sheets, promo tiles), rounded-pill, rounded-circle */
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
@@ -354,5 +361,28 @@
   padding-inline: 16px;
   @media (width >= 48rem) {
     padding-inline: 24px;
+  }
+}
+
+/* The display face without a size, for the storefront's larger campaign
+   sizes: `type-display text-[124px] leading-[0.88] tracking-[-0.03em]`. */
+@utility type-display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+/* The storefront column: 1440px max with 16 / 32 / 64px gutters. */
+@utility site-shell {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1440px;
+  padding-inline: 16px;
+  @media (width >= 48rem) {
+    padding-inline: 32px;
+  }
+  @media (width >= 80rem) {
+    padding-inline: 64px;
   }
 }

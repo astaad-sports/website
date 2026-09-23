@@ -1,0 +1,93 @@
+import Image from "next/image";
+import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+export interface KitCardProps {
+  name: string;
+  note?: string;
+  price: number;
+  mrp?: number;
+  /** Category line above the name (product page). */
+  eyebrow?: string;
+  /** Black chip top-left — "No. 1". */
+  badge?: string;
+  href?: string;
+  image: string;
+  imageWidth: number;
+  imageHeight: number;
+  imageTop: number;
+  height?: 400 | 380;
+  className?: string;
+}
+
+/**
+ * A grey product tile with the cut-out floating above the name, a note, the
+ * price and a round yellow add-to-cart button.
+ */
+export function KitCard({
+  name,
+  note,
+  price,
+  mrp,
+  eyebrow,
+  badge,
+  href,
+  image,
+  imageWidth,
+  imageHeight,
+  imageTop,
+  height = 400,
+  className,
+}: KitCardProps) {
+  return (
+    <article
+      className={cn(
+        "group relative overflow-hidden rounded-xs bg-surface-sunken p-6",
+        height === 380 ? "h-[380px]" : "h-[400px]",
+        className
+      )}
+    >
+      {badge && (
+        <span className="absolute top-5 left-5 z-10 h-6 rounded-xs bg-surface-dark px-2.5 text-xs leading-6 font-bold tracking-[0.04em] text-on-dark">
+          {badge}
+        </span>
+      )}
+      <Image
+        src={image}
+        alt={name}
+        width={imageWidth}
+        height={imageHeight}
+        style={{ top: imageTop, marginLeft: -imageWidth / 2, width: imageWidth, height: imageHeight }}
+        className="absolute left-1/2 object-contain drop-shadow-[0_20px_20px_rgba(14,14,14,0.28)] transition-transform duration-300 group-hover:-translate-y-2"
+      />
+      <div className="absolute inset-x-6 bottom-6 flex items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          {eyebrow && (
+            <span className="text-xs leading-4 font-medium tracking-[0.16em] text-ink-muted uppercase">
+              {eyebrow}
+            </span>
+          )}
+          <span className="text-lg leading-6 font-bold">
+            {href ? <Link href={href}>{name}</Link> : name}
+          </span>
+          {note && <span className="text-[13px] leading-[18px] text-ink-muted">{note}</span>}
+          <span className="mt-1 text-base leading-[22px] font-bold">
+            {formatPrice(price)}
+            {mrp && (
+              <span className="ml-1.5 text-[13px] font-normal text-ink-subtle line-through">
+                {formatPrice(mrp)}
+              </span>
+            )}
+          </span>
+        </div>
+        <Button size="icon" aria-label={`Add ${name} to cart`} className="size-11 shrink-0 rounded-full">
+          <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
+        </Button>
+      </div>
+    </article>
+  );
+}
