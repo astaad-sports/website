@@ -56,7 +56,7 @@ export function NavBar({
             >
               <SheetHeader className="border-b border-border-on-dark">
                 <SheetTitle className="sr-only">Menu</SheetTitle>
-                <Crest size={40} />
+                <Crest size={40} className="self-start" />
               </SheetHeader>
               <nav aria-label="Primary">
                 <ul className="flex flex-col">

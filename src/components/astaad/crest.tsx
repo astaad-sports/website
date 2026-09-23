@@ -27,8 +27,8 @@ export function Crest({ size = 48, priority, className }: CrestProps) {
       width={Math.round((size * CREST_WIDTH) / CREST_HEIGHT)}
       height={size}
       priority={priority}
-      className={cn("h-auto w-auto shrink-0", className)}
-      style={{ height: size }}
+      className={cn("shrink-0 object-contain", className)}
+      style={{ height: size, width: "auto" }}
     />
   );
 }
