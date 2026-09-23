@@ -1,11 +1,20 @@
 // Storefront catalogue for the Astaad Sports home and product pages.
 // Prices are rupees; format them with `formatPrice`.
 
+export type GearCategorySlug =
+  | "batting-pads"
+  | "batting-gloves"
+  | "helmets"
+  | "cricket-kitbags";
+
 export interface StoreCategory {
   slug: string;
   name: string;
   href: string;
   number: string;
+  kind: "bats" | "gear";
+  /** One sentence for the category hero. */
+  tagline: string;
   from: number;
   models?: number;
   image: string;
@@ -16,6 +25,8 @@ export interface StoreCategory {
 export const STORE_CATEGORIES: StoreCategory[] = [
   {
     slug: "bats",
+    kind: "bats",
+    tagline: "Choose your willow. Build your game.",
     name: "Bats",
     href: "/#collection",
     number: "01",
@@ -26,6 +37,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
   },
   {
     slug: "batting-pads",
+    kind: "gear",
+    tagline: "Light on the legs, solid where it counts.",
     name: "Batting Pads",
     href: "/shop/batting-pads",
     number: "02",
@@ -35,6 +48,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
   },
   {
     slug: "batting-gloves",
+    kind: "gear",
+    tagline: "Grip, feel and protection for every innings.",
     name: "Batting Gloves",
     href: "/shop/batting-gloves",
     number: "03",
@@ -44,6 +59,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
   },
   {
     slug: "helmets",
+    kind: "gear",
+    tagline: "Head protection you forget you are wearing.",
     name: "Helmets",
     href: "/shop/helmets",
     number: "04",
@@ -53,6 +70,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
   },
   {
     slug: "cricket-kitbags",
+    kind: "gear",
+    tagline: "Room for the full kit, built for the road.",
     name: "Cricket Kitbags",
     href: "/shop/cricket-kitbags",
     number: "05",
@@ -163,6 +182,14 @@ export function getBat(slug: string): Bat | undefined {
   return BATS.find((bat) => bat.slug === slug);
 }
 
+export function getCategory(slug: string): StoreCategory | undefined {
+  return STORE_CATEGORIES.find((category) => category.slug === slug);
+}
+
+export const GEAR_CATEGORY_SLUGS = STORE_CATEGORIES.filter(
+  (category) => category.kind === "gear"
+).map((category) => category.slug as GearCategorySlug);
+
 export interface KitItem {
   slug: string;
   category: string;
@@ -170,61 +197,88 @@ export interface KitItem {
   note?: string;
   price: number;
   mrp?: number;
+  badge?: string;
+  href?: string;
   image: string;
   imageWidth: number;
   imageHeight: number;
+  /** Placement of the cut-out inside a KitCard tile. */
   imageTop: number;
 }
 
-/** Gloves, pads, helmet and kitbag: the "complete your kit" row. */
-export const KIT_ITEMS: KitItem[] = [
-  {
-    slug: "elite-batting-gloves",
-    category: "Batting Gloves",
-    name: "Elite Batting Gloves",
-    note: "Pro sheepskin palm",
-    price: 4999,
-    image: "/images/batting-gloves.png",
-    imageWidth: 192,
-    imageHeight: 178,
-    imageTop: 56,
-  },
-  {
-    slug: "pro-batting-pads",
-    category: "Batting Pads",
-    name: "Pro Batting Pads",
-    price: 5499,
-    image: "/images/batting-pads.png",
-    imageWidth: 160,
-    imageHeight: 184,
-    imageTop: 48,
-  },
-  {
-    slug: "club-cricket-helmet",
-    category: "Helmet",
-    name: "Club Cricket Helmet",
-    note: "Steel grille · adjustable",
-    price: 6999,
-    image: "/images/helmet.png",
-    imageWidth: 168,
-    imageHeight: 176,
-    imageTop: 60,
-  },
-  {
-    slug: "pro-cricket-kitbag",
-    category: "Cricket Kitbag",
-    name: "Pro Cricket Kitbag",
-    note: "Wheelie · full kit",
-    price: 3499,
-    image: "/images/kitbag.png",
-    imageWidth: 248,
-    imageHeight: 150,
-    imageTop: 84,
-  },
+export interface GearProduct extends KitItem {
+  categorySlug: GearCategorySlug;
+  line: string;
+  /** The category's entry model, from the design: shown on the home and product pages. */
+  featured?: boolean;
+  /** A placeholder model until the real range is supplied. */
+  placeholder?: boolean;
+}
+
+const GLOVES_IMAGE = { image: "/images/batting-gloves.png", imageWidth: 192, imageHeight: 178, imageTop: 56 };
+const PADS_IMAGE = { image: "/images/batting-pads.png", imageWidth: 160, imageHeight: 184, imageTop: 48 };
+const HELMET_IMAGE = { image: "/images/helmet.png", imageWidth: 168, imageHeight: 176, imageTop: 60 };
+const KITBAG_IMAGE = { image: "/images/kitbag.png", imageWidth: 248, imageHeight: 150, imageTop: 84 };
+
+/**
+ * Pads, gloves, helmets and kitbags. The four `featured` entries and their
+ * prices come from the design. The `placeholder` models reuse the same
+ * cut-out with plausible prices so the category pages have a range to show;
+ * replace them with the real catalogue.
+ */
+export const GEAR: GearProduct[] = [
+  { slug: "elite-batting-gloves", categorySlug: "batting-gloves", category: "Batting Gloves", line: "Elite", name: "Elite Batting Gloves", note: "Pro sheepskin palm", price: 4999, badge: "Bestseller", featured: true, ...GLOVES_IMAGE },
+  { slug: "pro-batting-gloves", categorySlug: "batting-gloves", category: "Batting Gloves", line: "Pro", name: "Pro Batting Gloves", note: "Split finger · right hand", price: 6499, placeholder: true, ...GLOVES_IMAGE },
+  { slug: "players-batting-gloves", categorySlug: "batting-gloves", category: "Batting Gloves", line: "Players", name: "Players Batting Gloves", note: "Sausage finger · right hand", price: 8499, placeholder: true, ...GLOVES_IMAGE },
+
+  { slug: "pro-batting-pads", categorySlug: "batting-pads", category: "Batting Pads", line: "Pro", name: "Pro Batting Pads", note: "Men\u2019s · right hand", price: 5499, featured: true, ...PADS_IMAGE },
+  { slug: "elite-batting-pads", categorySlug: "batting-pads", category: "Batting Pads", line: "Elite", name: "Elite Batting Pads", note: "Men\u2019s · ambidextrous", price: 7499, placeholder: true, ...PADS_IMAGE },
+  { slug: "players-batting-pads", categorySlug: "batting-pads", category: "Batting Pads", line: "Players", name: "Players Batting Pads", note: "Men\u2019s · right hand", price: 9999, placeholder: true, ...PADS_IMAGE },
+
+  { slug: "club-cricket-helmet", categorySlug: "helmets", category: "Helmet", line: "Club", name: "Club Cricket Helmet", note: "Steel grille · adjustable", price: 6999, badge: "Bestseller", featured: true, ...HELMET_IMAGE },
+  { slug: "pro-cricket-helmet", categorySlug: "helmets", category: "Helmet", line: "Pro", name: "Pro Cricket Helmet", note: "Steel grille · vented shell", price: 8999, placeholder: true, ...HELMET_IMAGE },
+  { slug: "elite-cricket-helmet", categorySlug: "helmets", category: "Helmet", line: "Elite", name: "Elite Cricket Helmet", note: "Steel grille · lightweight shell", price: 11499, placeholder: true, ...HELMET_IMAGE },
+
+  { slug: "pro-cricket-kitbag", categorySlug: "cricket-kitbags", category: "Cricket Kitbag", line: "Pro", name: "Pro Cricket Kitbag", note: "Wheelie · full kit", price: 3499, badge: "Bestseller", featured: true, ...KITBAG_IMAGE },
+  { slug: "elite-cricket-kitbag", categorySlug: "cricket-kitbags", category: "Cricket Kitbag", line: "Elite", name: "Elite Cricket Kitbag", note: "Wheelie · full kit · bat sleeve", price: 5499, placeholder: true, ...KITBAG_IMAGE },
+  { slug: "players-cricket-kitbag", categorySlug: "cricket-kitbags", category: "Cricket Kitbag", line: "Players", name: "Players Cricket Kitbag", note: "Wheelie · two-kit · bat sleeve", price: 7999, placeholder: true, ...KITBAG_IMAGE },
 ];
 
+export function getGear(slug: string): GearProduct | undefined {
+  return GEAR.find((item) => item.slug === slug);
+}
+
+export function getGearByCategory(slug: string): GearProduct[] {
+  return GEAR.filter((item) => item.categorySlug === slug);
+}
+
+/** One product per gear category: the "complete your kit" row. */
+export const KIT_ITEMS: KitItem[] = [
+  "elite-batting-gloves",
+  "pro-batting-pads",
+  "club-cricket-helmet",
+  "pro-cricket-kitbag",
+].map((slug) => getGear(slug)!);
+
+/** A bat as a kit tile, for cross-selling on the gear pages. */
+export function batAsKitItem(bat: Bat): KitItem {
+  return {
+    slug: bat.slug,
+    category: "Bats",
+    name: bat.name,
+    note: bat.grade,
+    price: bat.price,
+    mrp: bat.mrp,
+    href: `/bats/${bat.slug}`,
+    image: BAT_IMAGE,
+    imageWidth: 104,
+    imageHeight: 264,
+    imageTop: 40,
+  };
+}
+
 /** The home page "What players are buying" row. */
-export const BESTSELLERS: (KitItem & { badge?: string; href?: string })[] = [
+export const BESTSELLERS: KitItem[] = [
   {
     slug: "goat",
     category: "Bats",

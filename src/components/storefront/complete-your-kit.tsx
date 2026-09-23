@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { KIT_ITEMS, type Bat } from "@/lib/catalogue";
+import { type KitItem } from "@/lib/catalogue";
 
 import { KitCard } from "./kit-card";
 import { SectionHeading } from "./section-heading";
 
-/** "Complete your kit" — gloves, pads, helmet and kitbag to pair with the bat. */
-export function CompleteYourKit({ bat }: { bat: Bat }) {
+/** "Complete your kit" — four tiles that pair with what the player is looking at. */
+export function CompleteYourKit({
+  eyebrow,
+  items,
+  href = "/#categories",
+}: {
+  eyebrow: string;
+  items: KitItem[];
+  href?: string;
+}) {
   return (
     <section
       aria-labelledby="kit-title"
@@ -17,11 +25,11 @@ export function CompleteYourKit({ bat }: { bat: Bat }) {
         id="kit-title"
         face="display"
         titleClassName="md:text-[48px]"
-        eyebrow={`Pairs with the ${bat.name}`}
+        eyebrow={eyebrow}
         title="Complete your kit"
         aside={
           <Link
-            href="/#categories"
+            href={href}
             className="inline-flex items-center gap-2 self-start border-b-2 border-brand-yellow py-2 text-sm leading-5 font-bold tracking-[0.08em] uppercase transition-colors hover:text-ink-muted md:self-auto"
           >
             Shop all gear
@@ -30,7 +38,7 @@ export function CompleteYourKit({ bat }: { bat: Bat }) {
         }
       />
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {KIT_ITEMS.map((item) => (
+        {items.map((item) => (
           <KitCard key={item.slug} {...item} eyebrow={item.category} height={380} />
         ))}
       </div>

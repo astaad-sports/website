@@ -10,7 +10,7 @@ import { ProductStory } from "@/components/storefront/product-story";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
-import { BATS, getBat } from "@/lib/catalogue";
+import { BATS, getBat, KIT_ITEMS } from "@/lib/catalogue";
 
 export function generateStaticParams() {
   return BATS.map((bat) => ({ slug: bat.slug }));
@@ -40,7 +40,7 @@ export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
         <ProductStory bat={bat} />
         <ProductDetails bat={bat} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
-        <CompleteYourKit bat={bat} />
+        <CompleteYourKit eyebrow={`Pairs with the ${bat.name}`} items={KIT_ITEMS} />
         <FinalCta
           label={`Customize your ${bat.name}`}
           title="Ready for your"
