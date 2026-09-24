@@ -24,22 +24,26 @@ function SmallTile({
   return (
     <Link
       href={href}
-      className="group @container relative block min-h-[190px] overflow-hidden rounded-xs bg-surface-dark-sunken text-on-dark transition-transform duration-200 hover:-translate-y-1"
+      className="group @container relative flex min-h-[190px] flex-col overflow-hidden rounded-xs bg-surface-dark-sunken px-8 pt-8 pb-7 text-on-dark transition-transform duration-200 hover:-translate-y-1"
     >
       {/* The bat runs diagonally, so on a narrower tile it shrinks into the
           bottom-right corner to keep its blade clear of the note. It is full
-          size from a 421px tile (the 1440 design) and hidden below 300px. */}
+          size from a 421px tile (the 1440 design) and hidden below 300px; the
+          container query measures inside the 32px side padding, hence 236px. */}
       <Image
         src="/images/category-bats.png"
         alt=""
         width={190}
         height={134}
         className={cn(
-          "absolute right-4 bottom-[22px] aspect-[190/134] h-auto w-[min(190px,89%_-_185px)] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)] @max-[300px]:hidden",
+          "absolute right-4 bottom-[22px] aspect-[190/134] h-auto w-[min(190px,89%_-_185px)] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)] @max-[236px]:hidden",
           grayscale && "grayscale-[0.4]"
         )}
       />
-      <span className="absolute top-8 left-8 flex flex-col gap-1.5">
+      {/* In flow so a note that wraps on a narrow tile (768-956) pushes the
+          count down and grows the tile, instead of running into it. `relative`
+          keeps the text painted above the bat. */}
+      <span className="relative flex flex-col gap-1.5">
         <span className="type-display text-[28px] leading-none tracking-[-0.01em]">
           {title[0]}
           <br />
@@ -47,7 +51,7 @@ function SmallTile({
         </span>
         <span className="text-[13px] leading-[18px] text-on-dark-subtle">{note}</span>
       </span>
-      <span className="absolute bottom-7 left-8 flex items-center gap-3 text-[13px] leading-[18px] font-semibold tracking-[0.16em] uppercase">
+      <span className="relative mt-auto flex items-center gap-3 pt-3 text-[13px] leading-[18px] font-semibold tracking-[0.16em] uppercase">
         <span className="text-[28px] leading-8 font-bold tracking-[-0.02em]">{models}</span>
         Models
         <ArrowRight className="size-4" strokeWidth={2} aria-hidden="true" />
