@@ -19,7 +19,7 @@ import {
   type StoreCategory,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { gearLine, percentOff, type StoreGear } from "@/lib/products/model";
+import { gearLine, type StoreGear } from "@/lib/products/model";
 
 import type { DeliveryTerms } from "./delivery";
 import { Eyebrow } from "./eyebrow";
@@ -113,7 +113,7 @@ export function GearHero({
             )}
             {offerMrp && (
               <span className="h-[26px] rounded-xs bg-brand-yellow px-2.5 text-xs leading-[26px] font-bold tracking-[0.06em] text-on-yellow">
-                {percentOff(product.price, offerMrp)}% OFF
+                {product.off}% OFF
               </span>
             )}
           </div>

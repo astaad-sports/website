@@ -5,7 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState, useTransition, type Fo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { couponTerms, normaliseCode, offerStatus, type AppliedCoupon } from "@/lib/offers/model";
+import { normaliseCode, type AppliedCoupon } from "@/lib/offers/model";
 import { checkCoupon, type CheckCouponResult } from "@/lib/orders/actions";
 
 import { useCart } from "./use-cart";
@@ -78,7 +78,6 @@ export function CouponStatus({
   removeRef?: Ref<HTMLButtonElement>;
 }) {
   const id = useId();
-  const expired = offerStatus(couponTerms(coupon)) === "expired";
   return (
     <div className="flex items-center justify-between gap-3">
       <p id={id} role="status" className="flex min-w-0 flex-col gap-0.5 type-body-sm">
@@ -89,13 +88,9 @@ export function CouponStatus({
         ) : (
           <>
             <span className="font-semibold">{coupon.code}</span>
-            {/* An expired code stops the order being placed, so it reads as an error. */}
-            <span className={expired ? "text-danger" : "text-ink-muted"}>
-              {expired
-                ? "This code has expired."
-                : covered
-                  ? "Your cart already has a better offer."
-                  : "This code doesn't apply to anything in your cart."}
+            {/* An expired code is removed when the cart or checkout checks it with the server. */}
+            <span className="text-ink-muted">
+              {covered ? "Your cart already has a better offer." : "This code doesn't apply to anything in your cart."}
             </span>
           </>
         )}

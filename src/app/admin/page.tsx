@@ -220,7 +220,7 @@ export default async function AdminHomePage() {
         <QuickActions className="hidden items-center gap-2 lg:flex" />
       </header>
 
-      <nav aria-label="Store summary" className="grid max-w-190 grid-cols-5 border-y border-border">
+      <nav aria-label="Store summary" className="grid max-w-190 grid-cols-4 border-y border-border">
         <SummaryCell first href="/admin/orders?status=pending" count={toShip} label="To ship" />
         <SummaryCell href="/admin/products?stock=low" count={low.length} label="Low stock" dot="bg-brand-yellow-hover" />
         <SummaryCell href="/admin/products?stock=out" count={out.length} label="Out of stock" dot="bg-danger" />

@@ -1,6 +1,6 @@
 "use server";
 
-import { writeSettings } from "@/db/settings";
+import { readSettings, writeSettings } from "@/db/settings";
 import { setUserName } from "@/db/users";
 import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -26,7 +26,11 @@ export async function saveSettings(_previous: SettingsActionState, form: FormDat
   const parsed = parseSettingsForm(form);
   if (!parsed.ok) return { fieldErrors: parsed.fieldErrors, error: "Check the highlighted fields.", at: Date.now() };
 
-  await writeSettings(parsed.settings);
+  // Free delivery hides the charge field; keep the saved charge for when it's turned off again.
+  const settings = parsed.settings.freeDelivery
+    ? { ...parsed.settings, deliveryFeePaise: (await readSettings())?.deliveryFeePaise ?? 0 }
+    : parsed.settings;
+  await writeSettings(settings);
   if (parsed.adminName !== user.name) await setUserName(user.id, parsed.adminName);
   // Delivery charges and store details show on every storefront page.
   productsChanged();

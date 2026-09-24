@@ -122,6 +122,29 @@ describe("prices", () => {
     expect(cart.coupon).toMatchObject({ covered: false, applied: false });
   });
 
+  test("the % OFF chip shows the offer's own percentage when there is no MRP", () => {
+    // Elite Batting Gloves has no MRP: ₹4,999 at 10% is ₹4,499, which works back out to 9.99%.
+    const catalogue = toStoreCatalogue(seedProductRows(), { offers: [offer({ percentOff: 10 })], now: NOW });
+    const gloves = catalogue.gear.find((entry) => entry.slug === "elite-batting-gloves")!;
+    expect(gloves.price).toBe(4499);
+    expect(gloves.off).toBe(10);
+    // A bat with an MRP shows its saving on the MRP, as before.
+    const bat = catalogue.bats.find((entry) => entry.slug === "run-machine")!;
+    expect(bat.off).toBe(Math.floor(((bat.mrp - bat.price) * 100) / bat.mrp));
+    // No offer: gear shows no chip.
+    expect(toStoreCatalogue(seedProductRows()).gear[0].off).toBe(0);
+  });
+
+  test("in the browser a coupon's dates are left to the server", () => {
+    const catalogue = toStoreCatalogue(seedProductRows());
+    // A phone clock far behind would read this running coupon as upcoming.
+    const coupon = toAppliedCoupon(offer({ code: "TODAY", startsAt: startOfDayInIndia("2030-01-01"), endsAt: endOfDayInIndia("2030-01-05") }));
+    const checked = priceCart([gearCartItem(catalogue.gear[0])], catalogue, coupon, NOW);
+    const trusted = priceCart([gearCartItem(catalogue.gear[0])], catalogue, coupon, null);
+    expect(checked.coupon?.applied).toBe(false);
+    expect(trusted.coupon?.applied).toBe(true);
+  });
+
   test("delivery is charged per order when it isn't free", () => {
     const catalogue = toStoreCatalogue(seedProductRows(), { deliveryFeePaise: 15_000 });
     const cart = priceCart([gearCartItem(catalogue.gear[0])], catalogue);

@@ -4,9 +4,14 @@ import { formatShortDate } from "@/lib/format";
 import type { StoreOffer } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
-/** "Diwali Sale · ends 25 Oct": the offer's last day, in India. */
+/**
+ * "Diwali Sale · ends 25 Oct": the offer's last day, in India. No year: a
+ * running offer ends soon, and a year that depends on today's date could read
+ * differently on the server and in the browser around New Year.
+ */
 function offerLabel(offer: StoreOffer): string {
-  return `${offer.name} · ends ${formatShortDate(new Date(offer.endsAt))}`;
+  const end = new Date(offer.endsAt);
+  return `${offer.name} · ends ${formatShortDate(end, end)}`;
 }
 
 /**

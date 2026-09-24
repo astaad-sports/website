@@ -232,6 +232,16 @@ interface OfferPricing {
   offer: StoreOffer | null;
 }
 
+/**
+ * The "% OFF" chip. Against a real MRP it is the saving on the MRP. Without
+ * one, during an offer, it is the offer's own percentage: the price is
+ * rounded to the rupee, so working it back out can read one percent low.
+ */
+function chipPercent(price: number, mrp: number, offer: StoreOffer | null, hasMrp: boolean): number {
+  if (!hasMrp) return offer ? offer.percentOff : 0;
+  return percentOff(price, mrp);
+}
+
 export interface StoreBat extends Bat, OfferPricing {
   id: string;
   subcategory: BatSubcategory;
@@ -246,6 +256,8 @@ export interface StoreBat extends Bat, OfferPricing {
 /** A gear product as the storefront shows it. */
 export interface StoreGear extends GearProduct, OfferPricing {
   id: string;
+  /** The "% OFF" chip; 0 when no offer is running. */
+  off: number;
   stockStatus: Exclude<StockStatus, "hidden">;
   soldOut: boolean;
   stockLeft: number | null;
@@ -310,7 +322,7 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     regularPrice,
     offer,
     mrp,
-    off: percentOff(price, mrp),
+    off: chipPercent(price, mrp, offer, Boolean(row.mrpPaise)),
     badges: row.badges.length ? row.badges : undefined,
     dark: seeded?.dark,
     rating: seeded?.rating,
@@ -347,6 +359,8 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
     offer,
     // Struck through beside the price: the MRP, or the regular price during an offer.
     mrp: mrp > price ? mrp : undefined,
+    // Gear shows a % OFF chip only while an offer runs.
+    off: offer ? chipPercent(price, mrp, offer, Boolean(row.mrpPaise)) : 0,
     badge: row.badges[0],
     href: `/shop/${category}/${row.slug}`,
     image: images[0] ?? layout.image,

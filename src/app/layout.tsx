@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Caveat, Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 
@@ -28,11 +29,6 @@ const caveat = Caveat({
   display: "swap",
 });
 
-// Offers start and end at midnight with no one saving anything, so pages are
-// rebuilt at least this often (seconds; CATALOGUE_REVALIDATE in
-// src/lib/products/catalogue.ts, which can't be imported into this literal).
-export const revalidate = 300;
-
 export const metadata: Metadata = {
   title: {
     default: "Astaad Sports",
@@ -42,6 +38,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page renders for its request, so prices follow offers that start or
+  // end at midnight without anyone saving anything. The data behind them is
+  // cached (see getStoreCatalogue); a small store renders quickly.
+  await connection();
   const catalogue = await getStoreCatalogue();
   // Browser extensions (ColorZilla, Grammarly, dark-mode tools) add attributes
   // to <html> and <body> before React hydrates. suppressHydrationWarning

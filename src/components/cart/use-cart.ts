@@ -143,7 +143,8 @@ export function useCart() {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const catalogue = useCatalogue();
   const priced = useMemo(
-    () => (state ? priceCart(state.items, catalogue, state.coupon) : null),
+    // The coupon's dates were checked by the server, not this device's clock (see couponRunning).
+    () => (state ? priceCart(state.items, catalogue, state.coupon, null) : null),
     [state, catalogue]
   );
   const items = useMemo(() => priced?.lines.map((line) => line.item) ?? null, [priced]);

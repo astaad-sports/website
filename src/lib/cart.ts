@@ -298,6 +298,16 @@ function priceGear(item: GearCartItem, catalogue: StoreCatalogue): PricedFields 
 }
 
 /**
+ * Whether the coupon is running at `now`. With `now` null its dates are
+ * taken as checked already: the browser trusts the server, which checked the
+ * code when it was entered and checks it again for the order, rather than a
+ * device clock that may be wrong.
+ */
+function couponRunning(coupon: AppliedCoupon, now: Date | null): boolean {
+  return now === null || offerStatus(couponTerms(coupon), now) === "active";
+}
+
+/**
  * The price of one: the product's price on the store (which includes its best
  * offer that needs no code), or the coupon's, whichever is lower. Offers never
  * add up.
@@ -305,7 +315,7 @@ function priceGear(item: GearCartItem, catalogue: StoreCatalogue): PricedFields 
 function unitPrice(
   fields: Pick<PricedFields, "product" | "target">,
   coupon: AppliedCoupon | null,
-  now: Date
+  now: Date | null
 ): Pick<PricedLine, "unitPricePaise" | "regularUnitPricePaise" | "offer"> {
   const { product, target } = fields;
   const regularUnitPricePaise = rupeesToPaise(product.regularPrice);
@@ -315,7 +325,7 @@ function unitPrice(
     : null;
   if (coupon) {
     const terms = couponTerms(coupon);
-    if (offerStatus(terms, now) === "active" && offerApplies(terms, target)) {
+    if (couponRunning(coupon, now) && offerApplies(terms, target)) {
       const couponPaise = rupeesToPaise(offerPrice(product.regularPrice, coupon.percentOff));
       if (couponPaise < unitPricePaise) {
         unitPricePaise = couponPaise;
@@ -334,7 +344,7 @@ export function priceCartItem(
   item: CartItem,
   catalogue: StoreCatalogue,
   coupon: AppliedCoupon | null = null,
-  now: Date = new Date()
+  now: Date | null = new Date()
 ): PricedLine | null {
   const priced = item.kind === "bat" ? priceBat(item, catalogue) : priceGear(item, catalogue);
   if (!priced) return null;
@@ -362,9 +372,9 @@ function lineTarget(item: CartItem, catalogue: StoreCatalogue): OfferTarget | un
 }
 
 /** Whether a running coupon covers any product in these lines. */
-function couponCovers(coupon: AppliedCoupon, lines: PricedLine[], catalogue: StoreCatalogue, now: Date): boolean {
+function couponCovers(coupon: AppliedCoupon, lines: PricedLine[], catalogue: StoreCatalogue, now: Date | null): boolean {
   const terms = couponTerms(coupon);
-  if (offerStatus(terms, now) !== "active") return false;
+  if (!couponRunning(coupon, now)) return false;
   return lines.some((line) => {
     const target = lineTarget(line.item, catalogue);
     return target !== undefined && offerApplies(terms, target);
@@ -381,7 +391,8 @@ export function priceCart(
   items: CartItem[],
   catalogue: StoreCatalogue,
   coupon: AppliedCoupon | null = null,
-  now: Date = new Date()
+  /** When to check the coupon's dates; null in the browser (see couponRunning). */
+  now: Date | null = new Date()
 ): PricedCart {
   const lines: PricedLine[] = [];
   let invalid = 0;

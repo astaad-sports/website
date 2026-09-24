@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { gearCartItem } from "@/lib/cart";
 import { gearHref } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { gearLine, percentOff, type StoreGear } from "@/lib/products/model";
+import { gearLine, type StoreGear } from "@/lib/products/model";
 
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
@@ -21,7 +21,7 @@ import { WishlistButton } from "./wishlist-button";
 export function GearPlate({ product }: { product: StoreGear }) {
   const href = gearHref(product);
   // Gear gets a % OFF chip only while an offer runs; an MRP alone is shown as before.
-  const off = product.offer && product.mrp ? percentOff(product.price, product.mrp) : 0;
+  const off = product.off;
   return (
     <article className="group flex flex-col gap-4">
       <div className="relative flex h-[320px] items-center justify-center overflow-hidden rounded-xs bg-surface-sunken">

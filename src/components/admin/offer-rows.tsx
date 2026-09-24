@@ -125,7 +125,8 @@ export function OfferRow({ offer, now, current }: { offer: Offer; now: Date; cur
           <span>
             <OfferPercentTag percentOff={offer.percentOff} expired={expired} />
           </span>
-          <span className="whitespace-nowrap tabular-nums">{dates}</span>
+          {/* Wraps when a date carries its year (an offer from last year). */}
+          <span className="tabular-nums">{dates}</span>
           <span className="min-w-0 break-words">{covers}</span>
           <span className="min-w-0 break-words">
             <span className="sr-only">Coupon code </span>
