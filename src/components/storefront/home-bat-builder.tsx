@@ -89,8 +89,9 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 {bat.offer && <OfferNote offer={bat.offer} tone="dark" className="mt-1" />}
               </div>
             </div>
-            {/* The bat's main photo, with the engraving drawn down the lower blade. The photo
-                is centred and fills the height, so the middle of the lower blade is fixed. */}
+            {/* The bat's main photo, with the engraving drawn on the lower blade. The photo is
+                centred and fills the height, so the blade's centre line and toe are fixed: the
+                name starts just above the toe and a longer one grows up the blade. */}
             <div className="relative mx-auto mt-6 h-[360px] w-[142px] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[390px] md:w-[168px]">
               <Image
                 src={bat.images[0]}
@@ -102,7 +103,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
               {custom.engraving && (
                 <span
                   aria-hidden="true"
-                  className="type-script-accent absolute top-[72%] left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 text-[24px] whitespace-nowrap text-brand-yellow md:text-[28px]"
+                  className="type-script-accent absolute top-[90%] left-[calc(50%-0.5em)] origin-top-left -rotate-90 text-[22px] leading-none whitespace-nowrap text-brand-yellow md:text-[24px]"
                 >
                   {engraved || "Your Name"}
                 </span>
@@ -120,7 +121,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col justify-between gap-5">
+          <div className="flex flex-1 flex-col justify-between gap-4">
             <OptionGroup label="Weight">
               <ChoiceButtons label="Weight" options={BAT_WEIGHTS} offered={custom.weights} value={config.weight} onChange={(v) => update("weight", v)} />
             </OptionGroup>

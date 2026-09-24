@@ -249,11 +249,12 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
                   sizes="190px"
                   className="object-contain drop-shadow-[0_36px_44px_rgba(0,0,0,0.85)]"
                 />
-                {/* The photo is centred and fills the height, so the middle of the lower blade is fixed. */}
+                {/* The photo is centred and fills the height, so the blade's centre line and toe are
+                    fixed: the name starts just above the toe and a longer one grows up the blade. */}
                 {custom.engraving && (
                   <span
                     aria-hidden="true"
-                    className="type-display absolute top-[74%] left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 text-[13px] leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow xl:text-[15px]"
+                    className="type-display absolute top-[90%] left-[calc(50%-0.5em)] origin-top-left -rotate-90 text-[13px] leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow xl:text-[15px]"
                   >
                     {engraving || "YOUR NAME"}
                   </span>

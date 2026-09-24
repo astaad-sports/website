@@ -69,7 +69,12 @@ export function Craft() {
             </p>
           }
         />
-        <ol className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 md:-mx-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0">
+        {/* Focusable, so the row can be scrolled from the keyboard where it scrolls. */}
+        <ol
+          tabIndex={0}
+          aria-label="How a bat is made"
+          className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-yellow md:-mx-8 md:scroll-px-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0"
+        >
           {STEPS.map((step, index) => (
             <li key={step.image} className="flex w-[220px] shrink-0 snap-start flex-col gap-4 lg:w-auto">
               <span className="relative block aspect-[4/5] overflow-hidden rounded-xs bg-surface-dark-raised">

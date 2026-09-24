@@ -18,33 +18,30 @@ const CARD = "relative h-[360px] shrink-0 snap-start overflow-hidden rounded-xs 
 function ClipCard({ clip }: { clip: CustomerClip }) {
   const video = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
-  const [paused, setPaused] = useState(false);
+  // The viewer's own Play or Pause wins over scrolling.
+  const chosen = useRef(false);
 
   useEffect(() => {
     const node = video.current;
-    if (!node || paused) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!node || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) node.play().catch(() => {});
+        if (chosen.current) return;
+        if (entry.intersectionRatio >= 0.6) node.play().catch(() => {});
         else node.pause();
       },
-      { threshold: 0.6 }
+      { threshold: [0, 0.6] }
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [paused]);
+  }, []);
 
   function toggle() {
     const node = video.current;
     if (!node) return;
-    if (node.paused) {
-      setPaused(false);
-      node.play().catch(() => {});
-    } else {
-      setPaused(true);
-      node.pause();
-    }
+    chosen.current = true;
+    if (node.paused) node.play().catch(() => {});
+    else node.pause();
   }
 
   return (
