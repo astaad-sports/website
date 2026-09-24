@@ -14,7 +14,8 @@ type ProgressOrder = Pick<
 
 /** The carrier, the AWB with a copy button, and a link to the carrier's tracking page. */
 export function TrackingDetails({ order }: { order: ProgressOrder }) {
-  if (!order.trackingNumber) return null;
+  // A tracking ID on an order moved back before Shipped may be wrong; show it only once shipped.
+  if (!order.trackingNumber || !order.shippedAt) return null;
   const carrier = isCarrierId(order.carrier) ? CARRIERS[order.carrier] : null;
 
   return (

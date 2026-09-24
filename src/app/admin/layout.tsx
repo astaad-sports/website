@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminHeader } from "@/components/admin/admin-header";
 import { AdminSidebar, AdminTabBar } from "@/components/admin/admin-nav";
+import { RefreshOnReturn } from "@/components/admin/refresh-on-return";
 import { countOrdersByStatus } from "@/db/orders";
 import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -32,6 +33,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <div className="flex flex-1 flex-col">{children}</div>
         <AdminTabBar toShip={toShip} />
       </div>
+      <RefreshOnReturn />
     </div>
   );
 }

@@ -25,17 +25,22 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
   const filter = parseOrderFilter(params.status);
   const query = normaliseSearch(params.q);
   await requireAdmin(listHref(filter, query));
-  const [orders, counts] = await Promise.all([listOrdersForAdmin({ filter, query }), countOrdersByStatus()]);
+  const [orders, counts, allCounts] = await Promise.all([
+    listOrdersForAdmin({ filter, query }),
+    countOrdersByStatus(query),
+    query ? countOrdersByStatus() : null,
+  ]);
 
-  const countFor = (statuses: readonly string[]) =>
-    statuses.reduce((sum, status) => sum + (counts[status as keyof typeof counts] ?? 0), 0);
+  const countFor = (statuses: readonly string[], from = counts) =>
+    statuses.reduce((sum, status) => sum + (from[status as keyof typeof from] ?? 0), 0);
   const total = countFor(ORDER_FILTERS[0].statuses);
   const active = ORDER_FILTERS.find((entry) => entry.id === filter)!;
 
   let empty: { title: string; detail: string } | null = null;
   if (orders.length === 0) {
     if (query) empty = { title: `No orders match “${query}”`, detail: "Search by order ID, customer, phone, product or tracking ID." };
-    else if (total === 0) empty = { title: "No orders yet", detail: "New orders show up here as soon as they are paid." };
+    else if ((allCounts ? countFor(ORDER_FILTERS[0].statuses, allCounts) : total) === 0)
+      empty = { title: "No orders yet", detail: "New orders show up here as soon as they are paid." };
     else empty = { title: `No ${active.label.toLowerCase()} orders`, detail: "Orders show up here when their status changes." };
   }
 
@@ -45,6 +50,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         <h1 className="type-heading-lg">Orders</h1>
         <p className="hidden text-[13px] leading-[18px] text-ink-muted tabular-nums lg:block">
           {total} {total === 1 ? "order" : "orders"}
+          {query && ` matching “${query}”`}
         </p>
       </header>
 

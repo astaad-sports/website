@@ -23,9 +23,9 @@ export const BUTTON_SECONDARY = `${BUTTON_BASE} bg-surface-sunken text-foregroun
 
 /** Text fields: a visible 1px border (3.5:1) so the field reads as a field. */
 export const FIELD =
-  "h-12 w-full min-w-0 rounded-sm border border-ink-subtle bg-surface-raised px-3 text-[15px] leading-[22px] text-foreground placeholder:text-ink-subtle aria-invalid:border-danger";
+  "h-12 w-full min-w-0 rounded-sm border border-ink-subtle bg-surface-raised px-3 text-base leading-[22px] text-foreground placeholder:text-ink-subtle aria-invalid:border-danger lg:text-[15px]";
 export const FIELD_LABEL = "text-[13px] leading-[18px] font-semibold";
 
 /** The grey search box on list pages. */
 export const SEARCH_FIELD =
-  "h-11 w-full min-w-0 rounded-sm bg-surface-sunken pr-3 pl-10 text-[15px] leading-[22px] text-foreground placeholder:text-ink-subtle";
+  "h-11 w-full min-w-0 rounded-sm bg-surface-sunken pr-3 pl-10 text-base leading-[22px] text-foreground placeholder:text-ink-subtle lg:text-[15px]";

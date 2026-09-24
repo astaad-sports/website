@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
-import { saveOrderTracking, setOrderStatus, type FulfilmentUpdate } from "@/db/orders";
+import { removeOrderTracking, saveOrderTracking, setOrderStatus, type FulfilmentUpdate } from "@/db/orders";
 import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser } from "@/lib/auth/session";
 import { formatOrderNumber } from "@/lib/format";
@@ -53,18 +53,19 @@ function failure(result: Exclude<FulfilmentUpdate, { ok: true }>, trackingNumber
 export async function saveTracking(_previous: AdminActionState, form: FormData): Promise<AdminActionState> {
   if (!(await signedInAdmin())) return NOT_ADMIN;
 
-  const parsed = shipOrderSchema.safeParse({
+  const parsed = shipOrderSchema.extend({ from: z.enum(FULFILMENT_STEPS) }).safeParse({
     orderId: form.get("orderId"),
     carrier: form.get("carrier"),
     trackingNumber: String(form.get("trackingNumber") ?? ""),
+    from: form.get("from"),
   });
   if (!parsed.success) {
     const idIssue = parsed.error.issues.find((issue) => issue.path[0] === "trackingNumber");
     return idIssue ? { fieldError: idIssue.message, at: Date.now() } : INCOMPLETE;
   }
 
-  const { orderId, carrier, trackingNumber } = parsed.data;
-  const result = await saveOrderTracking(orderId, { carrier, trackingNumber });
+  const { orderId, carrier, trackingNumber, from } = parsed.data;
+  const result = await saveOrderTracking(orderId, { carrier, trackingNumber, from });
   if (!result.ok) return failure(result, trackingNumber);
 
   refresh();
@@ -95,4 +96,21 @@ export async function changeStatus(_previous: AdminActionState, form: FormData):
 
   refresh();
   return { saved: `Marked as ${ADMIN_STATUS_LABEL[to].toLowerCase()}`, at: Date.now() };
+}
+
+/** Remove a wrong tracking ID from an order that has not shipped yet. */
+export async function removeTracking(_previous: AdminActionState, form: FormData): Promise<AdminActionState> {
+  if (!(await signedInAdmin())) return NOT_ADMIN;
+
+  const parsed = z.object({ orderId: z.uuid(), from: z.enum(FULFILMENT_STEPS) }).safeParse({
+    orderId: form.get("orderId"),
+    from: form.get("from"),
+  });
+  if (!parsed.success) return INCOMPLETE;
+
+  const result = await removeOrderTracking(parsed.data.orderId, parsed.data.from);
+  if (!result.ok) return failure(result);
+
+  refresh();
+  return { saved: "Tracking ID removed", at: Date.now() };
 }

@@ -5,9 +5,9 @@ import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 
 import type { PricedCart } from "@/lib/cart";
 import type { ShippingAddress } from "@/lib/checkout";
+import { normaliseTrackingNumber } from "@/lib/shipping";
 import {
   filterStatuses,
-  isFulfilmentStatus,
   likePattern,
   needsTracking,
   stepIndex,
@@ -175,6 +175,8 @@ function searchCondition(query: string): SQL {
     ilike(orders.shipName, pattern),
     ilike(orders.email, pattern),
     ilike(orders.trackingNumber, pattern),
+    // Tracking IDs are stored without spaces or dashes, however they were typed.
+    ilike(orders.trackingNumber, likePattern(normaliseTrackingNumber(query))),
     exists(
       getDb()
         .select({ one: sql`1` })
@@ -189,12 +191,14 @@ function searchCondition(query: string): SQL {
     ),
   ];
 
-  const number = query.replace(/^#?\s*AST-?\s*/i, "");
+  // "10024", "AST-10024", "#10024" and "#AST-10024" all mean the same order.
+  const number = query.replace(/^#?\s*(?:AST-?\s*)?/i, "");
   if (/^\d+$/.test(number)) conditions.push(sql`${orders.number}::text like ${likePattern(number)}`);
 
-  // Phones are stored as 10 digits; "+91 98765 43210" should still find them.
+  // Phones are stored as 10 digits; "+91 98765", "98765 43210" and "+91 98765 43210" should find them.
   const digits = query.replace(/\D/g, "");
-  if (digits.length >= 4) conditions.push(ilike(orders.shipPhone, likePattern(digits.slice(-10))));
+  const phone = /^\s*\+\s*91/.test(query) ? digits.slice(2) : digits.slice(-10);
+  if (phone.length >= 4) conditions.push(ilike(orders.shipPhone, likePattern(phone)));
 
   return or(...conditions)!;
 }
@@ -225,11 +229,12 @@ export async function listStaleShipments(days = 7): Promise<Order[]> {
     .orderBy(asc(orders.shippedAt));
 }
 
-/** How many orders are in each status, for the admin filters and the Home summary. */
-export async function countOrdersByStatus(): Promise<Partial<Record<OrderStatus, number>>> {
+/** How many orders are in each status (matching a search, if given), for the filters and the Home summary. */
+export async function countOrdersByStatus(query?: string | null): Promise<Partial<Record<OrderStatus, number>>> {
   const rows = await getDb()
     .select({ status: orders.status, count: count() })
     .from(orders)
+    .where(query ? searchCondition(query) : undefined)
     .groupBy(orders.status);
   return Object.fromEntries(rows.map((row) => [row.status, row.count]));
 }
@@ -275,7 +280,8 @@ function stepTimestamps(target: FulfilmentStatus): PgUpdateSetSource<typeof orde
 /**
  * Move a paid order to any fulfilment step, forwards or back (to undo a
  * mis-tap). `from` is the status the admin saw: if the order has moved on
- * since, nothing changes. Shipped and Delivered need a tracking ID.
+ * since, nothing changes. An order already at `to` is fine too, so a second
+ * tap on the same step is not a conflict. Shipped and Delivered need a tracking ID.
  */
 export async function setOrderStatus(
   orderId: string,
@@ -288,7 +294,7 @@ export async function setOrderStatus(
     .where(
       and(
         eq(orders.id, orderId),
-        eq(orders.status, change.from),
+        inArray(orders.status, [change.from, change.to]),
         needsTracking(change.to) ? isNotNull(orders.trackingNumber) : undefined
       )
     )
@@ -301,18 +307,21 @@ export async function setOrderStatus(
     .where(eq(orders.id, orderId))
     .limit(1);
   if (!existing) return { ok: false, reason: "not_found" };
-  if (existing.status !== change.from) return { ok: false, reason: "wrong_status" };
-  return { ok: false, reason: "needs_tracking" };
+  if (existing.status !== change.from && existing.status !== change.to) return { ok: false, reason: "wrong_status" };
+  return needsTracking(change.to) && !existing.trackingNumber
+    ? { ok: false, reason: "needs_tracking" }
+    : { ok: false, reason: "wrong_status" };
 }
 
 /**
  * Record the courier and tracking ID. An order that has not shipped yet is
  * marked shipped (a tracking ID means the parcel is booked); a shipped or
  * delivered order keeps its status, so this also corrects a wrong ID.
+ * `from` is the status the admin saw, so another admin's change is never undone.
  */
 export async function saveOrderTracking(
   orderId: string,
-  shipment: { carrier: string; trackingNumber: string }
+  shipment: { carrier: string; trackingNumber: string; from: FulfilmentStatus }
 ): Promise<FulfilmentUpdate> {
   const db = getDb();
   const [clash] = await db
@@ -322,11 +331,7 @@ export async function saveOrderTracking(
     .limit(1);
   if (clash) return { ok: false, reason: "duplicate_tracking", otherOrderNumber: clash.number };
 
-  const [current] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId)).limit(1);
-  if (!current) return { ok: false, reason: "not_found" };
-  if (!isFulfilmentStatus(current.status)) return { ok: false, reason: "wrong_status" };
-  const ships = stepIndex(current.status) < stepIndex("shipped");
-
+  const ships = stepIndex(shipment.from) < stepIndex("shipped");
   try {
     const [updated] = await db
       .update(orders)
@@ -335,13 +340,28 @@ export async function saveOrderTracking(
         trackingNumber: shipment.trackingNumber,
         ...(ships ? { status: "shipped" as const, ...stepTimestamps("shipped") } : {}),
       })
-      // Only if nobody changed the status in between; otherwise the admin should look again.
-      .where(and(eq(orders.id, orderId), eq(orders.status, current.status)))
+      .where(and(eq(orders.id, orderId), eq(orders.status, shipment.from)))
       .returning();
-    return updated ? { ok: true, order: updated } : { ok: false, reason: "wrong_status" };
+    return updated ? { ok: true, order: updated } : explainMiss(orderId);
   } catch (error) {
     // Two admins saving the same tracking ID at once: the unique constraint catches the second.
     if (isUniqueViolation(error)) return { ok: false, reason: "duplicate_tracking" };
     throw error;
   }
+}
+
+/** Remove a wrong tracking ID from an order that has not shipped. A shipped order keeps its ID. */
+export async function removeOrderTracking(orderId: string, from: FulfilmentStatus): Promise<FulfilmentUpdate> {
+  if (stepIndex(from) >= stepIndex("shipped")) return { ok: false, reason: "wrong_status" };
+  const [updated] = await getDb()
+    .update(orders)
+    .set({ carrier: null, trackingNumber: null })
+    .where(and(eq(orders.id, orderId), eq(orders.status, from)))
+    .returning();
+  return updated ? { ok: true, order: updated } : explainMiss(orderId);
+}
+
+async function explainMiss(orderId: string): Promise<FulfilmentUpdate> {
+  const [existing] = await getDb().select({ id: orders.id }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  return { ok: false, reason: existing ? "wrong_status" : "not_found" };
 }

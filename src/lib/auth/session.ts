@@ -9,6 +9,7 @@ import { getUserByFirebaseUid } from "@/db/users";
 import { adminAuth } from "@/lib/firebase/admin";
 
 import { isAdmin } from "./admin";
+import { safeRedirectPath } from "./redirect";
 
 /**
  * Named for this store: browsers share localhost cookies across ports, and
@@ -19,12 +20,7 @@ export const SESSION_COOKIE = "astaad_session";
 /** Two weeks, the longest session cookie Firebase will issue. */
 export const SESSION_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
-/** Where to send the customer after sign-in: only a path on this site. */
-export function safeRedirectPath(value: unknown, fallback = "/account"): string {
-  if (typeof value !== "string") return fallback;
-  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return fallback;
-  return value;
-}
+export { safeRedirectPath } from "./redirect";
 
 /**
  * The signed-in customer, or null. Verifies the Firebase session cookie

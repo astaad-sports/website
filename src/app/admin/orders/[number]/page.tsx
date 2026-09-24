@@ -20,7 +20,7 @@ import {
   mobileHref,
   parseOrderNumber,
 } from "@/lib/format";
-import { isFulfilmentStatus, stepIndex } from "@/lib/orders/fulfilment";
+import { isFulfilmentStatus } from "@/lib/orders/fulfilment";
 import { productImage } from "@/lib/orders/product-image";
 import { cn } from "@/lib/utils";
 
@@ -91,9 +91,9 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
               <Section id="tracking-title" title="Tracking">
                 <TrackingForm
                   orderId={order.id}
+                  status={status}
                   carrier={order.carrier}
                   trackingNumber={order.trackingNumber}
-                  shipped={stepIndex(status) >= stepIndex("shipped")}
                   shippedOn={order.shippedAt ? formatShortDate(order.shippedAt) : null}
                 />
               </Section>
@@ -145,10 +145,8 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 return (
                   <li key={item.id} className="flex flex-col gap-2">
                     <div className="flex items-start gap-3">
-                      <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-surface-sunken">
-                        {image && (
-                          <Image src={image} alt="" width={40} height={40} className="h-10 w-auto max-w-10 object-contain" />
-                        )}
+                      <span className="relative size-12 shrink-0 overflow-hidden rounded-sm bg-surface-sunken">
+                        {image && <Image src={image} alt="" fill sizes="48px" className="object-contain p-1" />}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="text-[15px] leading-[22px] font-semibold">{item.productName}</span>

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { isAdmin } from "./auth/admin";
+import { safeRedirectPath } from "./auth/redirect";
 import { formatMobile, formatShortDate, mobileHref, parseOrderNumber } from "./format";
 import { carrierName, normaliseTrackingNumber, orderTimeline, shipOrderSchema, trackingNumberSchema } from "./shipping";
 
@@ -78,4 +79,14 @@ test("short dates drop the year only within the same year, in Indian time", () =
   // 31 Dec 2025, 20:00 UTC is already 1 Jan 2026 in India.
   expect(formatShortDate(new Date("2025-12-31T20:00:00Z"), now)).toBe("1 Jan");
   expect(formatShortDate(new Date("2025-06-01T06:00:00Z"), now)).toBe("1 Jun 2025");
+});
+
+test("sign-in only returns to paths on this site", () => {
+  expect(safeRedirectPath("/admin/orders?status=pending")).toBe("/admin/orders?status=pending");
+  expect(safeRedirectPath("//evil.com")).toBe("/account");
+  expect(safeRedirectPath("/\\evil.com")).toBe("/account");
+  expect(safeRedirectPath("/\t/evil.com")).toBe("/account");
+  expect(safeRedirectPath("/\n/evil.com")).toBe("/account");
+  expect(safeRedirectPath("https://evil.com")).toBe("/account");
+  expect(safeRedirectPath(undefined, "/admin")).toBe("/admin");
 });

@@ -92,7 +92,7 @@ export default async function AdminHomePage() {
       key: order.id,
       href: `/admin/orders/${order.number}`,
       title: `#${formatOrderNumber(order.number)}`,
-      detail: `Needs tracking ID · ${order.shipName}`,
+      detail: `${order.trackingNumber ? "Ready to ship" : "Needs tracking ID"} · ${order.shipName}`,
       action: "Update",
     })),
     ...stale.map((order: Order) => ({

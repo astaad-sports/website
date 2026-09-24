@@ -24,7 +24,7 @@ const ORDERS: Section = {
   href: "/admin/orders",
   label: "Orders",
   icon: ShoppingBag,
-  matches: (path) => path.startsWith("/admin/orders") || path.startsWith("/admin/search"),
+  matches: (path) => path.startsWith("/admin/orders"),
 };
 const MORE: Section = { href: "/admin/more", label: "More", icon: Menu, matches: (path) => path.startsWith("/admin/more") };
 
@@ -50,7 +50,11 @@ export function AdminSidebar({ toShip, name, email }: { toShip: number; name: st
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-58 shrink-0 flex-col bg-surface-dark text-on-dark lg:flex">
-      <Link href="/admin" aria-label="Astaad Sports admin, dashboard" className="flex h-18 shrink-0 items-center gap-2.5 px-4">
+      <Link
+        href="/admin"
+        aria-label="Astaad Sports admin, dashboard"
+        className="m-1 flex h-16 shrink-0 items-center gap-2.5 rounded-sm px-3 focus-visible:outline-brand-yellow"
+      >
         <Crest size={40} priority />
         <AdminWordmark />
       </Link>
@@ -136,15 +140,15 @@ export function AdminSidebar({ toShip, name, email }: { toShip: number; name: st
   );
 }
 
-/** Order detail pages end in their own action bar, so the tabs step aside there. */
-function isOrderDetail(path: string): boolean {
-  return /^\/admin\/orders\/[^/]+\/?$/.test(path);
+/** Order detail pages end in their own action bar and Search has its own bar, so the tabs step aside there. */
+function hidesTabs(path: string): boolean {
+  return /^\/admin\/orders\/[^/]+\/?$/.test(path) || path.startsWith("/admin/search");
 }
 
 /** The bottom navigation on phones and tablets. */
 export function AdminTabBar({ toShip }: { toShip: number }) {
   const path = usePathname();
-  if (isOrderDetail(path)) return null;
+  if (hidesTabs(path)) return null;
   const sections = [{ ...DASHBOARD, label: "Home" }, ORDERS, MORE];
 
   return (

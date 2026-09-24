@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useOptimistic, useState, type FormEvent, type ReactNode } from "react";
+import { useActionState, useOptimistic, useState, type FormEvent } from "react";
 import { Check, CircleAlert, Truck } from "lucide-react";
 
 import { changeStatus, type AdminActionState } from "@/lib/orders/admin-actions";
@@ -128,7 +128,7 @@ export function StatusStepper({
         })}
       </ol>
       <p className="text-[13px] leading-[18px] text-ink-muted">Select a step to change the status.</p>
-      <ErrorMessage message={localError ?? state.error} />
+      <ErrorMessage message={(hasTracking ? null : localError) ?? state.error} />
       <Toast message={state.saved} at={state.at} />
     </form>
   );
@@ -152,34 +152,42 @@ export function NextStepButton({
 }) {
   const [state, action, pending] = useActionState(changeStatus, {});
   const next = nextStep(status);
+  const pointsToTracking = next !== null && needsTracking(next.target) && !hasTracking;
 
-  let control: ReactNode;
-  if (!next) {
-    control = (
-      <button type="button" disabled className={cn(BUTTON_PRIMARY, "min-h-12 w-full bg-surface-sunken text-ink-muted disabled:opacity-100")}>
-        <Check aria-hidden="true" />
-        Delivered
+  // One form and one button whatever the state, so keyboard focus stays put when the status changes.
+  const control = (
+    <form action={action}>
+      <input type="hidden" name="orderId" value={orderId} />
+      <input type="hidden" name="from" value={status} />
+      {next && <input type="hidden" name="to" value={next.target} />}
+      <button
+        type={next && !pointsToTracking ? "submit" : "button"}
+        onClick={pointsToTracking ? focusTrackingField : undefined}
+        disabled={!next || pending}
+        className={cn(
+          BUTTON_PRIMARY,
+          "min-h-12 w-full",
+          !next && "bg-surface-sunken text-ink-muted disabled:cursor-default disabled:opacity-100"
+        )}
+      >
+        {!next ? (
+          <>
+            <Check aria-hidden="true" />
+            Delivered
+          </>
+        ) : pointsToTracking ? (
+          <>
+            <Truck aria-hidden="true" />
+            Add tracking ID
+          </>
+        ) : pending ? (
+          "Saving…"
+        ) : (
+          next.label
+        )}
       </button>
-    );
-  } else if (needsTracking(next.target) && !hasTracking) {
-    control = (
-      <button type="button" onClick={focusTrackingField} className={cn(BUTTON_PRIMARY, "min-h-12 w-full")}>
-        <Truck aria-hidden="true" />
-        Add tracking ID
-      </button>
-    );
-  } else {
-    control = (
-      <form action={action}>
-        <input type="hidden" name="orderId" value={orderId} />
-        <input type="hidden" name="from" value={status} />
-        <input type="hidden" name="to" value={next.target} />
-        <button type="submit" disabled={pending} className={cn(BUTTON_PRIMARY, "min-h-12 w-full")}>
-          {pending ? "Saving…" : next.label}
-        </button>
-      </form>
-    );
-  }
+    </form>
+  );
 
   const body = (
     <>
