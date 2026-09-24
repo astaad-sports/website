@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import siteImages from "./src/lib/site-images.json";
+
 /**
  * This project's Vercel Blob host, where admin photo uploads live (see
  * src/lib/products/storage.ts). The store id comes from BLOB_STORE_ID or the
@@ -12,11 +14,23 @@ function blobHost(): string | null {
   return /^[a-z0-9]+$/i.test(id) ? `${id.toLowerCase()}.public.blob.vercel-storage.com` : null;
 }
 
-const host = blobHost();
+/**
+ * The same store, read from the site's own photos (src/lib/site-images.json),
+ * so its product and site photos show even where the environment has no
+ * Blob variables.
+ */
+const siteImageHosts = Object.values(siteImages).flatMap(({ src }) =>
+  src.startsWith("https://") ? [new URL(src).hostname] : []
+);
+
+const hosts = [...new Set([blobHost(), ...siteImageHosts].filter((host): host is string => Boolean(host)))];
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: host ? [{ protocol: "https", hostname: host, pathname: "/products/**" }] : [],
+    remotePatterns: hosts.flatMap((hostname) => [
+      { protocol: "https" as const, hostname, pathname: "/products/**" },
+      { protocol: "https" as const, hostname, pathname: "/site/**" },
+    ]),
   },
   experimental: {
     serverActions: {

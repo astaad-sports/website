@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -13,6 +14,8 @@ export interface FinalCtaProps {
   secondary?: { label: string; href: string };
   crestSize?: number;
   titleClassName?: string;
+  /** A photograph dimmed behind the band. */
+  backdrop?: string;
 }
 
 /** The closing black band: crest, a two-line display headline, one or two buttons. */
@@ -24,12 +27,22 @@ export function FinalCta({
   secondary,
   crestSize = 72,
   titleClassName,
+  backdrop,
 }: FinalCtaProps) {
   return (
     <section
       aria-label={label}
       className="relative overflow-hidden border-t border-surface-dark-raised bg-surface-dark text-on-dark"
     >
+      {backdrop && (
+        <>
+          <Image src={backdrop} alt="" fill sizes="100vw" className="object-cover object-[50%_60%] opacity-30" />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,14,14,0.55)_0%,rgba(14,14,14,0.35)_50%,#0e0e0e_100%)]"
+          />
+        </>
+      )}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute top-[-180px] left-1/2 size-[600px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.22)_0%,rgba(254,197,2,0)_66%)]"

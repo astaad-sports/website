@@ -44,9 +44,8 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
 
   const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
   const products = gearInCategory(catalogue, slug);
-  const from = products.length
-    ? Math.min(...products.map((product) => product.price))
-    : category.from;
+  // Nothing on sale yet reads "Coming soon", not a starting price.
+  const from = products.length ? Math.min(...products.map((product) => product.price)) : null;
 
   return (
     <>
@@ -88,7 +87,7 @@ async function BatRangePage({ range }: { range: BatRange }) {
       <SiteHeader activeHref={batsCategory.href} />
       <main className="flex-1">
         <CategoryHero
-          category={{ name: range.name, tagline: range.tagline, image: batsCategory.image, tile: batsCategory.tile }}
+          category={{ name: range.name, tagline: range.tagline, image: range.image, tile: batsCategory.tile }}
           count={bats.length}
           from={bats.length ? Math.min(...bats.map((bat) => bat.price)) : null}
           deliveryFeePaise={deliveryFeePaise(settings)}

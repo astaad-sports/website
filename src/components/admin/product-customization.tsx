@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 
 import type { BatCustomization } from "@/db/schema";
 import { ENGRAVING_MAX } from "@/lib/catalogue";
-import { HANDLE_OPTIONS, PROFILE_OPTIONS, WEIGHT_OPTIONS } from "@/lib/products/model";
+import { HANDLE_OPTIONS, PROFILE_OPTIONS, TOE_OPTIONS, WEIGHT_OPTIONS } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { EditorSection, FieldError, FieldHelp } from "./product-editor-fields";
@@ -128,8 +128,8 @@ function Row({ children }: { children: ReactNode }) {
 
 /**
  * English Willow customization: whether customers can build this bat, and
- * which weights, profiles, handles and extras they can pick. Posts
- * customEnabled, customWeights, customProfiles, customHandles,
+ * which weights, profiles, toes, handles and extras they can pick. Posts
+ * customEnabled, customWeights, customProfiles, customToes, customHandles,
  * customEngraving, customMatchReady and customScuffSheet (see parseProductForm).
  */
 export function ProductCustomization({
@@ -167,6 +167,15 @@ export function ProductCustomization({
               chosen={value.profiles}
               onChange={(profiles) => set({ profiles })}
               invalid={invalid}
+            />
+            <ChipGroup
+              id="custom-toes"
+              label="Toe shape"
+              name="customToes"
+              options={TOE_OPTIONS}
+              chosen={value.toes}
+              onChange={(toes) => set({ toes })}
+              invalid={false}
             />
             <ChipGroup
               id="custom-handles"

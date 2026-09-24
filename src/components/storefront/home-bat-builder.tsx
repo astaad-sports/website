@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { batCartItem, cleanEngravingInput } from "@/lib/cart";
 import {
   BAT_HANDLES,
-  BAT_IMAGE,
   BAT_PROFILES,
+  BAT_TOES,
   BAT_WEIGHTS,
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
@@ -20,9 +20,9 @@ import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat
 import { OfferNote } from "./offer-note";
 import { SectionHeading } from "./section-heading";
 
-/** "Six choices. No extra cost for engraving or knocking.", counting only what this bat offers. */
-function choicesNote({ engraving, matchReady, scuffSheet }: StoreBat["customization"]): string {
-  const choices = 3 + [engraving, matchReady, scuffSheet].filter(Boolean).length;
+/** "Seven choices. No extra cost for engraving or knocking.", counting only what this bat offers. */
+function choicesNote({ toes, engraving, matchReady, scuffSheet }: StoreBat["customization"]): string {
+  const choices = 3 + [toes.length > 0, engraving, matchReady, scuffSheet].filter(Boolean).length;
   const free = [engraving && "engraving", matchReady && "knocking"].filter((extra) => extra !== false);
   const extras = free.length ? ` No extra cost for ${listInWords(free, "or")}.` : "";
   return `${countInWords(choices)} choices.${extras} Your bat, made your way.`;
@@ -37,9 +37,11 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
   const custom = bat.customization;
   const { config, update } = useBatConfig(startingBatConfig(custom));
   const engraved = custom.engraving ? config.name.trim() : "";
+  const toes = custom.toes.length > 0;
   const chips = [
     BAT_WEIGHTS[config.weight].label,
     BAT_PROFILES[config.profile].label,
+    toes ? `${BAT_TOES[config.toe].label} toe` : null,
     `${BAT_HANDLES[config.handle].label} handle`,
     engraved ? "Engraved" : null,
     custom.matchReady && config.knock ? "Knocked in" : null,
@@ -87,10 +89,11 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 {bat.offer && <OfferNote offer={bat.offer} tone="dark" className="mt-1" />}
               </div>
             </div>
-            {/* The standard cut-out, which the engraving is drawn onto */}
-            <div className="relative mx-auto mt-6 h-[360px] w-[142px] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[426px] md:w-[168px]">
+            {/* The bat's main photo, with the engraving drawn down the lower blade. The photo
+                is centred and fills the height, so the middle of the lower blade is fixed. */}
+            <div className="relative mx-auto mt-6 h-[360px] w-[142px] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[390px] md:w-[168px]">
               <Image
-                src={BAT_IMAGE}
+                src={bat.images[0]}
                 alt={`Preview of your ${bat.name} bat`}
                 fill
                 sizes="168px"
@@ -99,7 +102,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
               {custom.engraving && (
                 <span
                   aria-hidden="true"
-                  className="type-script-accent absolute top-[65%] left-[24%] origin-top-left -rotate-90 text-[32px] whitespace-nowrap text-brand-yellow"
+                  className="type-script-accent absolute top-[72%] left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 text-[24px] whitespace-nowrap text-brand-yellow md:text-[28px]"
                 >
                   {engraved || "Your Name"}
                 </span>
@@ -124,6 +127,11 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
             <OptionGroup label="Profile">
               <ChoiceButtons label="Profile" options={BAT_PROFILES} offered={custom.profiles} value={config.profile} onChange={(v) => update("profile", v)} />
             </OptionGroup>
+            {toes && (
+              <OptionGroup label="Toe shape">
+                <ChoiceButtons label="Toe shape" options={BAT_TOES} offered={custom.toes} value={config.toe} onChange={(v) => update("toe", v)} />
+              </OptionGroup>
+            )}
             <OptionGroup label="Handle shape">
               <ChoiceButtons label="Handle shape" options={BAT_HANDLES} offered={custom.handles} value={config.handle} onChange={(v) => update("handle", v)} />
             </OptionGroup>

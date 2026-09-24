@@ -11,9 +11,9 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { batCartItem, cleanEngravingInput, type CartItem } from "@/lib/cart";
 import {
   BAT_HANDLES,
-  BAT_IMAGE,
   BAT_PROFILES,
   BAT_SIZES,
+  BAT_TOES,
   BAT_WEIGHTS,
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
@@ -21,15 +21,7 @@ import { formatPrice } from "@/lib/format";
 import { startingBatConfig, type StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
-import {
-  ChoiceButtons,
-  FreeChip,
-  HandleGlyph,
-  OptionGroup,
-  ProfileGlyph,
-  useBatConfig,
-  YesNo,
-} from "./bat-options";
+import { ChoiceButtons, FreeChip, HandleGlyph, OptionGroup, useBatConfig, YesNo } from "./bat-options";
 import { BatSilhouette } from "./bat-silhouette";
 import { deliveryShort } from "./delivery";
 import { Eyebrow } from "./eyebrow";
@@ -185,8 +177,8 @@ function StandardBuy({ bat, item }: { bat: StoreBat; item: CartItem }) {
 }
 
 /**
- * The configurator (weight, profile, handle, engraving, knocking, scuff sheet)
- * with a live preview and a pinned order summary, followed by the size picker.
+ * The configurator (weight, profile, toe, handle, engraving, knocking, scuff
+ * sheet) with a live preview and a pinned order summary, followed by the size picker.
  * Only the options this bat offers appear. A bat that cannot be customised
  * gets just the size picker, with its price and Add to cart. One state drives
  * both sections.
@@ -210,9 +202,11 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
   }
 
   const engraving = custom.engraving ? config.name.trim().toUpperCase() : "";
+  const toes = custom.toes.length > 0;
   const summary: [string, string, boolean?][] = [
     ["Weight", BAT_WEIGHTS[config.weight].label],
     ["Profile", BAT_PROFILES[config.profile].label],
+    ...(toes ? [["Toe", BAT_TOES[config.toe].label] as [string, string]] : []),
     ["Handle shape", BAT_HANDLES[config.handle].label],
   ];
   if (custom.engraving) summary.push(["Engraving", engraving || "None", true]);
@@ -237,7 +231,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
           />
 
           <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)_336px] xl:items-start">
-            {/* Live preview: the standard cut-out, which the engraving is drawn onto */}
+            {/* Live preview: the bat's main photo, with the engraving drawn down the lower blade */}
             <div className="relative h-[560px] overflow-hidden rounded-xs bg-surface-dark text-on-dark xl:h-[780px]">
               <div
                 aria-hidden="true"
@@ -249,16 +243,17 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
               </span>
               <div className="relative mx-auto mt-14 h-[360px] w-[142px] xl:mt-[70px] xl:h-[482px] xl:w-[190px]">
                 <Image
-                  src={BAT_IMAGE}
+                  src={bat.images[0]}
                   alt={`${bat.name} preview with your configuration`}
                   fill
                   sizes="190px"
                   className="object-contain drop-shadow-[0_36px_44px_rgba(0,0,0,0.85)]"
                 />
+                {/* The photo is centred and fills the height, so the middle of the lower blade is fixed. */}
                 {custom.engraving && (
                   <span
                     aria-hidden="true"
-                    className="type-display absolute top-[83%] left-[25%] origin-top-left -rotate-90 text-[15px] leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow"
+                    className="type-display absolute top-[74%] left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 text-[13px] leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow xl:text-[15px]"
                   >
                     {engraving || "YOUR NAME"}
                   </span>
@@ -266,7 +261,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
               </div>
               <dl className="absolute inset-x-6 bottom-6 flex flex-col gap-2.5 text-[13px] leading-[18px]">
                 {summary
-                  .filter(([key]) => ["Weight", "Profile", "Handle shape", "Size"].includes(key))
+                  .filter(([key]) => ["Weight", "Profile", "Toe", "Handle shape", "Size"].includes(key))
                   .map(([key, value]) => (
                     <div key={key} className="flex justify-between gap-3">
                       <dt className="text-on-dark-subtle">{key === "Handle shape" ? "Handle" : key}</dt>
@@ -288,17 +283,28 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
                   onChange={(value) => update("weight", value)}
                 />
               </OptionGroup>
-              <OptionGroup label="Profile">
+              <OptionGroup label="Profile" hint="The side view: the glow marks the sweet spot">
                 <ChoiceButtons
-                  variant="card"
+                  variant="picture"
                   label="Profile"
                   options={BAT_PROFILES}
                   offered={custom.profiles}
                   value={config.profile}
                   onChange={(value) => update("profile", value)}
-                  glyph={(index) => <ProfileGlyph index={index} />}
                 />
               </OptionGroup>
+              {toes && (
+                <OptionGroup label="Toe shape">
+                  <ChoiceButtons
+                    variant="picture"
+                    label="Toe shape"
+                    options={BAT_TOES}
+                    offered={custom.toes}
+                    value={config.toe}
+                    onChange={(value) => update("toe", value)}
+                  />
+                </OptionGroup>
+              )}
               <OptionGroup label="Handle shape">
                 <ChoiceButtons
                   variant="card"

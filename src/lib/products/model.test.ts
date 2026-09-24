@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import type { BatCustomization } from "@/db/schema";
 import { DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
 
 import {
@@ -16,6 +17,7 @@ import {
   kitGear,
   listInWords,
   NO_CUSTOMIZATION,
+  normaliseCustomization,
   seedProductRows,
   startingBatConfig,
   stockNote,
@@ -159,6 +161,33 @@ describe("the builder's starting choices", () => {
   test("a standard bat keeps only the size", () => {
     const config = startingBatConfig(NO_CUSTOMIZATION, { ...DEFAULT_BAT_CONFIG, name: "RAHUL" });
     expect(config).toMatchObject({ name: "", knock: false, scuff: false, size: DEFAULT_BAT_CONFIG.size });
+  });
+
+  test("the toe starts semi-round, or on the first toe the bat offers", () => {
+    expect(startingBatConfig(FULL_CUSTOMIZATION).toe).toBe(1);
+    expect(startingBatConfig({ ...FULL_CUSTOMIZATION, toes: ["Flat"] }).toe).toBe(2);
+  });
+});
+
+describe("toe shapes on saved bats", () => {
+  const savedBeforeToes: Partial<BatCustomization> = { ...FULL_CUSTOMIZATION };
+  delete savedBeforeToes.toes;
+
+  test("a build saved before toe shapes existed offers every toe", () => {
+    expect(normaliseCustomization(savedBeforeToes).toes).toEqual(["Round", "Semi Round", "Flat"]);
+  });
+
+  test("a saved choice keeps only known toes, and may offer none", () => {
+    expect(normaliseCustomization({ ...savedBeforeToes, toes: ["Flat", "Pointed"] }).toes).toEqual(["Flat"]);
+    expect(normaliseCustomization({ ...savedBeforeToes, toes: [] }).toes).toEqual([]);
+  });
+});
+
+describe("drafts", () => {
+  test("a product with no price is never on the store, whatever its availability", () => {
+    const draft = catalogueWith({ goat: { pricePaise: 0, availability: "available" } });
+    expect(findStoreBat(draft, "goat")).toBeUndefined();
+    expect(findStoreBat(seeded, "goat")).toBeDefined();
   });
 });
 

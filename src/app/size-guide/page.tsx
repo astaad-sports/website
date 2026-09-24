@@ -9,6 +9,7 @@ import { SizeGuideTable } from "@/components/storefront/size-guide-table";
 import {
   BAT_HANDLES,
   BAT_PROFILES,
+  BAT_TOES,
   BAT_WEIGHTS,
   GEAR_CATEGORY_CONTENT,
   GEAR_CATEGORY_SLUGS,
@@ -18,7 +19,8 @@ import {
 
 export const metadata: Metadata = {
   title: "Size guide",
-  description: "Find the right size bat, batting pads, gloves and helmet, and choose a bat's weight, profile and handle.",
+  description:
+    "Find the right size bat, batting pads, gloves and helmet, and choose a bat's weight, profile, toe and handle.",
 };
 
 const CARD = "flex flex-col gap-5 rounded-md border border-border bg-surface-raised p-6 shadow-card md:p-8";
@@ -34,13 +36,14 @@ const SIZED_GEAR = GEAR_CATEGORY_SLUGS.flatMap((slug) => {
 const BAT_CHOICES: { title: string; options: BatOption[] }[] = [
   { title: "Weight", options: BAT_WEIGHTS },
   { title: "Profile", options: BAT_PROFILES },
+  { title: "Toe", options: BAT_TOES },
   { title: "Handle", options: BAT_HANDLES },
 ];
 
 /**
  * The footer's "Size Guide": bat sizes (the product pages' table with bat
- * lengths, and the silhouettes), the builder's weight, profile and handle
- * choices, then pads, gloves and helmets from their category copy.
+ * lengths, and the silhouettes), the builder's weight, profile, toe and
+ * handle choices, then pads, gloves and helmets from their category copy.
  */
 export default function SizeGuidePage() {
   const jumpLinks = [{ id: "bats", name: "Bats" }, ...SIZED_GEAR.map((gear) => ({ id: gear.slug, name: gear.name }))];
@@ -93,12 +96,12 @@ export default function SizeGuidePage() {
 
             <div className="flex flex-col gap-4 border-t border-border pt-6">
               <div className="flex flex-col gap-1.5">
-                <h3 className="type-heading-md">Weight, profile and handle</h3>
+                <h3 className="type-heading-md">Weight, profile, toe and handle</h3>
                 <p className="type-body text-ink-muted">
-                  Custom bats let you choose all three. Not sure? The balanced weight suits most players.
+                  Custom bats let you choose all four. Not sure? The balanced weight suits most players.
                 </p>
               </div>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {BAT_CHOICES.map((choice) => (
                   <div key={choice.title} className="flex flex-col gap-2 rounded-md bg-surface-sunken p-5">
                     <h4 className="type-eyebrow text-ink-muted">{choice.title}</h4>

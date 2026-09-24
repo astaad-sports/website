@@ -4,10 +4,18 @@ import { ChevronRight } from "lucide-react";
 
 import { STORE_CATEGORIES, type StoreCategory } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
+import type { CategorySlug, CategoryStats } from "@/lib/products/model";
 
 import { SectionHeading } from "./section-heading";
 
-function CategoryTile({ category }: { category: StoreCategory }) {
+/** "6 models · from ₹7,699" for bats, "from ₹4,999" for gear, or "Coming soon" with nothing on sale. */
+function statsLine(category: StoreCategory, { models, from }: CategoryStats): string {
+  if (from === null) return "Coming soon";
+  const count = category.kind === "bats" ? `${models} ${models === 1 ? "model" : "models"} · ` : "";
+  return `${count}from ${formatPrice(from)}`;
+}
+
+function CategoryTile({ category, stats }: { category: StoreCategory; stats: CategoryStats }) {
   const { tile } = category;
   return (
     <Link
@@ -35,9 +43,7 @@ function CategoryTile({ category }: { category: StoreCategory }) {
       />
       <span className="absolute bottom-0 left-0 flex flex-col gap-0.5">
         <span className="text-lg leading-6 font-bold">{category.name}</span>
-        <span className="text-[13px] leading-[18px] text-ink-muted">
-          {category.models ? `${category.models} models · ` : ""}from {formatPrice(category.from)}
-        </span>
+        <span className="text-[13px] leading-[18px] text-ink-muted">{statsLine(category, stats)}</span>
       </span>
       <ChevronRight
         aria-hidden="true"
@@ -48,8 +54,8 @@ function CategoryTile({ category }: { category: StoreCategory }) {
   );
 }
 
-/** "Everything for the crease." — the five numbered category tiles. */
-export function CategoryTiles() {
+/** "Everything for the crease." — the five numbered category tiles, with what each has on sale. */
+export function CategoryTiles({ stats }: { stats: Record<CategorySlug, CategoryStats> }) {
   return (
     <section
       id="categories"
@@ -68,7 +74,7 @@ export function CategoryTiles() {
       />
       <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 xl:grid-cols-5">
         {STORE_CATEGORIES.map((category) => (
-          <CategoryTile key={category.slug} category={category} />
+          <CategoryTile key={category.slug} category={category} stats={stats[category.slug as CategorySlug]} />
         ))}
       </div>
     </section>

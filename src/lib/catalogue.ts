@@ -1,5 +1,6 @@
 // Storefront catalogue for the Astaad Sports home and product pages.
 // Prices are rupees; format them with `formatPrice`.
+import { siteImage, type SiteImage } from "./site-images";
 
 export type GearCategorySlug =
   | "batting-pads"
@@ -15,8 +16,6 @@ export interface StoreCategory {
   kind: "bats" | "gear";
   /** One sentence for the category hero. */
   tagline: string;
-  from: number;
-  models?: number;
   image: string;
   /** Placement inside the 280px category tile. */
   tile: { width: number; height: number; top: number; shadowWidth: number; shadowTop: number };
@@ -30,9 +29,7 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     name: "Bats",
     href: "/#collection",
     number: "01",
-    from: 7699,
-    models: 10,
-    image: "/images/category-bats.png",
+    image: siteImage("bats/scoop-master-diagonal").src,
     tile: { width: 224, height: 158, top: 44, shadowWidth: 200, shadowTop: 150 },
   },
   {
@@ -42,9 +39,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     name: "Batting Pads",
     href: "/shop/batting-pads",
     number: "02",
-    from: 5499,
-    image: "/images/batting-pads.png",
-    tile: { width: 140, height: 160, top: 28, shadowWidth: 160, shadowTop: 168 },
+    image: siteImage("categories/batting-pads").src,
+    tile: { width: 146, height: 200, top: 12, shadowWidth: 170, shadowTop: 184 },
   },
   {
     slug: "batting-gloves",
@@ -53,9 +49,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     name: "Batting Gloves",
     href: "/shop/batting-gloves",
     number: "03",
-    from: 4999,
-    image: "/images/batting-gloves.png",
-    tile: { width: 170, height: 158, top: 32, shadowWidth: 180, shadowTop: 168 },
+    image: siteImage("categories/batting-gloves").src,
+    tile: { width: 180, height: 166, top: 28, shadowWidth: 180, shadowTop: 168 },
   },
   {
     slug: "helmets",
@@ -64,9 +59,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     name: "Helmets",
     href: "/shop/helmets",
     number: "04",
-    from: 6999,
-    image: "/images/helmet.png",
-    tile: { width: 156, height: 160, top: 34, shadowWidth: 170, shadowTop: 168 },
+    image: siteImage("categories/helmets").src,
+    tile: { width: 170, height: 164, top: 30, shadowWidth: 170, shadowTop: 168 },
   },
   {
     slug: "cricket-kitbags",
@@ -75,9 +69,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     name: "Cricket Kitbags",
     href: "/shop/cricket-kitbags",
     number: "05",
-    from: 3499,
-    image: "/images/kitbag.png",
-    tile: { width: 236, height: 144, top: 48, shadowWidth: 210, shadowTop: 168 },
+    image: siteImage("categories/cricket-kitbags").src,
+    tile: { width: 104, height: 214, top: 6, shadowWidth: 150, shadowTop: 196 },
   },
 ];
 
@@ -203,6 +196,8 @@ export interface BatRange {
   href: string;
   /** One sentence, on the home page tile and the range hero. */
   tagline: string;
+  /** The bat lying diagonally, on the home page tile and the range hero. */
+  image: string;
   /** Tennis bats show the bat cut-out partly desaturated. */
   grayscale?: boolean;
 }
@@ -214,6 +209,7 @@ export const BAT_RANGES: BatRange[] = [
     noun: "Kashmir willow bats",
     href: "/shop/kashmir-willow",
     tagline: "Durable, value-driven. Ready to play.",
+    image: siteImage("bats/kashmir-diagonal").src,
   },
   {
     slug: "tennis-bats",
@@ -221,6 +217,7 @@ export const BAT_RANGES: BatRange[] = [
     noun: "tennis bats",
     href: "/shop/tennis-bats",
     tagline: "Light, fast and made for the gully.",
+    image: siteImage("bats/scoop-master-diagonal").src,
     grayscale: true,
   },
 ];
@@ -413,6 +410,8 @@ export const BAT_SIZES: BatSize[] = [
 export interface BatOption {
   label: string;
   hint: string;
+  /** A photo of the shape, for profiles and toes. */
+  picture?: SiteImage;
 }
 
 export const BAT_WEIGHTS: BatOption[] = [
@@ -421,10 +420,11 @@ export const BAT_WEIGHTS: BatOption[] = [
   { label: "1180–1220 g", hint: "Heavy · power hitters" },
 ];
 
+// The profile photos are side views, with the sweet spot glowing.
 export const BAT_PROFILES: BatOption[] = [
-  { label: "Duckbill Players", hint: "Low swell, big toe" },
-  { label: "Mid to Low", hint: "All-round middle" },
-  { label: "Full Spine", hint: "Max wood, high spine" },
+  { label: "Duckbill Players", hint: "Low swell, big toe", picture: siteImage("bat-options/profile-duckbill") },
+  { label: "Mid to Low", hint: "All-round middle", picture: siteImage("bat-options/profile-mid-to-low") },
+  { label: "Full Spine", hint: "Max wood, high spine", picture: siteImage("bat-options/profile-full") },
 ];
 
 export const BAT_HANDLES: BatOption[] = [
@@ -433,12 +433,19 @@ export const BAT_HANDLES: BatOption[] = [
   { label: "Oval", hint: "Locks the top hand" },
 ];
 
+export const BAT_TOES: BatOption[] = [
+  { label: "Round", hint: "Traditional curved toe", picture: siteImage("bat-options/toe-round") },
+  { label: "Semi Round", hint: "Flat end, rounded corners", picture: siteImage("bat-options/toe-semi-round") },
+  { label: "Flat", hint: "Square, more wood low", picture: siteImage("bat-options/toe-flat") },
+];
+
 export const ENGRAVING_MAX = 15;
 
-/** A bat's configuration as indices into BAT_SIZES, BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES. */
+/** A bat's configuration as indices into BAT_SIZES, BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES. */
 export interface BatConfig {
   weight: number;
   profile: number;
+  toe: number;
   handle: number;
   /** Engraving text, as typed. */
   name: string;
@@ -447,10 +454,11 @@ export interface BatConfig {
   size: number;
 }
 
-/** The standard build: balanced weight, Duckbill profile, oval handle, knocked, scuff sheet, SH. */
+/** The standard build: balanced weight, Duckbill profile, semi-round toe, oval handle, knocked, scuff sheet, SH. */
 export const DEFAULT_BAT_CONFIG: BatConfig = {
   weight: 1,
   profile: 0,
+  toe: 1,
   handle: 2,
   name: "",
   knock: true,

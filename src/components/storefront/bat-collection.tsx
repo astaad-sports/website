@@ -5,9 +5,12 @@ import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { BAT_RANGES, type BatRange } from "@/lib/catalogue";
 import { countInWords, type BatSubcategory } from "@/lib/products/model";
+import { siteImage } from "@/lib/site-images";
 import { cn } from "@/lib/utils";
 
 import { SectionHeading } from "./section-heading";
+
+const GOAT_BATS = siteImage("home/goat-bats-on-clefts");
 
 /** A bat range's tile: its name on two lines, tagline and model count. With no models yet, it says so. */
 function SmallTile({ range, models }: { range: BatRange; models: number }) {
@@ -21,7 +24,7 @@ function SmallTile({ range, models }: { range: BatRange; models: number }) {
           size from a 421px tile (the 1440 design) and hidden below 300px; the
           container query measures inside the 32px side padding, hence 236px. */}
       <Image
-        src="/images/category-bats.png"
+        src={range.image}
         alt=""
         width={190}
         height={134}
@@ -84,13 +87,7 @@ export function BatCollection({ models }: { models: Record<BatSubcategory, numbe
             className="group relative flex min-h-[400px] flex-col overflow-hidden rounded-xs bg-surface-dark-sunken px-10 py-9 text-on-dark transition-transform duration-200 hover:-translate-y-1 md:row-span-2 md:block md:p-0"
           >
             <div className="absolute inset-y-0 right-0 hidden w-[320px] sm:block">
-              <Image
-                src="/images/english-willow-collection.png"
-                alt=""
-                fill
-                sizes="320px"
-                className="object-cover"
-              />
+              <Image src={GOAT_BATS.src} alt="" fill sizes="320px" className="object-cover object-[60%_30%]" />
             </div>
             <span
               aria-hidden="true"
@@ -108,8 +105,8 @@ export function BatCollection({ models }: { models: Record<BatSubcategory, numbe
               </span>
               <span className="max-w-[380px] text-[15px] leading-[22px] text-on-dark-subtle">
                 {countInWords(englishWillow)} {englishWillow === 1 ? "model" : "models"} from Grade 4
-                to the top 1% of Grade 1+ Players willow. Every one built to your weight, profile
-                and handle, with free name engraving.
+                to the top 1% of Grade 1+ Players willow. Every one built to your weight, profile,
+                toe and handle, with free name engraving.
               </span>
             </span>
             <span className="mt-auto flex flex-wrap items-center gap-6 pt-8 md:absolute md:bottom-9 md:left-10 md:pt-0">

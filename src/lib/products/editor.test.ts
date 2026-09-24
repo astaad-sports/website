@@ -25,6 +25,7 @@ const BAT = {
   customEnabled: "on",
   customWeights: FULL_CUSTOMIZATION.weights,
   customProfiles: FULL_CUSTOMIZATION.profiles,
+  customToes: FULL_CUSTOMIZATION.toes,
   customHandles: FULL_CUSTOMIZATION.handles,
   customEngraving: "on",
   customMatchReady: "on",
@@ -55,6 +56,13 @@ describe("the product editor's fields", () => {
     const parsed = parseProductForm(form({ ...BAT, customWeights: [] }));
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.fieldErrors.customization).toContain("at least one weight");
+  });
+
+  test("the toe is optional: none ticked means no toe choice", () => {
+    const parsed = parseProductForm(form({ ...BAT, customToes: [] }));
+    expect(parsed.ok && parsed.values.customization?.toes).toEqual([]);
+    const some = parseProductForm(form({ ...BAT, customToes: ["Flat", "Round", "Pointed"] }));
+    expect(some.ok && some.values.customization?.toes).toEqual(["Round", "Flat"]);
   });
 
   test("missing and malformed fields are reported one by one", () => {

@@ -1,9 +1,17 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { z } from "zod";
 
-import { addToItems, cartItemSchema, lineKey, MAX_QUANTITY, priceCart, type CartItem } from "@/lib/cart";
+import {
+  addToItems,
+  cartItemSchema,
+  lineKey,
+  MAX_QUANTITY,
+  priceCart,
+  withResolvedToe,
+  type CartItem,
+} from "@/lib/cart";
 import type { AppliedCoupon } from "@/lib/offers/model";
 
 import { useCatalogue } from "./catalogue-provider";
@@ -142,6 +150,14 @@ const actions = {
 export function useCart() {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const catalogue = useCatalogue();
+  // Bats saved before toe shapes existed get their toe once, so the same build merges into one line.
+  useEffect(() => {
+    if (!state) return;
+    const resolved = state.items.map((item) => withResolvedToe(item, catalogue));
+    if (resolved.some((item, index) => item !== state.items[index])) {
+      write({ items: resolved.reduce<CartItem[]>((items, item) => addToItems(items, item), []) });
+    }
+  }, [state, catalogue]);
   const priced = useMemo(
     // The coupon's dates were checked by the server, not this device's clock (see couponRunning).
     () => (state ? priceCart(state.items, catalogue, state.coupon, null) : null),

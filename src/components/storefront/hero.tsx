@@ -3,13 +3,16 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { BAT_IMAGE } from "@/lib/catalogue";
+import { siteImage } from "@/lib/site-images";
 
 import { Eyebrow } from "./eyebrow";
 
 const PROMISES = ["Premium Quality", "Made for Players", "Built to Perform"];
 
-/** The stadium-at-night hero: photo on the right, the headline on the left. */
+const BACKDROP = siteImage("home/hero-bats-by-the-logs");
+const BAT = siteImage("bats/scoop-master-front");
+
+/** The hero: Astaad bats by the log pile on the right, the headline on the left. */
 export function HomeHero() {
   return (
     <section
@@ -18,12 +21,12 @@ export function HomeHero() {
     >
       <div className="absolute inset-y-0 right-[-80px] hidden w-[1000px] md:block">
         <Image
-          src="/images/stadium-kit.png"
+          src={BACKDROP.src}
           alt=""
           fill
-          priority
+          preload
           sizes="1000px"
-          className="object-cover object-[55%_45%] opacity-[0.62]"
+          className="object-cover object-[35%_50%] opacity-[0.62]"
         />
       </div>
       <div
@@ -47,11 +50,12 @@ export function HomeHero() {
         className="pointer-events-none absolute top-[140px] right-[250px] hidden size-[480px] rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.22)_0%,rgba(254,197,2,0)_68%)] lg:block"
       />
       <Image
-        src={BAT_IMAGE}
-        alt="Astaad Legacy One English willow bat"
-        width={246}
-        height={624}
-        priority
+        src={BAT.src}
+        alt="Astaad Scoop Master English willow bat"
+        width={BAT.width}
+        height={BAT.height}
+        preload
+        sizes="100px"
         className="absolute top-[78px] right-[340px] hidden h-[624px] w-[246px] -rotate-12 object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.75)] lg:block"
       />
 

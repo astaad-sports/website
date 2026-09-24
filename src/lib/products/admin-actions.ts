@@ -190,7 +190,9 @@ export async function changeAvailability(_previous: ProductActionState, form: Fo
     return failed(
       result.reason === "no_stock"
         ? "There's no stock to sell. Restock it first, and it becomes available."
-        : "This product no longer exists."
+        : result.reason === "no_price"
+          ? "Set a price first. Open the product to add one."
+          : "This product no longer exists."
     );
   }
   productsChanged();

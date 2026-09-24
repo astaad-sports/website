@@ -10,6 +10,7 @@ import {
   normaliseCustomization,
   NO_CUSTOMIZATION,
   PROFILE_OPTIONS,
+  TOE_OPTIONS,
   WEIGHT_OPTIONS,
   type BatSubcategory,
   type CategorySlug,
@@ -111,8 +112,8 @@ export function normaliseSku(value: string): string {
 /**
  * Check the editor's fields. Field names match ProductField, plus the
  * customisation group: `customEnabled`, `customWeights`, `customProfiles`,
- * `customHandles` (each repeated) and `customEngraving`, `customMatchReady`,
- * `customScuffSheet` (checkboxes).
+ * `customToes`, `customHandles` (each repeated) and `customEngraving`,
+ * `customMatchReady`, `customScuffSheet` (checkboxes).
  */
 export function parseProductForm(form: FormData): ParsedProductForm {
   const errors: ProductFieldErrors = {};
@@ -187,6 +188,8 @@ export function parseProductForm(form: FormData): ParsedProductForm {
         enabled: true,
         weights,
         profiles,
+        // None ticked is allowed: the bat then has no toe choice.
+        toes: chosen("customToes").filter((value) => TOE_OPTIONS.includes(value)),
         handles,
         engraving: form.get("customEngraving") === "on",
         matchReady: form.get("customMatchReady") === "on",

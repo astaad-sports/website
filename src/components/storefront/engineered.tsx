@@ -3,10 +3,12 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { BAT_IMAGE } from "@/lib/catalogue";
+import { siteImage } from "@/lib/site-images";
 import { cn } from "@/lib/utils";
 
 import { Eyebrow } from "./eyebrow";
+
+const BAT = siteImage("bats/scoop-master-front");
 
 interface Callout {
   label: string;
@@ -18,13 +20,17 @@ interface Callout {
   dot: { left: number; top: number };
 }
 
+// The bat stands in a 200 × 508 box at (260, 26): the blade's edges are at
+// x 325 and 395 from its shoulder (y 210) to the toe (y 534); the handle's are
+// at 350 and 370. Each line runs from its box to the bat, with the dot on the edge.
 const CALLOUTS: Callout[] = [
-  { label: "Handle", value: "Round · Semi Oval · Oval", side: "left", top: 74, width: 176, line: { left: 174, top: 96, width: 100 }, dot: { left: 270, top: 92 } },
-  { label: "Weight", value: "1120 – 1220 g", side: "left", top: 240, width: 178, line: { left: 176, top: 262, width: 100 }, dot: { left: 272, top: 258 } },
-  { label: "Knocking", value: "Match-ready · Free", side: "left", top: 430, width: 192, line: { left: 190, top: 452, width: 96 }, dot: { left: 282, top: 448 } },
-  { label: "Profile", value: "Duckbill · Mid-Low · Full Spine", side: "right", top: 154, width: 184, line: { left: 440, top: 176, width: 96 }, dot: { left: 436, top: 172 } },
-  { label: "Name engraving", value: "Free · up to 15 letters", side: "right", top: 308, width: 184, line: { left: 446, top: 330, width: 90 }, dot: { left: 442, top: 326 } },
-  { label: "Scuff sheet", value: "Clear · optional", side: "right", top: 454, width: 184, line: { left: 430, top: 476, width: 106 }, dot: { left: 426, top: 472 } },
+  { label: "Handle", value: "Round · Semi Oval · Oval", side: "left", top: 74, width: 176, line: { left: 174, top: 96, width: 176 }, dot: { left: 346, top: 92 } },
+  { label: "Weight", value: "1120 – 1220 g", side: "left", top: 240, width: 178, line: { left: 176, top: 262, width: 149 }, dot: { left: 321, top: 258 } },
+  { label: "Knocking", value: "Match-ready · Free", side: "left", top: 430, width: 192, line: { left: 190, top: 452, width: 135 }, dot: { left: 321, top: 448 } },
+  { label: "Profile", value: "Duckbill · Mid-Low · Full Spine", side: "right", top: 206, width: 184, line: { left: 394, top: 228, width: 142 }, dot: { left: 390, top: 224 } },
+  { label: "Toe shape", value: "Round · Semi Round · Flat", side: "right", top: 454, width: 184, line: { left: 394, top: 476, width: 142 }, dot: { left: 390, top: 472 } },
+  { label: "Name engraving", value: "Free · up to 15 letters", side: "right", top: 302, width: 184, line: { left: 394, top: 324, width: 142 }, dot: { left: 390, top: 320 } },
+  { label: "Scuff sheet", value: "Clear · optional", side: "right", top: 378, width: 184, line: { left: 394, top: 400, width: 142 }, dot: { left: 390, top: 396 } },
 ];
 
 function CalloutBox({ callout, className, style }: { callout: Callout; className?: string; style?: React.CSSProperties }) {
@@ -65,8 +71,8 @@ export function Engineered() {
           </h2>
           <p className="max-w-[440px] text-[17px] leading-[26px] text-on-dark-subtle">
             Every English Willow bat is finished to your specification. Pick the weight,
-            profile and handle you play with, add your name, and we knock it in before it
-            ships.
+            profile, toe and handle you play with, add your name, and we knock it in before
+            it ships.
           </p>
           <Button
             size="lg"
@@ -90,10 +96,11 @@ export function Engineered() {
             className="absolute top-[30px] left-[110px] size-[500px] rounded-full border border-border-dark"
           />
           <Image
-            src={BAT_IMAGE}
+            src={BAT.src}
             alt="Astaad English willow bat with customization points"
-            width={200}
-            height={508}
+            width={BAT.width}
+            height={BAT.height}
+            sizes="80px"
             className="absolute top-[26px] left-[260px] h-[508px] w-[200px] object-contain drop-shadow-[0_40px_48px_rgba(0,0,0,0.75)]"
           />
           {CALLOUTS.map((callout) => (
@@ -129,10 +136,11 @@ export function Engineered() {
               className="absolute size-[320px] rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.24)_0%,rgba(254,197,2,0)_66%)]"
             />
             <Image
-              src={BAT_IMAGE}
+              src={BAT.src}
               alt="Astaad English willow bat"
-              width={160}
-              height={406}
+              width={BAT.width}
+              height={BAT.height}
+              sizes="64px"
               className="relative h-[406px] w-[160px] object-contain drop-shadow-[0_40px_48px_rgba(0,0,0,0.75)]"
             />
           </div>

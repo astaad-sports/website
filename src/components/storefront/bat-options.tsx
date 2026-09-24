@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
@@ -66,21 +67,7 @@ export function FreeChip({ tone = "dark" }: { tone?: "dark" | "yellow" }) {
   );
 }
 
-/** Profile and handle glyphs from the design, drawn in the current ink. */
-export function ProfileGlyph({ index }: { index: number }) {
-  const paths = [
-    "M2 24 L2 14 Q 24 4 40 8 Q 46 10 46 16 L46 24 Z",
-    "M2 24 L2 12 Q 24 -2 46 12 L46 24 Z",
-    "M2 24 L2 10 Q 24 -8 46 10 L46 24 Z",
-  ];
-  return (
-    <svg width="48" height="28" viewBox="0 0 48 28" aria-hidden="true" className="shrink-0">
-      <path d={paths[index] ?? paths[0]} fill="currentColor" />
-      <path d="M0 26 H48" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
-    </svg>
-  );
-}
-
+/** The handle glyphs from the design, drawn in the current ink. */
 export function HandleGlyph({ index }: { index: number }) {
   const rx = [14, 12, 9.5][index] ?? 14;
   const inner = [8, 6.5, 5][index] ?? 8;
@@ -99,8 +86,11 @@ export interface ChoiceButtonsProps {
   offered?: string[];
   value: number;
   onChange: (index: number) => void;
-  /** `button` = the compact home builder; `card` = the 88px product cards. */
-  variant?: "button" | "card";
+  /**
+   * `button` = the compact home builder; `card` = the 88px product cards;
+   * `picture` = product cards led by each option's photo (profiles and toes).
+   */
+  variant?: "button" | "card" | "picture";
   glyph?: (index: number) => ReactNode;
   className?: string;
 }
@@ -121,7 +111,7 @@ export function ChoiceButtons({
       aria-label={label}
       value={String(value)}
       onValueChange={(next) => onChange(Number(next))}
-      className={cn("flex w-auto flex-wrap gap-2", variant === "card" && "gap-3", className)}
+      className={cn("flex w-auto flex-wrap gap-2", variant !== "button" && "gap-3", className)}
     >
       {options.map((option, index) =>
         offered && !offered.includes(option.label) ? null : (
@@ -132,12 +122,20 @@ export function ChoiceButtons({
               "cursor-pointer rounded-xs text-left text-foreground transition-shadow",
               variant === "button"
                 ? "inline-flex h-11 items-center justify-center px-5 text-sm leading-5 font-medium data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
-                : "flex min-w-0 flex-1 basis-[180px] items-center gap-3 border-2 px-4 py-3.5 md:h-[88px] data-checked:border-brand-yellow data-checked:bg-brand-yellow not-data-checked:border-surface-raised not-data-checked:bg-surface-raised not-data-checked:shadow-card not-data-checked:hover:shadow-float"
+                : "flex min-w-0 flex-1 border-2 data-checked:border-brand-yellow data-checked:bg-brand-yellow not-data-checked:border-surface-raised not-data-checked:bg-surface-raised not-data-checked:shadow-card not-data-checked:hover:shadow-float",
+              variant === "card" && "basis-[180px] items-center gap-3 px-4 py-3.5 md:h-[88px]",
+              variant === "picture" && "basis-[128px] flex-col gap-3 p-2 pb-3.5"
             )}
           >
+            {variant === "picture" && option.picture && (
+              // The photo sits on white, so it reads the same on the yellow of a chosen card.
+              <span className="relative block h-[132px] w-full overflow-hidden rounded-[2px] bg-white">
+                <Image src={option.picture.src} alt="" fill sizes="176px" className="object-contain" />
+              </span>
+            )}
             {glyph?.(index)}
-            {variant === "card" ? (
-              <span className="flex flex-col gap-0.5">
+            {variant !== "button" ? (
+              <span className={cn("flex flex-col gap-0.5", variant === "picture" && "px-1.5")}>
                 <span className="text-[15px] leading-5 font-bold">{option.label}</span>
                 <span className="text-xs leading-4 opacity-70">{option.hint}</span>
               </span>
