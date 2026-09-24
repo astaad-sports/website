@@ -24,15 +24,18 @@ function SmallTile({
   return (
     <Link
       href={href}
-      className="group relative block min-h-[190px] overflow-hidden rounded-xs bg-surface-dark-sunken text-on-dark transition-transform duration-200 hover:-translate-y-1"
+      className="group @container relative block min-h-[190px] overflow-hidden rounded-xs bg-surface-dark-sunken text-on-dark transition-transform duration-200 hover:-translate-y-1"
     >
+      {/* The bat runs diagonally, so on a narrower tile it shrinks into the
+          bottom-right corner to keep its blade clear of the note. It is full
+          size from a 421px tile (the 1440 design) and hidden below 300px. */}
       <Image
         src="/images/category-bats.png"
         alt=""
         width={190}
         height={134}
         className={cn(
-          "absolute top-[34px] right-4 h-[134px] w-[190px] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)]",
+          "absolute right-4 bottom-[22px] aspect-[190/134] h-auto w-[min(190px,89%_-_185px)] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)] @max-[300px]:hidden",
           grayscale && "grayscale-[0.4]"
         )}
       />
