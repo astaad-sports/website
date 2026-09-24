@@ -38,3 +38,30 @@ const orderDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "sho
 export function formatOrderDate(date: Date): string {
   return orderDate.format(date);
 }
+
+const shortDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+const shortDateWithYear = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
+const yearInIndia = new Intl.DateTimeFormat("en-IN", { year: "numeric", timeZone: "Asia/Kolkata" });
+
+/** "22 Oct" this year, "22 Oct 2025" otherwise; dates are Indian time. */
+export function formatShortDate(date: Date, now: Date = new Date()): string {
+  const sameYear = yearInIndia.format(date) === yearInIndia.format(now);
+  return (sameYear ? shortDate : shortDateWithYear).format(date);
+}
+
+/** A 10-digit Indian mobile as "+91 98765 43210"; anything else is shown as given. */
+export function formatMobile(phone: string): string {
+  const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  return /^\d{10}$/.test(digits) ? `+91 ${digits.slice(0, 5)} ${digits.slice(5)}` : phone;
+}
+
+/** The same mobile for a tel: link: "+919876543210". */
+export function mobileHref(phone: string): string {
+  const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  return /^\d{10}$/.test(digits) ? `tel:+91${digits}` : `tel:${digits}`;
+}

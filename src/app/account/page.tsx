@@ -101,10 +101,10 @@ export default async function AccountPage() {
             {user.email && <p className="type-body text-ink-muted">Signed in as {user.email}</p>}
             {isAdmin(user) && (
               <Link
-                href="/admin/orders"
+                href="/admin"
                 className="inline-flex min-h-11 items-center gap-1.5 self-start type-body-sm font-semibold underline underline-offset-4"
               >
-                Store admin: orders to ship
+                Store admin
                 <ChevronRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
               </Link>
             )}

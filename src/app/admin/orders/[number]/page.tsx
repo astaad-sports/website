@@ -1,27 +1,54 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft, Mail, Phone } from "lucide-react";
 
-import { ShipmentForm } from "@/components/admin/shipment-form";
-import { OrderProgress } from "@/components/orders/order-progress";
-import { Eyebrow } from "@/components/storefront/eyebrow";
-import { SiteFooter } from "@/components/storefront/site-footer";
-import { SiteHeader } from "@/components/storefront/site-header";
+import { NextStepButton, StatusStepper } from "@/components/admin/fulfilment-controls";
+import { StatusLabel } from "@/components/admin/status-label";
+import { PAGE, SECTION_LABEL } from "@/components/admin/styles";
+import { TrackingForm } from "@/components/admin/tracking-form";
 import { getOrderForAdmin } from "@/db/orders";
 import { requireAdmin } from "@/lib/auth/session";
-import { formatOrderDate, formatOrderNumber, formatPaise, parseOrderNumber } from "@/lib/format";
-import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
+import {
+  formatMobile,
+  formatOrderDate,
+  formatOrderNumber,
+  formatPaise,
+  formatShortDate,
+  mobileHref,
+  parseOrderNumber,
+} from "@/lib/format";
+import { isFulfilmentStatus, stepIndex } from "@/lib/orders/fulfilment";
+import { productImage } from "@/lib/orders/product-image";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = {
-  title: "Order · Store admin",
-  robots: { index: false },
-};
+export async function generateMetadata({ params }: PageProps<"/admin/orders/[number]">): Promise<Metadata> {
+  const number = parseOrderNumber((await params).number);
+  return { title: number ? `Order #${formatOrderNumber(number)}` : "Order" };
+}
 
-const CARD = "flex flex-col gap-4 rounded-md border border-border bg-surface-raised p-6 shadow-card";
+const placedAt = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "Asia/Kolkata",
+});
 
-/** One order for fulfilment: what to pack, where it goes, and its Trackon shipment. */
+function Section({ id, title, children, className }: { id: string; title: string; children: ReactNode; className?: string }) {
+  return (
+    <section aria-labelledby={id} className={cn("flex flex-col gap-3 border-t border-border py-5", className)}>
+      <h2 id={id} className={SECTION_LABEL}>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+/** One order: move it along, add its tracking ID, and see who and what it is for. */
 export default async function AdminOrderPage({ params }: PageProps<"/admin/orders/[number]">) {
   const { number: raw } = await params;
   await requireAdmin(`/admin/orders/${raw}`);
@@ -30,136 +57,144 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   const order = await getOrderForAdmin(number);
   if (!order) notFound();
 
+  const status = order.status;
+  const inFulfilment = isFulfilmentStatus(status);
+  const hasTracking = Boolean(order.trackingNumber);
+  const customerName = order.customer.name?.trim() || order.shipName;
+  const email = order.customer.email ?? order.email;
+
   return (
-    <>
-      <SiteHeader />
-      <main className="flex-1 bg-surface-sunken">
-        <div className="site-shell flex flex-col gap-8 py-12 md:py-16">
-          <div className="flex flex-col gap-3">
-            <Eyebrow bar>
-              <Link href="/admin/orders" className="transition-colors hover:text-foreground">
-                Store admin · Orders
-              </Link>
-            </Eyebrow>
-            <h1 className="type-heading-xl">{formatOrderNumber(order.number)}</h1>
-            <p className="type-body text-ink-muted">
-              Placed on {formatOrderDate(order.createdAt)} ·{" "}
-              <span className={cn("font-semibold", orderStatusTone(order.status))}>
-                {ORDER_STATUS_LABEL[order.status]}
-              </span>{" "}
-              · {formatPaise(order.totalPaise)}
-            </p>
-          </div>
-
-          <OrderProgress order={order} />
-
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
-            <div className="flex flex-col gap-8">
-              <section aria-labelledby="pack" className="flex flex-col rounded-md border border-border bg-surface-raised shadow-card">
-                <h2 id="pack" className="type-heading-sm border-b border-border px-6 py-4">
-                  To pack
-                </h2>
-                <ul className="flex flex-col">
-                  {order.items.map((item) => (
-                    <li key={item.id} className="flex flex-col gap-2 border-b border-border px-6 py-5 last:border-b-0">
-                      <p className="font-semibold">
-                        {item.quantity} × {item.productName}
-                      </p>
-                      {item.options.length > 0 && (
-                        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 type-body-sm">
-                          {item.options.map((option) => (
-                            <div key={option.label} className="contents">
-                              <dt className="text-ink-muted">{option.label}</dt>
-                              <dd className={cn(option.label === "Engraving" && "font-bold tracking-[0.06em]")}>
-                                {option.value}
-                              </dd>
-                            </div>
-                          ))}
-                        </dl>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <div className="grid gap-8 md:grid-cols-2">
-                <section aria-labelledby="ship-to" className={CARD}>
-                  <h2 id="ship-to" className="type-heading-sm">
-                    Ship to
-                  </h2>
-                  <address className="flex flex-col type-body not-italic select-all">
-                    <span className="font-semibold">{order.shipName}</span>
-                    <span>{order.shipLine1}</span>
-                    {order.shipLine2 && <span>{order.shipLine2}</span>}
-                    <span>
-                      {order.shipCity}, {order.shipState}
-                    </span>
-                    <span>PIN {order.shipPincode}</span>
-                    <span>Mobile +91 {order.shipPhone}</span>
-                  </address>
-                </section>
-
-                <section aria-labelledby="customer" className={CARD}>
-                  <h2 id="customer" className="type-heading-sm">
-                    Customer and payment
-                  </h2>
-                  <dl className="flex flex-col gap-1 type-body-sm">
-                    <dt className="text-ink-muted">Account</dt>
-                    <dd>{order.customer.name ?? "No name"}</dd>
-                    <dd className="break-all">{order.customer.email ?? order.email ?? "No email"}</dd>
-                    {order.razorpayPaymentId && (
-                      <>
-                        <dt className="mt-2 text-ink-muted">Razorpay payment</dt>
-                        <dd className="break-all">{order.razorpayPaymentId}</dd>
-                      </>
-                    )}
-                  </dl>
-                </section>
-              </div>
-            </div>
-
-            <section aria-labelledby="shipment" className={cn(CARD, "lg:sticky lg:top-6")}>
-              <h2 id="shipment" className="type-heading-sm">
-                Shipment
-              </h2>
-              {(order.status === "paid" || order.status === "shipped") && (
-                <>
-                  <p className="type-body-sm text-ink-muted">
-                    {order.status === "paid"
-                      ? "Book this parcel with Trackon, then enter the AWB from the consignment note. The customer sees it on their order straight away."
-                      : "In transit with Trackon. Correct the AWB here, or mark the order delivered once Trackon shows it delivered."}
-                  </p>
-                  {/* One slot for both statuses, so the form keeps its "Shipped" message after saving. */}
-                  <ShipmentForm
-                    orderId={order.id}
-                    status={order.status}
-                    carrier={order.carrier}
-                    trackingNumber={order.trackingNumber}
-                  />
-                </>
-              )}
-              {order.status === "delivered" && (
-                <p className="type-body-sm font-semibold text-success">
-                  Delivered on {order.deliveredAt ? formatOrderDate(order.deliveredAt) : "an unknown date"}.
-                </p>
-              )}
-              {order.status === "pending_payment" && (
-                <p className="type-body-sm text-danger">Not paid. Do not ship this order.</p>
-              )}
-              {order.status === "cancelled" && <p className="type-body-sm text-ink-muted">This order was cancelled.</p>}
-            </section>
-          </div>
-
-          <Link
-            href="/admin/orders"
-            className="inline-flex items-center gap-2 self-start type-body-sm font-semibold underline underline-offset-4"
-          >
-            <ArrowLeft className="size-4" strokeWidth={1.5} aria-hidden="true" />
-            All orders
-          </Link>
+    <main className={cn(PAGE, "gap-4 pt-1 lg:gap-6 lg:pt-6")}>
+      <div className="flex flex-col gap-1">
+        <Link
+          href="/admin/orders"
+          className="-ml-1.5 inline-flex min-h-11 items-center gap-1 self-start rounded-sm pr-2 text-sm leading-5 font-semibold"
+        >
+          <ChevronLeft className="size-5" strokeWidth={1.5} aria-hidden="true" />
+          Orders
+        </Link>
+        <h1 className="type-heading-lg tabular-nums">Order #{formatOrderNumber(order.number)}</h1>
+        <div className="flex items-center justify-between gap-3 lg:justify-start lg:gap-4">
+          <p className="text-[13px] leading-[18px] text-ink-muted">Placed {placedAt.format(order.createdAt)}</p>
+          <StatusLabel status={status} />
         </div>
-      </main>
-      <SiteFooter />
-    </>
+      </div>
+
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
+        {/* On phones the controls come first; on desktop they sit in the right-hand column. */}
+        <div className="flex flex-col lg:sticky lg:top-6 lg:order-2">
+          {inFulfilment ? (
+            <>
+              <Section id="status-title" title="Status">
+                <StatusStepper orderId={order.id} status={status} hasTracking={hasTracking} />
+              </Section>
+              <Section id="tracking-title" title="Tracking">
+                <TrackingForm
+                  orderId={order.id}
+                  carrier={order.carrier}
+                  trackingNumber={order.trackingNumber}
+                  shipped={stepIndex(status) >= stepIndex("shipped")}
+                  shippedOn={order.shippedAt ? formatShortDate(order.shippedAt) : null}
+                />
+              </Section>
+              <div className="border-t border-border pt-5 max-lg:hidden">
+                <NextStepButton orderId={order.id} status={status} hasTracking={hasTracking} placement="inline" />
+              </div>
+            </>
+          ) : (
+            <Section id="status-title" title="Status">
+              <p className={cn("text-[15px] leading-[22px] font-semibold", status === "cancelled" ? "text-ink-muted" : "text-danger")}>
+                {status === "cancelled" ? "This order was cancelled." : "Not paid yet. Do not ship this order."}
+              </p>
+            </Section>
+          )}
+        </div>
+
+        <div className="flex flex-col lg:order-1">
+          <Section id="customer-title" title="Customer">
+            <div className="flex flex-col items-start">
+              <p className="text-[15px] leading-[22px] font-semibold">{customerName}</p>
+              <a href={mobileHref(order.shipPhone)} className="flex min-h-11 items-center gap-2.5 text-[15px] leading-[22px] tabular-nums">
+                <Phone className="size-5 text-ink-muted" strokeWidth={1.5} aria-hidden="true" />
+                {formatMobile(order.shipPhone)}
+              </a>
+              {email && (
+                <a href={`mailto:${email}`} className="flex min-h-11 items-center gap-2.5 text-[15px] leading-[22px] break-all">
+                  <Mail className="size-5 shrink-0 text-ink-muted" strokeWidth={1.5} aria-hidden="true" />
+                  {email}
+                </a>
+              )}
+            </div>
+          </Section>
+
+          <Section id="address-title" title="Shipping address">
+            <address className="flex flex-col text-[15px] leading-[22px] not-italic select-all">
+              <span>{order.shipName}</span>
+              <span>{order.shipLine1}</span>
+              {order.shipLine2 && <span>{order.shipLine2}</span>}
+              <span>
+                {order.shipCity}, {order.shipState} {order.shipPincode}
+              </span>
+            </address>
+          </Section>
+
+          <Section id="product-title" title={order.items.length === 1 ? "Product" : "Products"}>
+            <ul className="flex flex-col gap-4">
+              {order.items.map((item) => {
+                const image = productImage(item.productKind, item.productSlug);
+                return (
+                  <li key={item.id} className="flex flex-col gap-2">
+                    <div className="flex items-start gap-3">
+                      <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-surface-sunken">
+                        {image && (
+                          <Image src={image} alt="" width={40} height={40} className="h-10 w-auto max-w-10 object-contain" />
+                        )}
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-[15px] leading-[22px] font-semibold">{item.productName}</span>
+                        <span className="text-[13px] leading-[18px] text-ink-muted tabular-nums">
+                          Qty {item.quantity}
+                          {item.quantity > 1 && ` × ${formatPaise(item.unitPricePaise)}`}
+                        </span>
+                      </span>
+                      <span className="text-[15px] leading-[22px] font-semibold whitespace-nowrap tabular-nums">
+                        {formatPaise(item.lineTotalPaise)}
+                      </span>
+                    </div>
+                    {item.options.length > 0 && (
+                      <dl className="ml-15 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[13px] leading-[18px]">
+                        {item.options.map((option) => (
+                          <div key={option.label} className="contents">
+                            <dt className="text-ink-muted">{option.label}</dt>
+                            <dd className={cn(option.label === "Engraving" && "font-bold tracking-[0.06em]")}>{option.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
+              <span className="flex flex-col">
+                <span className="text-[15px] leading-[22px] font-semibold">Total</span>
+                <span className="text-[13px] leading-[18px] text-ink-muted">
+                  {order.paidAt ? `Paid via Razorpay on ${formatOrderDate(order.paidAt)}` : "Not paid"}
+                  {order.shippingPaise === 0 && " · Free delivery"}
+                </span>
+                {order.razorpayPaymentId && (
+                  <span className="text-[13px] leading-[18px] break-all text-ink-muted">{order.razorpayPaymentId}</span>
+                )}
+              </span>
+              <span className="text-[15px] leading-[22px] font-bold whitespace-nowrap tabular-nums">
+                {formatPaise(order.totalPaise)}
+              </span>
+            </div>
+          </Section>
+        </div>
+      </div>
+
+      {inFulfilment && <NextStepButton orderId={order.id} status={status} hasTracking={hasTracking} placement="bar" />}
+    </main>
   );
 }

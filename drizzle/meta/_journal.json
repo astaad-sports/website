@@ -22,6 +22,13 @@
       "when": 1790197866069,
       "tag": "0002_add_shipments",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790226175737,
+      "tag": "0003_fulfilment_steps",
+      "breakpoints": true
     }
   ]
 }

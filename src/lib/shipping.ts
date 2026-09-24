@@ -1,15 +1,21 @@
 // Shipping, shared by the admin (recording shipments) and the storefront
-// (showing them). Trackon has no public API, so shipments are booked with
-// Trackon directly and their AWB numbers entered here.
+// (showing them). Neither courier offers the store an API, so parcels are
+// booked with the courier directly and their AWB numbers entered here.
 import { z } from "zod";
 
 import type { Order } from "@/db/schema";
 
+/** The default first: it is the courier the store books with today. */
 export const CARRIERS = {
   trackon: {
     name: "Trackon Couriers",
     /** Trackon's public tracking page. It takes the AWB in its own form, not in the URL. */
     trackingUrl: "https://www.trackon.in/courier-tracking",
+  },
+  delhivery: {
+    name: "Delhivery",
+    /** Delhivery's public tracking page. It also takes the AWB in its own form. */
+    trackingUrl: "https://www.delhivery.com/tracking",
   },
 } as const;
 
@@ -33,7 +39,7 @@ export function normaliseTrackingNumber(value: string): string {
 export const trackingNumberSchema = z
   .string()
   .transform(normaliseTrackingNumber)
-  .pipe(z.string().regex(/^[A-Z0-9]{6,20}$/, "Enter the AWB number: 6 to 20 letters or digits."));
+  .pipe(z.string().regex(/^[A-Z0-9]{6,20}$/, "Enter the tracking ID: 6 to 20 letters or digits."));
 
 export const shipOrderSchema = z.object({
   orderId: z.uuid(),
@@ -46,13 +52,18 @@ export interface TimelineStep {
   date: Date | null;
 }
 
-/** Placed, paid, shipped, delivered: each with its date once it has happened. */
+/**
+ * Placed, paid, packed, shipped, delivered: each with its date once it has
+ * happened. The admin's "Confirmed" step is left out; to the customer a paid
+ * order is already confirmed.
+ */
 export function orderTimeline(
-  order: Pick<Order, "createdAt" | "paidAt" | "shippedAt" | "deliveredAt">
+  order: Pick<Order, "createdAt" | "paidAt" | "packedAt" | "shippedAt" | "deliveredAt">
 ): TimelineStep[] {
   return [
     { label: "Order placed", date: order.createdAt },
     { label: "Payment confirmed", date: order.paidAt },
+    { label: "Packed", date: order.packedAt },
     { label: "Shipped", date: order.shippedAt },
     { label: "Delivered", date: order.deliveredAt },
   ];

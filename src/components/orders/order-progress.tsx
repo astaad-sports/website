@@ -9,7 +9,7 @@ import { CopyButton } from "./copy-button";
 
 type ProgressOrder = Pick<
   Order,
-  "status" | "createdAt" | "paidAt" | "shippedAt" | "deliveredAt" | "carrier" | "trackingNumber"
+  "status" | "createdAt" | "paidAt" | "packedAt" | "shippedAt" | "deliveredAt" | "carrier" | "trackingNumber"
 >;
 
 /** The carrier, the AWB with a copy button, and a link to the carrier's tracking page. */
@@ -44,7 +44,7 @@ export function TrackingDetails({ order }: { order: ProgressOrder }) {
   );
 }
 
-/** Placed, paid, shipped, delivered, with dates, and the tracking details once shipped. */
+/** Placed, paid, packed, shipped, delivered, with dates, and the tracking details once shipped. */
 export function OrderProgress({ order, className }: { order: ProgressOrder; className?: string }) {
   if (order.status === "cancelled") return null;
   const steps = orderTimeline(order);
@@ -61,7 +61,7 @@ export function OrderProgress({ order, className }: { order: ProgressOrder; clas
       <h2 id="order-progress" className="type-heading-sm">
         Delivery progress
       </h2>
-      <ol className="grid gap-4 md:grid-cols-4 md:gap-3">
+      <ol className="grid gap-4 md:grid-cols-5 md:gap-3">
         {steps.map((step, index) => {
           const done = step.date !== null;
           return (

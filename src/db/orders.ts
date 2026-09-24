@@ -1,9 +1,20 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, ilike, inArray, isNotNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 
 import type { PricedCart } from "@/lib/cart";
 import type { ShippingAddress } from "@/lib/checkout";
+import {
+  filterStatuses,
+  isFulfilmentStatus,
+  likePattern,
+  needsTracking,
+  stepIndex,
+  timestampPlan,
+  type FulfilmentStatus,
+  type OrderFilter,
+} from "@/lib/orders/fulfilment";
 
 import { getDb } from "./index";
 import { orderItems, orders, users, type Order, type OrderItem, type OrderStatus } from "./schema";
@@ -154,27 +165,67 @@ export async function getLastShippingAddress(userId: string): Promise<ShippingAd
 // ---------------------------------------------------------------------------
 // Fulfilment (admin). Callers must check the admin first.
 
-export type AdminOrderFilter = "to_ship" | "shipped" | "delivered" | "all";
+/**
+ * Orders matching a search box: the order number (whole or part), the
+ * customer's name, phone or email, a product name, or the tracking ID.
+ */
+function searchCondition(query: string): SQL {
+  const pattern = likePattern(query);
+  const conditions: (SQL | undefined)[] = [
+    ilike(orders.shipName, pattern),
+    ilike(orders.email, pattern),
+    ilike(orders.trackingNumber, pattern),
+    exists(
+      getDb()
+        .select({ one: sql`1` })
+        .from(orderItems)
+        .where(and(eq(orderItems.orderId, orders.id), ilike(orderItems.productName, pattern)))
+    ),
+    exists(
+      getDb()
+        .select({ one: sql`1` })
+        .from(users)
+        .where(and(eq(users.id, orders.userId), or(ilike(users.name, pattern), ilike(users.email, pattern))))
+    ),
+  ];
 
-const FILTER_STATUSES: Record<AdminOrderFilter, OrderStatus[]> = {
-  to_ship: ["paid"],
-  shipped: ["shipped"],
-  delivered: ["delivered"],
-  all: ["paid", "shipped", "delivered", "cancelled"],
-};
+  const number = query.replace(/^#?\s*AST-?\s*/i, "");
+  if (/^\d+$/.test(number)) conditions.push(sql`${orders.number}::text like ${likePattern(number)}`);
 
-/** Paid orders for fulfilment. "To ship" is oldest first, so orders go out in turn; the rest newest first. */
-export async function listOrdersForAdmin(filter: AdminOrderFilter, limit = 100): Promise<OrderWithItems[]> {
+  // Phones are stored as 10 digits; "+91 98765 43210" should still find them.
+  const digits = query.replace(/\D/g, "");
+  if (digits.length >= 4) conditions.push(ilike(orders.shipPhone, likePattern(digits.slice(-10))));
+
+  return or(...conditions)!;
+}
+
+/**
+ * Paid orders for the admin list. Pending is oldest first, so orders go out
+ * in turn; everything else is newest first.
+ */
+export async function listOrdersForAdmin(
+  options: { filter?: OrderFilter; query?: string | null; limit?: number } = {}
+): Promise<OrderWithItems[]> {
+  const { filter = "all", query, limit = 100 } = options;
   const rows = await getDb()
     .select()
     .from(orders)
-    .where(inArray(orders.status, FILTER_STATUSES[filter]))
-    .orderBy(filter === "to_ship" ? asc(orders.paidAt) : desc(orders.createdAt))
+    .where(and(inArray(orders.status, filterStatuses(filter)), query ? searchCondition(query) : undefined))
+    .orderBy(filter === "pending" ? asc(orders.paidAt) : desc(orders.createdAt))
     .limit(limit);
   return withItems(rows);
 }
 
-/** How many orders are in each status, for the admin tabs. */
+/** Orders shipped more than `days` ago and still not marked delivered, oldest first. */
+export async function listStaleShipments(days = 7): Promise<Order[]> {
+  return getDb()
+    .select()
+    .from(orders)
+    .where(and(eq(orders.status, "shipped"), lt(orders.shippedAt, sql`now() - make_interval(days => ${days})`)))
+    .orderBy(asc(orders.shippedAt));
+}
+
+/** How many orders are in each status, for the admin filters and the Home summary. */
 export async function countOrdersByStatus(): Promise<Partial<Record<OrderStatus, number>>> {
   const rows = await getDb()
     .select({ status: orders.status, count: count() })
@@ -200,9 +251,9 @@ export async function getOrderForAdmin(number: number): Promise<AdminOrder | und
   return { ...withLines, customer: { name: row.name, email: row.email } };
 }
 
-export type ShipmentUpdate =
+export type FulfilmentUpdate =
   | { ok: true; order: Order }
-  | { ok: false; reason: "not_found" | "wrong_status" }
+  | { ok: false; reason: "not_found" | "wrong_status" | "needs_tracking" }
   | { ok: false; reason: "duplicate_tracking"; otherOrderNumber?: number };
 
 function isUniqueViolation(error: unknown): boolean {
@@ -212,19 +263,57 @@ function isUniqueViolation(error: unknown): boolean {
   return false;
 }
 
-async function explainNoUpdate(orderId: string): Promise<ShipmentUpdate> {
-  const [existing] = await getDb().select({ status: orders.status }).from(orders).where(eq(orders.id, orderId)).limit(1);
-  return { ok: false, reason: existing ? "wrong_status" : "not_found" };
+/** Stamp the steps up to `target` that have no time yet and clear the ones after it. */
+function stepTimestamps(target: FulfilmentStatus): PgUpdateSetSource<typeof orders> {
+  const { stamp, clear } = timestampPlan(target);
+  const set: PgUpdateSetSource<typeof orders> = {};
+  for (const column of stamp) set[column] = sql`coalesce(${orders[column]}, now())`;
+  for (const column of clear) set[column] = null;
+  return set;
 }
 
 /**
- * Record the carrier and AWB and mark the order shipped. A shipped order can
- * be saved again to correct its AWB; the ship date stays the first one.
+ * Move a paid order to any fulfilment step, forwards or back (to undo a
+ * mis-tap). `from` is the status the admin saw: if the order has moved on
+ * since, nothing changes. Shipped and Delivered need a tracking ID.
  */
-export async function markOrderShipped(
+export async function setOrderStatus(
+  orderId: string,
+  change: { from: FulfilmentStatus; to: FulfilmentStatus }
+): Promise<FulfilmentUpdate> {
+  const db = getDb();
+  const [updated] = await db
+    .update(orders)
+    .set({ status: change.to, ...stepTimestamps(change.to) })
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.status, change.from),
+        needsTracking(change.to) ? isNotNull(orders.trackingNumber) : undefined
+      )
+    )
+    .returning();
+  if (updated) return { ok: true, order: updated };
+
+  const [existing] = await db
+    .select({ status: orders.status, trackingNumber: orders.trackingNumber })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  if (!existing) return { ok: false, reason: "not_found" };
+  if (existing.status !== change.from) return { ok: false, reason: "wrong_status" };
+  return { ok: false, reason: "needs_tracking" };
+}
+
+/**
+ * Record the courier and tracking ID. An order that has not shipped yet is
+ * marked shipped (a tracking ID means the parcel is booked); a shipped or
+ * delivered order keeps its status, so this also corrects a wrong ID.
+ */
+export async function saveOrderTracking(
   orderId: string,
   shipment: { carrier: string; trackingNumber: string }
-): Promise<ShipmentUpdate> {
+): Promise<FulfilmentUpdate> {
   const db = getDb();
   const [clash] = await db
     .select({ number: orders.number })
@@ -233,31 +322,26 @@ export async function markOrderShipped(
     .limit(1);
   if (clash) return { ok: false, reason: "duplicate_tracking", otherOrderNumber: clash.number };
 
+  const [current] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!current) return { ok: false, reason: "not_found" };
+  if (!isFulfilmentStatus(current.status)) return { ok: false, reason: "wrong_status" };
+  const ships = stepIndex(current.status) < stepIndex("shipped");
+
   try {
     const [updated] = await db
       .update(orders)
       .set({
-        status: "shipped",
         carrier: shipment.carrier,
         trackingNumber: shipment.trackingNumber,
-        shippedAt: sql`coalesce(${orders.shippedAt}, now())`,
+        ...(ships ? { status: "shipped" as const, ...stepTimestamps("shipped") } : {}),
       })
-      .where(and(eq(orders.id, orderId), inArray(orders.status, ["paid", "shipped"])))
+      // Only if nobody changed the status in between; otherwise the admin should look again.
+      .where(and(eq(orders.id, orderId), eq(orders.status, current.status)))
       .returning();
-    return updated ? { ok: true, order: updated } : explainNoUpdate(orderId);
+    return updated ? { ok: true, order: updated } : { ok: false, reason: "wrong_status" };
   } catch (error) {
-    // Two admins saving the same AWB at once: the unique constraint catches the second.
+    // Two admins saving the same tracking ID at once: the unique constraint catches the second.
     if (isUniqueViolation(error)) return { ok: false, reason: "duplicate_tracking" };
     throw error;
   }
-}
-
-/** Mark a shipped order delivered. */
-export async function markOrderDelivered(orderId: string): Promise<ShipmentUpdate> {
-  const [updated] = await getDb()
-    .update(orders)
-    .set({ status: "delivered", deliveredAt: new Date() })
-    .where(and(eq(orders.id, orderId), eq(orders.status, "shipped")))
-    .returning();
-  return updated ? { ok: true, order: updated } : explainNoUpdate(orderId);
 }

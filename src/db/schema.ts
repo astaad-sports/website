@@ -39,12 +39,15 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
 /**
- * `pending_payment` until Razorpay confirms the payment, then `paid`.
- * `shipped`, `delivered` and `cancelled` are set by fulfilment later.
+ * `pending_payment` until Razorpay confirms the payment, then `paid`. The
+ * admin then moves it through `confirmed`, `packed`, `shipped` and
+ * `delivered` (see src/lib/orders/fulfilment.ts). Nothing sets `cancelled` yet.
  */
 export const orderStatus = pgEnum("order_status", [
   "pending_payment",
   "paid",
+  "confirmed",
+  "packed",
   "shipped",
   "delivered",
   "cancelled",
@@ -81,9 +84,13 @@ export const orders = pgTable(
     razorpayOrderId: text("razorpay_order_id").unique(),
     razorpayPaymentId: text("razorpay_payment_id").unique(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** When the admin confirmed the order. Cleared if the order is moved back before this step. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /** When the admin packed the order. Cleared if the order is moved back before this step. */
+    packedAt: timestamp("packed_at", { withTimezone: true }),
     /** A CARRIERS key from src/lib/shipping.ts, set when the order ships. */
     carrier: text("carrier"),
-    /** The carrier's consignment number: Trackon's AWB. Unique, so one AWB cannot land on two orders. */
+    /** The carrier's consignment number (AWB). Unique, so one AWB cannot land on two orders. */
     trackingNumber: text("tracking_number").unique(),
     shippedAt: timestamp("shipped_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
