@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronLeft, CircleAlert, Copy, ExternalLink, LoaderCircle } from "lucide-react";
+import { ChevronLeft, CircleAlert, Copy, ExternalLink, LoaderCircle, Trash2 } from "lucide-react";
 
 import type { BatCustomization, Product, ProductAvailability } from "@/db/schema";
 import { duplicate, saveProduct } from "@/lib/products/admin-actions";
@@ -24,11 +24,12 @@ import { cn } from "@/lib/utils";
 
 import { AvailabilityChoice, availabilityNote } from "./availability-choice";
 import { ProductCustomization } from "./product-customization";
+import { DeleteProductSheet } from "./product-delete";
 import { EditorSection, FieldHelp, SelectField, StockField, TextAreaField, TextField } from "./product-editor-fields";
 import { ProductPhotos, type EditorPhoto } from "./product-photos";
 import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
-import { BUTTON_PRIMARY, BUTTON_SECONDARY, PAGE } from "./styles";
+import { BUTTON_BASE, BUTTON_PRIMARY, BUTTON_SECONDARY, PAGE } from "./styles";
 import { Toast } from "./toast";
 
 /** A saved product as the editor needs it. `updatedAt` is in milliseconds, for the save's change check. */
@@ -239,6 +240,9 @@ export function ProductEditor({
   const [flash] = useState<ToastEntry | null>(() => (notice ? { message: NOTICE[notice], at: 1 } : null));
   const [photoToast, setPhotoToast] = useState<ToastEntry | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  // "Delete {name}?": a fresh form each time it opens.
+  const [deleting, setDeleting] = useState({ open: false, session: 0 });
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
   const dirty = JSON.stringify(values) !== JSON.stringify(valuesFor(base.product, initialCategory));
   const savedNotAdopted = Boolean(state.saved && state.at && state.at !== base.adoptedAt);
@@ -620,7 +624,6 @@ export function ProductEditor({
         </div>
 
         {/* Phones: Save sits in a bar above the home indicator (the tab bar is hidden here). */}
-        <div aria-hidden="true" className={cn("shrink-0 lg:hidden", topError ? "h-32" : "h-20")} />
         <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-border bg-surface-raised px-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))] lg:hidden">
           <ErrorLine message={topError} />
           <button type="submit" disabled={saving} className={cn(BUTTON_PRIMARY, "min-h-12 w-full")}>
@@ -628,6 +631,31 @@ export function ProductEditor({
           </button>
         </div>
       </form>
+
+      {saved && (
+        <section aria-label="Delete product" className="mt-8 flex max-w-[1048px] border-t border-border pt-5 pb-6">
+          <button
+            ref={deleteButtonRef}
+            type="button"
+            onClick={() => setDeleting((current) => ({ open: true, session: current.session + 1 }))}
+            className={cn(BUTTON_BASE, "px-3 text-danger hover:bg-surface-sunken")}
+          >
+            <Trash2 strokeWidth={1.5} aria-hidden="true" />
+            Delete product
+          </button>
+          <DeleteProductSheet
+            product={{ id: saved.id, name: saved.name }}
+            open={deleting.open}
+            session={deleting.session}
+            from="editor"
+            onClose={() => setDeleting((current) => ({ ...current, open: false }))}
+            finalFocus={() => deleteButtonRef.current ?? true}
+          />
+        </section>
+      )}
+
+      {/* Phones: room for the fixed Save bar under the last section. */}
+      <div aria-hidden="true" className={cn("shrink-0 lg:hidden", topError ? "h-32" : "h-20")} />
 
       <Toast message={toast?.message} at={toast?.at} />
     </main>

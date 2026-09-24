@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 
 import {
   addProductImage,
   createProduct,
+  deleteProduct,
   deleteProductImage,
   duplicateProduct,
   freeSlug,
@@ -100,6 +102,24 @@ export async function saveProduct(_previous: ProductActionState, form: FormData)
   if (!result.ok) return writeFailure(result, values.sku);
   productsChanged();
   redirect(`/admin/products/${result.product.slug}?created=1`);
+}
+
+/**
+ * Delete a product for good, and its photo files unless another product uses
+ * them. Posts `productId`; from the editor it also posts `from=editor` and
+ * goes back to the list, which says "Product deleted".
+ */
+export async function removeProduct(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
+  if (!(await signedInAdmin())) return NOT_ADMIN;
+  const id = z.uuid().safeParse(form.get("productId"));
+  if (!id.success) return failed(SOMETHING_WRONG);
+  const result = await deleteProduct(id.data);
+  if (!result) return failed("This product no longer exists.");
+  productsChanged();
+  // The files go after the response, so a slow or failing Blob store never holds up the admin.
+  after(() => Promise.allSettled(result.unusedImages.map((image) => removeStoredImage(image))));
+  if (form.get("from") === "editor") redirect("/admin/products?done=deleted");
+  return done("Product deleted");
 }
 
 /** Copy a product as a hidden draft and open its editor. */
