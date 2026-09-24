@@ -57,14 +57,15 @@ const STEPS: { image: SiteImageKey; title: string; body: string; alt: string }[]
 export function Craft() {
   return (
     <section aria-labelledby="craft-title" className="bg-surface-dark text-on-dark">
-      <div className="site-shell flex flex-col gap-10 pb-16 md:pb-20">
+      <div className="site-shell flex flex-col gap-5 pb-8 md:gap-10 md:pb-20">
         <SectionHeading
           id="craft-title"
           tone="dark"
+          compact
           eyebrow="Handcrafted"
           title="From cleft to crease."
           aside={
-            <p className="max-w-[380px] text-[15px] leading-[22px] text-on-dark-subtle md:text-right">
+            <p className="max-w-[380px] text-sm leading-5 text-on-dark-subtle md:text-right md:text-[15px] md:leading-[22px]">
               English willow, shaped by hand and finished to order.
             </p>
           }
@@ -73,16 +74,16 @@ export function Craft() {
         <ol
           tabIndex={0}
           aria-label="How a bat is made"
-          className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-yellow md:-mx-8 md:scroll-px-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0"
+          className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:gap-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-yellow md:-mx-8 md:scroll-px-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0"
         >
           {STEPS.map((step, index) => (
-            <li key={step.image} className="flex w-[220px] shrink-0 snap-start flex-col gap-4 lg:w-auto">
+            <li key={step.image} className="flex w-[160px] shrink-0 snap-start flex-col gap-3 md:w-[220px] md:gap-4 lg:w-auto">
               <span className="relative block aspect-[4/5] overflow-hidden rounded-xs bg-surface-dark-raised">
                 <Image
                   src={siteImage(step.image).src}
                   alt={step.alt}
                   fill
-                  sizes="(min-width: 1024px) 14vw, 220px"
+                  sizes="(min-width: 1024px) 14vw, (min-width: 768px) 220px, 160px"
                   className="object-cover"
                 />
               </span>

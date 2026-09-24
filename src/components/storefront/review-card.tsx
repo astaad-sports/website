@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 
 import { Stars } from "./stars";
 
-/** The home row's card height: 360px on phones, 440px from md. Widths follow each photo's shape. */
-export const ROW_CARD = "relative h-[360px] shrink-0 snap-start overflow-hidden rounded-xs md:h-[440px]";
+/** The home row's card height: 300px on phones, 440px from md. Widths follow each photo's shape. */
+export const ROW_CARD = "relative h-[300px] shrink-0 snap-start overflow-hidden rounded-xs md:h-[440px]";
 
 /** "Bought the Run Machine", linked while the product is on the store. */
 function ProductLine({ product, tone }: { product: NonNullable<PublicReview["product"]>; tone: "light" | "dark" }) {
@@ -60,12 +60,12 @@ export function ReviewRowCard({ review }: { review: PublicReview }) {
   const { photo } = review;
   if (!photo) {
     return (
-      <li className={cn(ROW_CARD, "w-[300px] border border-border bg-surface-raised md:w-[360px]")}>
-        <figure className="flex h-full flex-col gap-4 p-6">
+      <li className={cn(ROW_CARD, "w-[280px] border border-border bg-surface-raised md:w-[360px]")}>
+        <figure className="flex h-full flex-col gap-3 p-5 md:gap-4 md:p-6">
           <Quote className="size-8 shrink-0 fill-brand-yellow stroke-brand-yellow" aria-hidden="true" />
           {review.rating ? <Stars rating={review.rating} /> : null}
           {review.body && (
-            <blockquote className="line-clamp-6 text-[15px] leading-[22px] whitespace-pre-line md:line-clamp-8 md:text-[17px] md:leading-[26px]">
+            <blockquote className="line-clamp-5 text-[15px] leading-[22px] whitespace-pre-line md:line-clamp-8 md:text-[17px] md:leading-[26px]">
               {review.body}
             </blockquote>
           )}
@@ -84,7 +84,7 @@ export function ReviewRowCard({ review }: { review: PublicReview }) {
           src={photo.src}
           alt={photo.alt}
           fill
-          sizes={`(min-width: 768px) ${Math.round((440 * photo.width) / photo.height)}px, ${Math.round((360 * photo.width) / photo.height)}px`}
+          sizes={`(min-width: 768px) ${Math.round((440 * photo.width) / photo.height)}px, ${Math.round((300 * photo.width) / photo.height)}px`}
           className="object-cover"
         />
         {hasWords(review) && (

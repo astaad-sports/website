@@ -56,9 +56,82 @@ function SmallTile({ range, models }: { range: BatRange; models: number }) {
   );
 }
 
+const EXPLORE = "relative flex items-center gap-1.5 text-[13px] leading-[18px] font-bold tracking-[0.1em] text-brand-yellow uppercase";
+const MODELS_CHIP = "h-[22px] self-start rounded-full px-2.5 text-[11px] leading-[22px] font-bold tracking-[0.06em] uppercase";
+
+function modelsLabel(models: number): string {
+  if (models === 0) return "Coming soon";
+  return `${models} ${models === 1 ? "model" : "models"}`;
+}
+
+/** The phone's row of willow cards: English Willow first and widest, then each other range. */
+function CollectionRow({ models }: { models: Record<BatSubcategory, number> }) {
+  return (
+    <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:hidden">
+      <li className="flex shrink-0 snap-start">
+        <Link
+          href="/#english-willow"
+          className="relative flex h-[300px] w-[286px] flex-col justify-end overflow-hidden rounded-xs border border-border-on-dark bg-surface-dark-sunken p-[18px]"
+        >
+          <Image src={GOAT_BATS.src} alt="" fill sizes="286px" className="object-cover object-[50%_20%]" />
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,22,22,0)_20%,rgba(22,22,22,0.85)_58%,#161616_78%)]"
+          />
+          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-brand-yellow" />
+          <span className="relative flex flex-col gap-2.5">
+            <span className={cn(MODELS_CHIP, "bg-brand-yellow text-on-yellow")}>{modelsLabel(models["english-willow"])}</span>
+            <span className="type-display text-[34px] leading-[0.95] tracking-[-0.01em]">
+              English
+              <br />
+              Willow
+            </span>
+            <span className="text-[13px] leading-[18px] text-on-dark-subtle">Premium · Customizable · Free engraving</span>
+          </span>
+          <span className={cn(EXPLORE, "mt-2.5")}>
+            Explore
+            <ArrowRight className="size-4" strokeWidth={2} aria-hidden="true" />
+          </span>
+        </Link>
+      </li>
+      {BAT_RANGES.map((range) => (
+        <li key={range.slug} className="flex shrink-0 snap-start">
+          <Link
+            href={range.href}
+            className="relative flex h-[300px] w-[212px] flex-col justify-end overflow-hidden rounded-xs border border-border-on-dark bg-surface-dark-sunken p-4"
+          >
+            <Image
+              src={range.image}
+              alt=""
+              width={190}
+              height={134}
+              className={cn(
+                "absolute top-7 right-[-18px] h-auto w-[210px] rotate-[-38deg] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)]",
+                range.grayscale && "grayscale-[0.4]"
+              )}
+            />
+            <span className="relative flex flex-col gap-2.5">
+              <span className={cn(MODELS_CHIP, "border border-on-dark-muted leading-5 text-on-dark")}>
+                {modelsLabel(models[range.slug])}
+              </span>
+              <span className="type-display w-min text-2xl leading-none">{range.name}</span>
+              <span className="text-[12px] leading-4 text-on-dark-subtle">{range.tagline}</span>
+            </span>
+            <span className={cn(EXPLORE, "mt-2.5")}>
+              Explore
+              <ArrowRight className="size-4" strokeWidth={2} aria-hidden="true" />
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * "The Astaad bat collection": English Willow, Kashmir Willow and Tennis bats.
- * `models` is how many bats of each kind are on the store.
+ * `models` is how many bats of each kind are on the store. On phones the three
+ * are a row of cards that scrolls sideways.
  */
 export function BatCollection({ models }: { models: Record<BatSubcategory, number> }) {
   const englishWillow = models["english-willow"];
@@ -68,37 +141,41 @@ export function BatCollection({ models }: { models: Record<BatSubcategory, numbe
       aria-labelledby="coll-title"
       className="bg-surface-dark text-on-dark"
     >
-      <div className="site-shell flex flex-col gap-10 pt-16 pb-16 md:pt-20 xl:h-[640px] xl:pb-0">
+      <div className="site-shell flex flex-col gap-5 py-8 md:gap-10 md:pt-20 md:pb-16 xl:h-[640px] xl:pb-0">
         <SectionHeading
           id="coll-title"
           tone="dark"
           face="display"
           eyebrowBar
+          compact
           eyebrow="Bats are the core"
           title="The Astaad bat collection"
-          aside={<p className="text-lg leading-[26px] text-on-dark-subtle">Choose your willow. Build your game.</p>}
+          aside={
+            <p className="text-[15px] leading-[22px] text-on-dark-subtle md:text-lg md:leading-[26px]">
+              Choose your willow. Build your game.
+            </p>
+          }
         />
-        <div className="grid gap-5 md:grid-cols-[2fr_1fr] md:grid-rows-2 xl:h-[400px]">
-          {/* Below md the tile is a column that grows with its copy (the count
-              and button wrap onto two lines there); from md up every piece is
-              pinned absolutely inside the fixed-height tile. */}
+        <CollectionRow models={models} />
+        <div className="hidden gap-5 md:grid md:grid-cols-[2fr_1fr] md:grid-rows-2 xl:h-[400px]">
+          {/* Every piece is pinned absolutely inside the fixed-height tile. */}
           <Link
             href="/#english-willow"
-            className="group relative flex min-h-[400px] flex-col overflow-hidden rounded-xs bg-surface-dark-sunken px-10 py-9 text-on-dark transition-transform duration-200 hover:-translate-y-1 md:row-span-2 md:block md:p-0"
+            className="group relative row-span-2 block min-h-[400px] overflow-hidden rounded-xs bg-surface-dark-sunken text-on-dark transition-transform duration-200 hover:-translate-y-1"
           >
-            <div className="absolute inset-y-0 right-0 hidden w-[320px] sm:block">
+            <div className="absolute inset-y-0 right-0 w-[320px]">
               <Image src={GOAT_BATS.src} alt="" fill sizes="320px" className="object-cover object-[60%_30%]" />
             </div>
             <span
               aria-hidden="true"
-              className="absolute inset-y-0 right-[200px] hidden w-[200px] bg-[linear-gradient(90deg,#161616_0%,rgba(22,22,22,0)_100%)] sm:block"
+              className="absolute inset-y-0 right-[200px] w-[200px] bg-[linear-gradient(90deg,#161616_0%,rgba(22,22,22,0)_100%)]"
             />
             <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-brand-yellow" />
-            <span className="h-[22px] self-start rounded-full bg-brand-yellow px-2.5 text-[11px] leading-[22px] font-bold tracking-[0.08em] text-on-yellow uppercase md:absolute md:top-9 md:left-10">
+            <span className="absolute top-9 left-10 h-[22px] rounded-full bg-brand-yellow px-2.5 text-[11px] leading-[22px] font-bold tracking-[0.08em] text-on-yellow uppercase">
               Premium · Customizable
             </span>
-            <span className="mt-[38px] flex max-w-[460px] flex-col gap-3 md:absolute md:top-24 md:left-10 md:mt-0 md:w-[calc(100%-80px)]">
-              <span className="type-display text-[48px] leading-[0.92] tracking-[-0.02em] md:text-[64px]">
+            <span className="absolute top-24 left-10 flex w-[calc(100%-80px)] max-w-[460px] flex-col gap-3">
+              <span className="type-display text-[64px] leading-[0.92] tracking-[-0.02em]">
                 English
                 <br />
                 Willow
@@ -109,7 +186,7 @@ export function BatCollection({ models }: { models: Record<BatSubcategory, numbe
                 toe and handle, with free name engraving.
               </span>
             </span>
-            <span className="mt-auto flex flex-wrap items-center gap-6 pt-8 md:absolute md:bottom-9 md:left-10 md:pt-0">
+            <span className="absolute bottom-9 left-10 flex flex-wrap items-center gap-6">
               <span className="text-[40px] leading-[44px] font-bold tracking-[-0.03em]">
                 {englishWillow}{" "}
                 <span className="text-[13px] leading-[18px] font-medium tracking-[0.2em] text-on-dark-subtle uppercase">

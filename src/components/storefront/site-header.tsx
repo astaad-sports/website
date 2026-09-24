@@ -43,16 +43,22 @@ function HeaderAction({
 /**
  * The 72px black storefront header: crest, the five category links, a search
  * pill, then account, wishlist and cart. On small screens the links move into
- * a Sheet behind a menu button and the crest sits in the centre.
+ * a Sheet behind a menu button and the crest sits in the centre. `sticky`
+ * keeps the bar at the top of the screen on phones (below md) as the page scrolls.
  */
-export function SiteHeader({ activeHref }: { activeHref?: string }) {
+export function SiteHeader({ activeHref, sticky }: { activeHref?: string; sticky?: boolean }) {
   const links = STORE_CATEGORIES.map((category) => ({
     label: category.name,
     href: category.href,
   }));
 
   return (
-    <header className="border-b border-surface-dark-raised bg-surface-dark text-on-dark">
+    <header
+      className={cn(
+        "border-b border-surface-dark-raised bg-surface-dark text-on-dark",
+        sticky && "sticky top-0 z-40 md:static"
+      )}
+    >
       <div className="site-shell flex h-14 items-center gap-4 lg:h-[72px] lg:gap-10">
         <div className="lg:hidden">
           <Sheet>

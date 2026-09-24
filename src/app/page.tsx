@@ -11,6 +11,7 @@ import { HomeBatBuilder } from "@/components/storefront/home-bat-builder";
 import { HomeHero } from "@/components/storefront/hero";
 import { InstagramFeed } from "@/components/storefront/instagram-feed";
 import { bestsellerTiles } from "@/components/storefront/kit-tiles";
+import { MobileTabBar } from "@/components/storefront/mobile-tab-bar";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SizeGuideSection } from "@/components/storefront/size-guide-section";
@@ -33,8 +34,9 @@ export default async function Home() {
 
   return (
     <>
-      <SiteHeader />
-      <main className="flex-1">
+      <SiteHeader sticky />
+      {/* Below md the header stays on screen, so a jump to a section stops just under it. */}
+      <main className="flex-1 max-md:[&_[id]]:scroll-mt-14">
         <HomeHero />
         <CategoryTiles stats={categoryStats(catalogue)} />
         <BatCollection models={batCounts(catalogue)} />
@@ -58,6 +60,7 @@ export default async function Home() {
         />
       </main>
       <SiteFooter />
+      <MobileTabBar />
     </>
   );
 }

@@ -17,13 +17,15 @@ import { InstagramEmbed } from "./instagram-embed";
 import { InstagramGlyph } from "./instagram-glyph";
 import { SectionHeading } from "./section-heading";
 
-/** Two columns on phones, three from sm (six posts), four from lg (eight). */
-const GRID = "grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-4 lg:grid-cols-4";
+/** A row to swipe on phones (all eight posts), three columns from md (six), four from lg (eight). */
+const GRID =
+  "no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0 lg:grid-cols-4";
+const CELL = "w-[150px] shrink-0 snap-start md:w-auto";
 const TILE = "relative block aspect-[4/5] overflow-hidden rounded-xs bg-surface-sunken";
-const SHOWN_BELOW_LG = 6;
+const SHOWN_FROM_MD = 6;
 
-function tileVisibility(index: number): string | undefined {
-  return index >= SHOWN_BELOW_LG ? "hidden lg:block" : undefined;
+function tileVisibility(index: number): string {
+  return cn(CELL, index >= SHOWN_FROM_MD && "md:hidden lg:block");
 }
 
 function KindMark({ kind }: { kind: InstagramPost["kind"] }) {
@@ -52,7 +54,7 @@ function PostTile({ post }: { post: InstagramPost }) {
         src={`/api/instagram/${post.id}`}
         alt=""
         fill
-        sizes="(min-width: 1440px) 344px, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+        sizes="(min-width: 1440px) 344px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 150px"
         className="object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
       />
       <span
@@ -75,10 +77,24 @@ function PostsPlaceholder() {
   );
 }
 
-/** The latest posts in the store's own grid, or Instagram's embed until the feed is set up. */
+/**
+ * The latest posts in the store's own grid, or Instagram's embed until the feed
+ * is set up. On phones the embed is cut to its profile card and first rows of
+ * posts, fading out at the foot (the Follow button above opens the rest).
+ */
 async function InstagramPosts() {
   const posts = await getInstagramPosts();
-  if (!posts) return <InstagramEmbed />;
+  if (!posts) {
+    return (
+      <div className="relative max-md:max-h-[540px] max-md:overflow-hidden">
+        <InstagramEmbed />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-surface to-transparent md:hidden"
+        />
+      </div>
+    );
+  }
   return (
     <ul aria-label={`Latest posts from @${INSTAGRAM_HANDLE}`} className={GRID}>
       {posts.map((post, index) => (
@@ -97,14 +113,15 @@ async function InstagramPosts() {
 export function InstagramFeed() {
   return (
     <section id="instagram" aria-labelledby="instagram-title" className="bg-surface">
-      <div className="site-shell flex flex-col gap-8 py-16 md:py-20">
+      <div className="site-shell flex flex-col gap-5 py-8 md:gap-8 md:py-20">
         <SectionHeading
           id="instagram-title"
+          compact
           eyebrow="Instagram"
           title="Straight from the workshop."
           aside={
             <div className="flex flex-col items-start gap-4 md:items-end">
-              <p className="max-w-[340px] text-[15px] leading-[22px] text-ink-muted md:text-right">
+              <p className="max-w-[340px] text-sm leading-5 text-ink-muted md:text-right md:text-[15px] md:leading-[22px]">
                 New bats off the bench, reels from the shop and players with their Astaad. Tag @{INSTAGRAM_HANDLE}{" "}
                 in yours.
               </p>

@@ -7,15 +7,18 @@ import { Eyebrow } from "./eyebrow";
 
 const PHOTO = siteImage("home/bats-in-the-workshop");
 
-/** "More than equipment." — the brand story beside Astaad bats standing among willow clefts. */
+/**
+ * "More than equipment." — the brand story beside Astaad bats standing among
+ * willow clefts. On phones the photo comes first, edge to edge.
+ */
 export function BrandStory() {
   return (
     <section
       aria-labelledby="story-title"
       className="relative overflow-hidden bg-surface-dark text-on-dark"
     >
-      <div className="site-shell flex flex-col gap-12 py-16 lg:h-[560px] lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:py-0">
-        <div className="flex max-w-[600px] flex-col gap-6">
+      <div className="site-shell flex flex-col-reverse gap-6 pb-8 md:flex-col md:gap-12 md:py-16 lg:h-[560px] lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:py-0">
+        <div className="flex max-w-[600px] flex-col gap-4 md:gap-6">
           <Eyebrow bar className="text-on-dark-muted">
             Our story
           </Eyebrow>
@@ -29,7 +32,7 @@ export function BrandStory() {
             <br />
             equipment<span className="text-brand-yellow">.</span>
           </h2>
-          <p className="max-w-[480px] text-lg leading-7 text-on-dark-subtle">
+          <p className="max-w-[480px] text-[15px] leading-[22px] text-on-dark-subtle md:text-lg md:leading-7">
             Astaad Sports is built for players who expect more from their game. Every piece
             of kit is made by us, tested on the pitch, and sold directly to you.
           </p>
@@ -40,10 +43,10 @@ export function BrandStory() {
             About Astaad Sports
           </Link>
         </div>
-        <div className="relative mr-6 aspect-[3/2] w-full max-w-[600px] shrink-0 lg:h-[400px] lg:w-[600px]">
+        <div className="relative -mx-4 h-[240px] shrink-0 md:mx-0 md:mr-6 md:aspect-[3/2] md:h-auto md:w-full md:max-w-[600px] lg:h-[400px] lg:w-[600px]">
           <span
             aria-hidden="true"
-            className="absolute inset-0 translate-x-6 translate-y-6 border border-brand-yellow/50"
+            className="absolute inset-0 hidden translate-x-6 translate-y-6 border border-brand-yellow/50 md:block"
           />
           <Image
             src={PHOTO.src}
@@ -58,7 +61,7 @@ export function BrandStory() {
           />
           <span
             aria-hidden="true"
-            className="type-script-accent absolute bottom-5 left-6 text-brand-yellow"
+            className="type-script-accent absolute bottom-4 left-4 text-brand-yellow md:bottom-5 md:left-6"
           >
             Play Belong Grow
           </span>

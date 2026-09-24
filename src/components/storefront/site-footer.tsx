@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { ChevronDown, Mail, MapPin, Phone } from "lucide-react";
 
 import { Crest } from "@/components/astaad";
 import { STORE_CATEGORIES } from "@/lib/catalogue";
 import { mobileHref } from "@/lib/format";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/instagram/model";
 import { getStoreSettings } from "@/lib/settings/store";
+import { cn } from "@/lib/utils";
 
 import { InstagramGlyph } from "./instagram-glyph";
 
@@ -19,15 +20,14 @@ const SUPPORT_LINKS = [
 
 const LINK = "text-[15px] leading-[22px] text-on-dark transition-colors hover:text-on-dark-muted";
 
-function FooterNav({
-  label,
-  links,
-}: {
+interface FooterLinks {
   label: string;
   links: { label: string; href: string }[];
-}) {
+}
+
+function FooterNav({ label, links, className }: FooterLinks & { className?: string }) {
   return (
-    <nav aria-label={label} className="flex flex-col gap-3">
+    <nav aria-label={label} className={cn("flex flex-col gap-3", className)}>
       <span className="text-xs leading-4 font-semibold tracking-[0.2em] text-on-dark-subtle uppercase">
         {label}
       </span>
@@ -37,6 +37,33 @@ function FooterNav({
         </Link>
       ))}
     </nav>
+  );
+}
+
+/** Phones: each group of links folds away under its heading. */
+function FooterFolds({ groups, className }: { groups: FooterLinks[]; className?: string }) {
+  return (
+    <div className={cn("border-t border-border-dark", className)}>
+      {groups.map((group) => (
+        <details key={group.label} className="group border-b border-border-dark">
+          <summary className="flex h-14 cursor-pointer list-none items-center justify-between text-xs leading-4 font-semibold tracking-[0.2em] text-on-dark uppercase [&::-webkit-details-marker]:hidden">
+            {group.label}
+            <ChevronDown
+              className="size-[18px] text-on-dark-subtle transition-transform group-open:rotate-180"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+          </summary>
+          <nav aria-label={group.label} className="flex flex-col gap-3.5 pb-5">
+            {group.links.map((link) => (
+              <Link key={link.href} href={link.href} className={LINK}>
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </details>
+      ))}
+    </div>
   );
 }
 
@@ -78,16 +105,22 @@ function FooterContact({
 /**
  * The near-black footer: crest and blurb, Shop and Support columns (with the
  * store's contact details), and the legal line with the store's name and GSTIN.
+ * On phones the two columns fold away under their headings.
  */
 export async function SiteFooter() {
   const settings = await getStoreSettings();
   // "Astaad Sports Pvt. Ltd." would otherwise end the sentence with two full stops.
   const holder = settings.storeName.replace(/\.+$/, "");
+  const shop: FooterLinks = {
+    label: "Shop",
+    links: STORE_CATEGORIES.map((category) => ({ label: category.name, href: category.href })),
+  };
+  const support: FooterLinks = { label: "Support", links: SUPPORT_LINKS };
 
   return (
     <footer className="bg-surface-dark-sunken text-on-dark">
-      <div className="site-shell flex flex-col gap-8 pt-14 pb-8">
-        <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr]">
+      <div className="site-shell flex flex-col gap-8 pt-10 pb-8 md:pt-14">
+        <div className="grid gap-6 md:grid-cols-[2fr_1fr_1fr] md:gap-10">
           <div className="flex flex-col items-start gap-4">
             <Crest size={56} />
             <p className="max-w-[360px] text-[15px] leading-[22px] text-on-dark-subtle">
@@ -105,15 +138,10 @@ export async function SiteFooter() {
               <span className="sr-only"> on Instagram</span>
             </a>
           </div>
-          <FooterNav
-            label="Shop"
-            links={STORE_CATEGORIES.map((category) => ({
-              label: category.name,
-              href: category.href,
-            }))}
-          />
+          <FooterNav {...shop} className="hidden md:flex" />
           <div className="flex flex-col gap-5">
-            <FooterNav label="Support" links={SUPPORT_LINKS} />
+            <FooterNav {...support} className="hidden md:flex" />
+            <FooterFolds groups={[shop, support]} className="md:hidden" />
             <FooterContact
               email={settings.supportEmail}
               phone={settings.supportPhone}

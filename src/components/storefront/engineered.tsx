@@ -47,6 +47,52 @@ function CalloutBox({ callout, className, style }: { callout: Callout; className
   );
 }
 
+// The phone's pointers: each label's line ends on the bat, `reach` px right of the
+// column's centre (negative is left), at `top` px down the 330px drawing. The bat
+// stands 300px tall, centred and turned 12°, so its edge moves left as it goes down.
+const POINTERS: { label: string; side: "left" | "right"; top: number; reach: number }[] = [
+  { label: "Handle", side: "left", top: 36, reach: 28 },
+  { label: "Weight", side: "right", top: 104, reach: 20 },
+  { label: "Profile", side: "left", top: 172, reach: -23 },
+  { label: "Engraving", side: "right", top: 240, reach: 2 },
+];
+
+/** Phones: the bat turned in its glow, four of its choices pointed out beside it. */
+function PointedBat() {
+  return (
+    <div aria-hidden="true" className="relative h-[330px] w-full">
+      <div className="absolute top-2 left-1/2 size-[300px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.26)_0%,rgba(254,197,2,0)_68%)]" />
+      <div className="absolute top-[25px] left-1/2 size-[260px] -translate-x-1/2 rounded-full border border-brand-yellow/30" />
+      <Image
+        src={BAT.src}
+        alt=""
+        width={BAT.width}
+        height={BAT.height}
+        sizes="48px"
+        className="absolute top-[15px] left-[calc(50%-21px)] h-[300px] w-[42px] rotate-12 object-contain drop-shadow-[0_28px_32px_rgba(0,0,0,0.75)]"
+      />
+      {POINTERS.map((pointer) => (
+        <div
+          key={pointer.label}
+          className={cn("absolute flex -translate-y-1/2 items-center", pointer.side === "right" && "flex-row-reverse")}
+          style={
+            pointer.side === "left"
+              ? { top: pointer.top, left: 0, right: `calc(50% - ${pointer.reach}px)` }
+              : { top: pointer.top, right: 0, left: `calc(50% + ${pointer.reach}px)` }
+          }
+        >
+          <span className="flex h-8 shrink-0 items-center gap-2 rounded-full border border-border-on-dark bg-surface-dark-raised px-3 text-xs leading-4 font-semibold">
+            <span className="size-1.5 rounded-full bg-brand-yellow" />
+            {pointer.label}
+          </span>
+          <span className="h-px flex-1 bg-brand-yellow/60" />
+          <span className="size-[7px] shrink-0 rounded-full bg-brand-yellow" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** "Engineered for your game": the bat with six customisation callouts. */
 export function Engineered() {
   return (
@@ -54,8 +100,8 @@ export function Engineered() {
       aria-labelledby="eng-title"
       className="relative overflow-hidden bg-surface-dark text-on-dark"
     >
-      <div className="site-shell flex flex-col items-center gap-12 py-16 xl:h-[680px] xl:flex-row xl:items-center xl:justify-between xl:py-0">
-        <div className="flex w-full max-w-[520px] flex-col gap-6">
+      <div className="site-shell flex flex-col items-center gap-6 py-8 md:gap-12 md:py-16 xl:h-[680px] xl:flex-row xl:items-center xl:justify-between xl:py-0">
+        <div className="flex w-full max-w-[520px] flex-col gap-4 md:gap-6">
           <Eyebrow bar className="text-on-dark-muted">
             Premium collection
           </Eyebrow>
@@ -69,7 +115,7 @@ export function Engineered() {
             <br />
             for <span className="text-brand-yellow">your</span> game
           </h2>
-          <p className="max-w-[440px] text-[17px] leading-[26px] text-on-dark-subtle">
+          <p className="max-w-[440px] text-[15px] leading-[22px] text-on-dark-subtle md:text-[17px] md:leading-[26px]">
             Every English Willow bat is finished to your specification. Pick the weight,
             profile, toe and handle you play with, add your name, and we knock it in before
             it ships.
@@ -78,7 +124,7 @@ export function Engineered() {
             size="lg"
             render={<Link href="/#build" />}
             nativeButton={false}
-            className="h-13 self-start rounded-xs px-7 text-sm font-bold"
+            className="hidden h-13 self-start rounded-xs px-7 text-sm font-bold md:inline-flex"
           >
             Build your bat
             <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden="true" />
@@ -128,8 +174,32 @@ export function Engineered() {
           ))}
         </div>
 
-        {/* Smaller screens: the bat, then the callouts as a list. */}
-        <div className="flex w-full flex-col items-center gap-8 xl:hidden">
+        {/* Phones: the bat with four pointers, every callout in a row that scrolls sideways, then the button. */}
+        <div className="flex w-full flex-col gap-5 md:hidden">
+          <PointedBat />
+          <ul
+            aria-label="What you can choose"
+            className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4"
+          >
+            {CALLOUTS.map((callout) => (
+              <li key={callout.label} className="w-[176px] shrink-0 snap-start">
+                <CalloutBox callout={callout} className="h-full" />
+              </li>
+            ))}
+          </ul>
+          <Button
+            size="lg"
+            render={<Link href="/#build" />}
+            nativeButton={false}
+            className="h-13 w-full rounded-xs text-sm font-bold"
+          >
+            Build your bat
+            <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden="true" />
+          </Button>
+        </div>
+
+        {/* Tablets: the bat, then the callouts as a list. */}
+        <div className="hidden w-full flex-col items-center gap-8 md:flex xl:hidden">
           <div className="relative flex items-center justify-center">
             <div
               aria-hidden="true"

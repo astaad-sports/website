@@ -50,21 +50,22 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
 
   return (
     <section id="build" aria-labelledby="build-title" className="bg-surface-sunken">
-      <div className="site-shell flex flex-col gap-10 pt-16 pb-16 md:pt-20 xl:h-[860px] xl:pb-0">
+      <div className="site-shell flex flex-col gap-6 py-8 md:gap-10 md:pt-20 md:pb-16 xl:h-[860px] xl:pb-0">
         <SectionHeading
           id="build-title"
           face="display"
+          compact
           eyebrow="Customization · English Willow only"
           title="Build your bat"
           aside={
-            <p className="max-w-[380px] text-[15px] leading-[22px] text-ink-muted md:text-right">
+            <p className="max-w-[380px] text-sm leading-5 text-ink-muted md:text-right md:text-[15px] md:leading-[22px]">
               {choicesNote(custom)}
             </p>
           }
         />
 
-        <div className="flex flex-col gap-10 xl:flex-row xl:items-stretch">
-          <div className="relative w-full overflow-hidden rounded-xs bg-surface-dark p-6 text-on-dark md:h-[580px] md:px-8 md:py-7 xl:w-[560px] xl:shrink-0">
+        <div className="flex flex-col gap-6 md:gap-10 xl:flex-row xl:items-stretch">
+          <div className="relative w-full overflow-hidden rounded-xs bg-surface-dark p-5 text-on-dark md:h-[580px] md:px-8 md:py-7 xl:w-[560px] xl:shrink-0">
             <div
               aria-hidden="true"
               className="absolute top-[90px] left-[130px] size-[300px] rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.2)_0%,rgba(254,197,2,0)_66%)]"
@@ -92,12 +93,12 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
             {/* The bat's main photo, with the engraving drawn on the lower blade. The photo is
                 centred and fills the height, so the blade's centre line and toe are fixed: the
                 name starts just above the toe and a longer one grows up the blade. */}
-            <div className="relative mx-auto mt-6 h-[360px] w-[142px] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[390px] md:w-[168px]">
+            <div className="relative mx-auto mt-4 h-[290px] w-[114px] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[390px] md:w-[168px]">
               <Image
                 src={bat.images[0]}
                 alt={`Preview of your ${bat.name} bat`}
                 fill
-                sizes="168px"
+                sizes="(min-width: 768px) 168px, 114px"
                 className="object-contain drop-shadow-[0_32px_40px_rgba(0,0,0,0.8)]"
               />
               {custom.engraving && (
@@ -109,7 +110,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 </span>
               )}
             </div>
-            <div className="relative mt-6 flex flex-wrap gap-2 md:absolute md:inset-x-8 md:bottom-7 md:mt-0">
+            <div className="relative mt-4 flex flex-wrap gap-1.5 md:absolute md:gap-2 md:inset-x-8 md:bottom-7 md:mt-0">
               {chips.map((chip) => (
                 <span
                   key={chip}
@@ -121,7 +122,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col justify-between gap-4">
+          <div className="flex flex-1 flex-col justify-between gap-5 md:gap-4">
             <OptionGroup label="Weight">
               <ChoiceButtons label="Weight" options={BAT_WEIGHTS} offered={custom.weights} value={config.weight} onChange={(v) => update("weight", v)} />
             </OptionGroup>
@@ -155,7 +156,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
               </OptionGroup>
             )}
             {(custom.matchReady || custom.scuffSheet) && (
-              <div className="flex flex-wrap gap-10">
+              <div className="flex flex-wrap gap-x-10 gap-y-5">
                 {custom.matchReady && (
                   <OptionGroup label="Match-ready knocking" badge={<FreeChip />}>
                     <YesNo label="Match-ready knocking" variant="button" value={config.knock} onChange={(v) => update("knock", v)} />
@@ -168,13 +169,13 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 )}
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-5">
+            <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-5">
               <AddToCartButton
                 item={batCartItem(bat.slug, config, 1, custom)}
                 productName={`Astaad ${bat.name}`}
                 soldOut={bat.soldOut}
                 size="lg"
-                className="h-14 rounded-xs px-8 text-[15px] font-bold"
+                className="h-14 w-full rounded-xs px-8 text-[15px] font-bold md:w-auto"
               >
                 <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
                 Add to Cart · {formatPrice(bat.price)}

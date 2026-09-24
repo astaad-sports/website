@@ -18,7 +18,7 @@ export interface FinalCtaProps {
   backdrop?: string;
 }
 
-/** The closing black band: crest, a two-line display headline, one or two buttons. */
+/** The closing black band: crest, a two-line display headline, one or two buttons (full width, stacked, on phones). */
 export function FinalCta({
   label,
   title,
@@ -51,7 +51,7 @@ export function FinalCta({
         aria-hidden="true"
         className="pointer-events-none absolute top-[-60px] left-1/2 size-[500px] -translate-x-1/2 rounded-full border border-brand-yellow/30"
       />
-      <div className="site-shell relative flex min-h-[440px] flex-col items-center justify-center gap-7 py-16 text-center md:min-h-[480px]">
+      <div className="site-shell relative flex min-h-[400px] flex-col items-center justify-center gap-6 py-12 text-center md:min-h-[480px] md:gap-7 md:py-16">
         <Crest size={crestSize} />
         <h2
           className={cn(
@@ -63,7 +63,7 @@ export function FinalCta({
           <br />
           <span className="text-brand-yellow">{highlight}</span>
         </h2>
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-4 max-md:w-full max-md:flex-col max-md:items-stretch max-md:gap-2.5">
           <Button
             size="lg"
             render={<Link href={primary.href} />}

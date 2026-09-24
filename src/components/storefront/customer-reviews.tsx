@@ -103,9 +103,10 @@ export function CustomerReviews({
 
   return (
     <section id="reviews" aria-labelledby="reviews-title" className="bg-surface-sunken">
-      <div className="site-shell flex flex-col gap-8 py-16 md:py-20">
+      <div className="site-shell flex flex-col gap-5 py-8 md:gap-8 md:py-20">
         <SectionHeading
           id="reviews-title"
+          compact
           eyebrow="Customer reviews"
           title="Real players. Real Astaad."
           aside={
@@ -117,7 +118,7 @@ export function CustomerReviews({
                   Photos and words our players have shared with us.
                 </p>
               )}
-              <div className="flex gap-2">
+              <div className="hidden gap-2 md:flex">
                 <Button
                   variant="secondary"
                   size="icon"
@@ -142,19 +143,24 @@ export function CustomerReviews({
         <ul
           ref={row}
           aria-label="Reviews and photos from our players"
-          className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 md:-mx-8 md:scroll-px-8 md:px-8"
+          className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 md:-mx-8 md:scroll-px-8 md:gap-4 md:px-8"
         >
           <ClipCard clip={clip} />
           {reviews.map((review) => (
             <ReviewRowCard key={review.id} review={review} />
           ))}
         </ul>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button render={<Link href="/reviews/write" />} nativeButton={false} className="px-6">
+        <div className="flex items-center gap-2.5 md:gap-3">
+          <Button render={<Link href="/reviews/write" />} nativeButton={false} className="flex-1 px-3 md:flex-none md:px-6">
             <PenLine strokeWidth={1.5} aria-hidden="true" />
             Write a review
           </Button>
-          <Button render={<Link href="/reviews" />} nativeButton={false} variant="secondary" className="px-6">
+          <Button
+            render={<Link href="/reviews" />}
+            nativeButton={false}
+            variant="secondary"
+            className="flex-1 px-3 md:flex-none md:px-6"
+          >
             Read all reviews
           </Button>
         </div>
