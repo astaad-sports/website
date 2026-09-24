@@ -121,7 +121,7 @@ export function ChoiceButtons({
             className={cn(
               "cursor-pointer rounded-xs text-left text-foreground transition-shadow",
               variant === "button"
-                ? "inline-flex h-11 items-center justify-center px-3.5 text-sm leading-5 font-medium data-checked:bg-brand-yellow md:px-5 data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
+                ? "inline-flex h-11 items-center justify-center px-5 text-sm leading-5 font-medium data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
                 : "flex min-w-0 flex-1 border-2 data-checked:border-brand-yellow data-checked:bg-brand-yellow not-data-checked:border-surface-raised not-data-checked:bg-surface-raised not-data-checked:shadow-card not-data-checked:hover:shadow-float",
               variant === "card" && "basis-[180px] items-center gap-3 px-4 py-3.5 md:h-[88px]",
               variant === "picture" && "basis-[128px] flex-col gap-3 p-2 pb-3.5"
