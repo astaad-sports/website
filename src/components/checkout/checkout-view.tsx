@@ -355,6 +355,17 @@ export function CheckoutView({
             >
               {pending ? "Please wait…" : `Pay ${formatPaise(priced.totalPaise)}`}
             </Button>
+            <p className="type-body-sm text-center text-ink-muted">
+              By paying, you agree to our{" "}
+              <Link href="/terms" className="underline underline-offset-4">
+                terms of service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline underline-offset-4">
+                privacy policy
+              </Link>
+              .
+            </p>
           </OrderSummary>
         </div>
       </form>
