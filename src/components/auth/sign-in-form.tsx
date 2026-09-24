@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createSession } from "@/lib/auth/actions";
+import type { InAppBrowser } from "@/lib/auth/in-app-browser";
 import { firebaseAuth, FirebaseNotConfiguredError } from "@/lib/firebase/client";
 
 type Mode = "sign-in" | "sign-up";
@@ -77,6 +78,22 @@ function authErrorMessage(error: unknown): string | null {
   }
 }
 
+/**
+ * In Instagram's browser (or another app's) Google refuses to sign anyone in,
+ * so the form offers email only and says how to get to Google instead.
+ */
+function InAppNote({ app }: { app: string | null }) {
+  return (
+    <div role="note" className="flex flex-col gap-1.5 rounded-md border border-border bg-surface-sunken p-4">
+      <p className="type-body-sm font-semibold text-foreground">Sign in with your email here</p>
+      <p className="type-body-sm text-ink-muted">
+        Google sign-in doesn’t work inside {app ? `${app}’s` : "this app’s"} browser. To use Google, open this page
+        in Chrome or Safari from the ⋯ menu. Your cart won’t come with you.
+      </p>
+    </div>
+  );
+}
+
 function GoogleMark() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5">
@@ -91,9 +108,10 @@ function GoogleMark() {
 /**
  * Google and email sign-in. Firebase checks the credentials in the browser,
  * then the ID token goes to the `createSession` Server Action, which sets the
- * httpOnly session cookie and redirects to `next`.
+ * httpOnly session cookie and redirects to `next`. Inside an app's browser
+ * (`inApp`) it offers email only.
  */
-export function SignInForm({ next }: { next: string }) {
+export function SignInForm({ next, inApp }: { next: string; inApp: InAppBrowser | null }) {
   const id = useId();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [auth, setAuth] = useState<Auth | null>(null);
@@ -203,25 +221,33 @@ export function SignInForm({ next }: { next: string }) {
       <div className="flex flex-col gap-3">
         <Eyebrow bar>Your account</Eyebrow>
         <h1 className="type-heading-xl">{copy.title}</h1>
-        <p className="type-body text-ink-muted">{copy.subtitle}</p>
+        <p className="type-body text-ink-muted">
+          {inApp && mode === "sign-up" ? "Join Astaad Sports with your email." : copy.subtitle}
+        </p>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        onClick={continueWithGoogle}
-        disabled={disabled}
-      >
-        <GoogleMark />
-        Continue with Google
-      </Button>
+      {inApp ? (
+        <InAppNote app={inApp.app} />
+      ) : (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={continueWithGoogle}
+            disabled={disabled}
+          >
+            <GoogleMark />
+            Continue with Google
+          </Button>
 
-      <div className="flex items-center gap-4 type-body-sm text-ink-muted" aria-hidden="true">
-        <span className="h-px flex-1 bg-border" />
-        or
-        <span className="h-px flex-1 bg-border" />
-      </div>
+          <div className="flex items-center gap-4 type-body-sm text-ink-muted" aria-hidden="true">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      )}
 
       <form onSubmit={submit} className="flex flex-col gap-5" aria-busy={pending}>
         {mode === "sign-up" && (

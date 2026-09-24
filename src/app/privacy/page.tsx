@@ -129,8 +129,9 @@ export default async function PrivacyPage() {
           <p>
             Your cart and any coupon you enter are saved in your browser’s local storage, on your device only,
             until you check out. Google’s sign-in window and Razorpay’s payment window may set their own cookies
-            under their own privacy policies, for example to prevent fraud. We use no advertising or analytics
-            cookies.
+            under their own privacy policies, for example to prevent fraud. When the home page shows our
+            Instagram posts through Instagram’s own embed, Instagram may set cookies too, under Meta’s privacy
+            policy. We use no advertising or analytics cookies.
           </p>
         </>
       ),

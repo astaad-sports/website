@@ -9,6 +9,7 @@ import { EnglishWillow } from "@/components/storefront/english-willow";
 import { FinalCta } from "@/components/storefront/final-cta";
 import { HomeBatBuilder } from "@/components/storefront/home-bat-builder";
 import { HomeHero } from "@/components/storefront/hero";
+import { InstagramFeed } from "@/components/storefront/instagram-feed";
 import { bestsellerTiles } from "@/components/storefront/kit-tiles";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
@@ -38,6 +39,7 @@ export default async function Home() {
         <SizeGuideSection />
         {bestsellers.length > 0 && <Bestsellers items={bestsellers} />}
         <CustomerPhotos photos={CUSTOMER_PHOTOS} clip={CUSTOMER_CLIP} />
+        <InstagramFeed />
         <BrandStory />
         <Craft />
         <TrustStrip items={HOME_TRUST} />

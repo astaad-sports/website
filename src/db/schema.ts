@@ -340,3 +340,26 @@ export const storeSettings = pgTable(
 );
 
 export type StoreSettings = typeof storeSettings.$inferSelect;
+
+/**
+ * The Instagram access token the home page's feed uses: one row (id 1).
+ * INSTAGRAM_ACCESS_TOKEN is only the starting point, because Instagram tokens
+ * last 60 days and each refresh returns a new one, which is kept here.
+ * `seedHash` says which env token this one descends from, so pasting a new
+ * env token starts over from it.
+ */
+export const instagramToken = pgTable(
+  "instagram_token",
+  {
+    id: integer("id").primaryKey().default(1),
+    accessToken: text("access_token").notNull(),
+    /** SHA-256 (hex) of the INSTAGRAM_ACCESS_TOKEN this token was refreshed from. */
+    seedHash: text("seed_hash").notNull(),
+    refreshedAt: timestamp("refreshed_at", { withTimezone: true }).notNull(),
+    /** When Instagram said this token expires. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [check("instagram_token_single_row", sql`${table.id} = 1`)]
+);
+
+export type InstagramToken = typeof instagramToken.$inferSelect;

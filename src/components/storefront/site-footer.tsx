@@ -4,7 +4,10 @@ import { Mail, MapPin, Phone } from "lucide-react";
 import { Crest } from "@/components/astaad";
 import { STORE_CATEGORIES } from "@/lib/catalogue";
 import { mobileHref } from "@/lib/format";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/instagram/model";
 import { getStoreSettings } from "@/lib/settings/store";
+
+import { InstagramGlyph } from "./instagram-glyph";
 
 const SUPPORT_LINKS = [
   { label: "Track Order", href: "/track-order" },
@@ -90,6 +93,16 @@ export async function SiteFooter() {
               Astaad Sports makes premium cricket equipment for players who never
               settle. Designed, built and sold by Astaad, across India.
             </p>
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${LINK} inline-flex items-center gap-2`}
+            >
+              <InstagramGlyph className="size-4 shrink-0 text-on-dark-subtle" />
+              @{INSTAGRAM_HANDLE}
+              <span className="sr-only"> on Instagram</span>
+            </a>
           </div>
           <FooterNav
             label="Shop"
