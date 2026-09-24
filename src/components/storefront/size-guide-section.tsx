@@ -5,7 +5,13 @@ import { BatSilhouette } from "./bat-silhouette";
 import { SectionHeading } from "./section-heading";
 import { SizeGuideTable } from "./size-guide-table";
 
-const HEIGHTS = ["h-[300px]", "h-[336px]", "h-[378px]", "h-[378px]"];
+// 300, 336, 378 and 378px tall, in --bat-px units so the chart can shrink them together.
+const HEIGHTS = [
+  "h-[calc(300*var(--bat-px))]",
+  "h-[calc(336*var(--bat-px))]",
+  "h-[calc(378*var(--bat-px))]",
+  "h-[calc(378*var(--bat-px))]",
+];
 
 /** "Find the right fit for your game." — the size table beside four silhouettes. */
 export function SizeGuideSection() {
@@ -27,13 +33,20 @@ export function SizeGuideSection() {
   );
 }
 
-/** The four bat sizes side by side at their relative lengths, from md up. Decorative: the table carries the sizes. */
+/**
+ * The four bat sizes side by side at their relative lengths, from md up. Decorative: the table carries the sizes.
+ *
+ * Beside the table between lg and xl the chart can be narrower than the bats, so it is a size
+ * container and --bat-px shrinks below 1px once its width can't hold the first three bats
+ * (1014px of height at 100:420, so 241.4px wide), the one-line LH label, the three gaps and a
+ * little slack (180px together). With room to spare it stays 1px and the bats keep their sizes.
+ */
 export function SizeSilhouettes({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
       className={cn(
-        "hidden h-[380px] items-end justify-around gap-6 border-b border-border-strong px-10 md:flex",
+        "@container hidden h-[380px] items-end justify-around gap-6 border-b border-border-strong px-10 [--bat-px:min(1px,calc((100cqw-180px)/241.4))] md:flex lg:px-0 xl:px-10",
         className
       )}
     >
@@ -44,7 +57,8 @@ export function SizeSilhouettes({ className }: { className?: string }) {
             longHandle={size.longHandle}
             handle={size.longHandle ? "var(--brand-yellow)" : "var(--ink)"}
           />
-          <span className="text-[13px] leading-[18px] font-bold">
+          {/* One line, or a wrapped label would lift its bat off the shared baseline. */}
+          <span className="text-[13px] leading-[18px] font-bold whitespace-nowrap">
             {index === 0 ? "Size 6" : size.code}
             {size.longHandle && <span className="ml-1 font-medium text-ink-muted">longer handle</span>}
           </span>
