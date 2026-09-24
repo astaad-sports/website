@@ -2,6 +2,9 @@
   "name": "astaad-sports",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "bun scripts/migrate.ts --if-configured && next dev",
     "build": "next build",
