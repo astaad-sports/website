@@ -112,10 +112,8 @@ export function HomeHero() {
             <span className="text-xs leading-4 font-medium tracking-[0.22em] text-on-dark-subtle uppercase">
               Featured
             </span>
-            <span className="text-lg leading-6 font-bold">Legacy One</span>
-            <span className="text-[13px] leading-[18px] text-on-dark-subtle">
-              Top 1% Grade 1+ Players English Willow
-            </span>
+            <span className="text-lg leading-6 font-bold">Scoop Master</span>
+            <span className="text-[13px] leading-[18px] text-on-dark-subtle">Handcrafted by Astaad</span>
             <span aria-hidden="true" className="mt-1.5 block h-0.5 w-12 bg-brand-yellow" />
           </div>
         </div>
