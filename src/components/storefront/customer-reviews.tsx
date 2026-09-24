@@ -1,15 +1,16 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, PenLine } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { CustomerClip, CustomerPhoto } from "@/lib/customer-photos";
+import type { CustomerClip } from "@/lib/customer-photos";
+import type { PublicReview, ReviewSummary } from "@/lib/reviews/model";
+import { cn } from "@/lib/utils";
 
+import { RatingSummary, ReviewRowCard, ROW_CARD } from "./review-card";
 import { SectionHeading } from "./section-heading";
-
-const CARD = "relative h-[360px] shrink-0 snap-start overflow-hidden rounded-xs bg-surface-dark md:h-[440px]";
 
 /**
  * The silent clip. It plays only while mostly on screen, never on its own for
@@ -45,7 +46,7 @@ function ClipCard({ clip }: { clip: CustomerClip }) {
   }
 
   return (
-    <li className={CARD} style={{ aspectRatio: `${clip.width} / ${clip.height}` }}>
+    <li className={cn(ROW_CARD, "bg-surface-dark")} style={{ aspectRatio: `${clip.width} / ${clip.height}` }}>
       <video
         ref={video}
         src={clip.src}
@@ -77,10 +78,21 @@ function ClipCard({ clip }: { clip: CustomerClip }) {
 }
 
 /**
- * "Real players. Real Astaad." — photos our players have sent in, in a row
- * that scrolls sideways; the arrows move it a screen at a time.
+ * "Real players. Real Astaad." — published reviews in a row that scrolls
+ * sideways, the latest first: photos our players have sent in (with their
+ * words and stars over them when they left some) and reviews in words alone.
+ * The arrows move it a screen at a time. The average rating shows once a
+ * review has stars; below the row, links to write one and to read them all.
  */
-export function CustomerPhotos({ photos, clip }: { photos: CustomerPhoto[]; clip: CustomerClip }) {
+export function CustomerReviews({
+  reviews,
+  summary,
+  clip,
+}: {
+  reviews: PublicReview[];
+  summary: ReviewSummary;
+  clip: CustomerClip;
+}) {
   const row = useRef<HTMLUListElement>(null);
 
   function scroll(direction: 1 | -1) {
@@ -90,22 +102,26 @@ export function CustomerPhotos({ photos, clip }: { photos: CustomerPhoto[]; clip
   }
 
   return (
-    <section id="players" aria-labelledby="players-title" className="bg-surface-sunken">
+    <section id="reviews" aria-labelledby="reviews-title" className="bg-surface-sunken">
       <div className="site-shell flex flex-col gap-8 py-16 md:py-20">
         <SectionHeading
-          id="players-title"
-          eyebrow="Customer photos"
+          id="reviews-title"
+          eyebrow="Customer reviews"
           title="Real players. Real Astaad."
           aside={
-            <div className="flex items-center gap-4">
-              <p className="hidden max-w-[260px] text-[15px] leading-[22px] text-ink-muted lg:block lg:text-right">
-                Photos our players have shared with us.
-              </p>
+            <div className="flex items-center justify-between gap-6 md:justify-end">
+              {summary.average !== null ? (
+                <RatingSummary summary={summary} />
+              ) : (
+                <p className="hidden max-w-[260px] text-[15px] leading-[22px] text-ink-muted lg:block lg:text-right">
+                  Photos and words our players have shared with us.
+                </p>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="secondary"
                   size="icon"
-                  aria-label="Previous photos"
+                  aria-label="Previous reviews"
                   onClick={() => scroll(-1)}
                   className="size-12 rounded-full border border-border bg-surface-raised hover:bg-surface"
                 >
@@ -113,7 +129,7 @@ export function CustomerPhotos({ photos, clip }: { photos: CustomerPhoto[]; clip
                 </Button>
                 <Button
                   size="icon"
-                  aria-label="Next photos"
+                  aria-label="Next reviews"
                   onClick={() => scroll(1)}
                   className="size-12 rounded-full bg-surface-dark text-on-dark hover:bg-surface-dark-raised"
                 >
@@ -125,22 +141,23 @@ export function CustomerPhotos({ photos, clip }: { photos: CustomerPhoto[]; clip
         />
         <ul
           ref={row}
-          aria-label="Photos from our players"
+          aria-label="Reviews and photos from our players"
           className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 md:-mx-8 md:scroll-px-8 md:px-8"
         >
           <ClipCard clip={clip} />
-          {photos.map((photo) => (
-            <li key={photo.src} className={CARD} style={{ aspectRatio: `${photo.width} / ${photo.height}` }}>
-              <Image
-                src={photo.src}
-                alt={photo.alt}
-                fill
-                sizes={`(min-width: 768px) ${Math.round((440 * photo.width) / photo.height)}px, ${Math.round((360 * photo.width) / photo.height)}px`}
-                className="object-cover"
-              />
-            </li>
+          {reviews.map((review) => (
+            <ReviewRowCard key={review.id} review={review} />
           ))}
         </ul>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button render={<Link href="/reviews/write" />} nativeButton={false} className="px-6">
+            <PenLine strokeWidth={1.5} aria-hidden="true" />
+            Write a review
+          </Button>
+          <Button render={<Link href="/reviews" />} nativeButton={false} variant="secondary" className="px-6">
+            Read all reviews
+          </Button>
+        </div>
       </div>
     </section>
   );

@@ -1,5 +1,7 @@
-// Photos our players have sent in, for the home page, newest first. Each alt
-// describes what the photo shows; there are no quotes or names to show.
+// Photos our players have sent in, newest first. Each alt describes what the
+// photo shows; they came without quotes or names. They now live in the reviews
+// table (migration 0011 added them), where the admin manages them; this list
+// stands in for it on a machine without a database. The clip is still here.
 import { siteImage, type SiteImage, type SiteImageKey } from "./site-images";
 
 export interface CustomerPhoto extends SiteImage {

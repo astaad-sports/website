@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BadgePercent, Boxes, ChevronRight, ExternalLink, LogOut, Settings, type LucideIcon } from "lucide-react";
+import {
+  BadgePercent,
+  Boxes,
+  ChevronRight,
+  ExternalLink,
+  LogOut,
+  MessageSquareQuote,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 
 import { matchesStockFilter } from "@/components/admin/product-row";
 import { PAGE } from "@/components/admin/styles";
 import { listOffers } from "@/db/offers";
 import { listProductsWithImages } from "@/db/products";
+import { listReviewsForAdmin } from "@/db/reviews";
 import { signOut } from "@/lib/auth/actions";
 import { requireAdmin } from "@/lib/auth/session";
 import { offerStatus } from "@/lib/offers/model";
@@ -34,17 +44,19 @@ function SectionRow({ href, icon: Icon, title, detail }: { href: string; icon: L
   );
 }
 
-/** The rest of the admin on phones: Offers, Inventory and Settings, then the admin's account. */
+/** The rest of the admin on phones: Offers, Inventory, Reviews and Settings, then the admin's account. */
 export default async function AdminMorePage() {
   const user = await requireAdmin("/admin/more");
   const name = user.name?.trim() || "Admin";
-  const [offers, products] = await Promise.all([listOffers(), listProductsWithImages()]);
+  const [offers, products, reviews] = await Promise.all([listOffers(), listProductsWithImages(), listReviewsForAdmin()]);
 
   const now = new Date();
   const offersRunning = offers.filter((offer) => offerStatus(offer, now) === "active").length;
   const offersToCome = offers.filter((offer) => offerStatus(offer, now) === "upcoming").length;
   const low = products.filter((product) => matchesStockFilter(product, "low")).length;
   const out = products.filter((product) => matchesStockFilter(product, "out")).length;
+  const newReviews = reviews.filter((review) => review.status === "new").length;
+  const published = reviews.filter((review) => review.status === "published").length;
 
   return (
     <main className={PAGE}>
@@ -73,6 +85,18 @@ export default async function AdminMorePage() {
               [out, "out of stock"],
             ],
             "Stock counts for every product"
+          )}
+        />
+        <SectionRow
+          href="/admin/reviews"
+          icon={MessageSquareQuote}
+          title="Reviews"
+          detail={counts(
+            [
+              [newReviews, "new"],
+              [published, "on the site"],
+            ],
+            "Reviews and feedback from customers"
           )}
         />
         <SectionRow href="/admin/settings" icon={Settings} title="Settings" detail="Store, shipping, payment, account" />

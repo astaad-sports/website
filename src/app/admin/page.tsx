@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgePercent, CircleAlert, CircleCheck, Layers, Plus, Truck, type LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  BadgePercent,
+  CircleAlert,
+  CircleCheck,
+  Layers,
+  MessageSquareQuote,
+  Plus,
+  Truck,
+  type LucideIcon,
+} from "lucide-react";
 
 import { HomeAttention, type StockAttention } from "@/components/admin/home-attention";
 import { offerHref } from "@/components/admin/offer-rows";
@@ -10,6 +20,7 @@ import { BUTTON_SECONDARY, PAGE, SECTION_LABEL } from "@/components/admin/styles
 import { listActiveOffers } from "@/db/offers";
 import { listOrdersForAdmin, listStaleShipments } from "@/db/orders";
 import { listProductsWithImages } from "@/db/products";
+import { countNewReviews } from "@/db/reviews";
 import type { Order } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatOrderNumber } from "@/lib/format";
@@ -131,16 +142,17 @@ function QuickActions({ className, tiles }: { className?: string; tiles?: boolea
 
 /**
  * Home: what needs the admin now (orders to ship, products running out,
- * offers about to end), then the latest orders. Not a report.
+ * reviews to check, offers about to end), then the latest orders. Not a report.
  */
 export default async function AdminHomePage() {
   await requireAdmin("/admin");
-  const [unshipped, stale, recent, products, offers] = await Promise.all([
+  const [unshipped, stale, recent, products, offers, newReviews] = await Promise.all([
     listOrdersForAdmin({ filter: "pending" }),
     listStaleShipments(STALE_SHIPMENT_DAYS),
     listOrdersForAdmin({ limit: 5 }),
     listProductsWithImages(),
     listActiveOffers(),
+    countNewReviews(),
   ]);
   const now = new Date();
   const toShip = unshipped.length;
@@ -187,6 +199,16 @@ export default async function AdminHomePage() {
     });
   }
   later.push(...orderRows(stale, (order) => `Shipped ${daysSince(order.shippedAt, now)} days ago · check it arrived`));
+  if (newReviews > 0) {
+    later.push({
+      key: "new-reviews",
+      href: "/admin/reviews?tab=new",
+      title: `${newReviews} new ${newReviews === 1 ? "review" : "reviews"}`,
+      detail: "Sent by customers · publish or hide",
+      action: "Check",
+      icon: MessageSquareQuote,
+    });
+  }
   if (unset > 0) {
     later.push({
       key: "stock-not-set",

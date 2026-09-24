@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,14 @@ function TrackedOrderResult({ order }: { order: TrackedOrder }) {
         {order.status === "cancelled" && (
           <p className="type-body mt-2 text-ink-muted">
             This order was cancelled. If you paid for it, the refund goes back to the payment method you used.
+          </p>
+        )}
+        {order.status === "delivered" && (
+          <p className="type-body mt-2">
+            How is it playing?{" "}
+            <Link href="/reviews/write" className="font-semibold underline underline-offset-4">
+              Write a review
+            </Link>
           </p>
         )}
       </div>

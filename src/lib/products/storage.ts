@@ -6,26 +6,32 @@ import path from "node:path";
 
 import { del, put } from "@vercel/blob";
 
+import { imageSize } from "@/lib/image-size";
+
 import { PRODUCT_LIMITS } from "./editor";
 
-// Product photos. With BLOB_READ_WRITE_TOKEN set they go to Vercel Blob;
-// on a machine without it (local development) they are kept in .uploads/ and
-// served by src/app/uploads/products/[file]/route.ts. On Vercel without a
-// token, uploading is refused with a message saying what to set up.
+// Uploaded photos: product photos, and review photos from customers and the
+// admin. With BLOB_READ_WRITE_TOKEN set they go to Vercel Blob; on a machine
+// without it (local development) they are kept in .uploads/ and served by
+// src/app/uploads/<folder>/[file]/route.ts. On Vercel without a token,
+// uploading is refused with a message saying what to set up.
 
 /** The formats accepted, with the extension each is stored under. */
 const IMAGE_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
 type ImageType = keyof typeof IMAGE_TYPES;
 
+/** Where a photo is kept: a folder in the Blob store (and in .uploads/). */
+export type ImageFolder = "products" | "reviews";
+
 /** The browser shrinks photos before upload, so a real one is well under this. */
 const MAX_IMAGE_BYTES = PRODUCT_LIMITS.maxPhotoBytes;
 
-const LOCAL_DIR = path.join(process.cwd(), ".uploads", "products");
-const LOCAL_URL_PREFIX = "/uploads/products/";
-/** Names the local store writes, and the only ones its route serves. */
+const localDir = (folder: ImageFolder) => path.join(process.cwd(), ".uploads", folder);
+const localUrlPrefix = (folder: ImageFolder) => `/uploads/${folder}/`;
+/** Names the local store writes, and the only ones its routes serve. */
 export const LOCAL_FILE_PATTERN = /^[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
-export type StoredImage = { url: string; pathname: string };
+export type StoredImage = { url: string; pathname: string; width: number | null; height: number | null };
 
 export type StoreImageResult =
   | { ok: true; image: StoredImage }
@@ -48,14 +54,15 @@ function sniff(bytes: Uint8Array): ImageType | null {
   return null;
 }
 
-/** Save an uploaded photo under a new random name. */
-export async function storeImage(file: unknown): Promise<StoreImageResult> {
+/** Save an uploaded photo under a new random name in `folder`. */
+export async function storeImage(file: unknown, folder: ImageFolder = "products"): Promise<StoreImageResult> {
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Choose a photo to upload." };
   if (file.size > MAX_IMAGE_BYTES) return { ok: false, error: "This photo is too large. Use one under 4 MB." };
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const type = sniff(bytes);
   if (!type) return { ok: false, error: "Use a JPG, PNG or WebP photo." };
+  const size = imageSize(bytes, type);
 
   const where = storage();
   if (!where) {
@@ -63,22 +70,23 @@ export async function storeImage(file: unknown): Promise<StoreImageResult> {
   }
 
   const name = `${randomUUID()}.${IMAGE_TYPES[type]}`;
+  const dimensions = { width: size?.width ?? null, height: size?.height ?? null };
   try {
     if (where === "blob") {
-      const blob = await put(`products/${name}`, Buffer.from(bytes), {
+      const blob = await put(`${folder}/${name}`, Buffer.from(bytes), {
         access: "public",
         contentType: type,
         // The name is already random; keep the URL stable for a year of caching.
         addRandomSuffix: false,
         cacheControlMaxAge: 60 * 60 * 24 * 365,
       });
-      return { ok: true, image: { url: blob.url, pathname: blob.pathname } };
+      return { ok: true, image: { url: blob.url, pathname: blob.pathname, ...dimensions } };
     }
-    await mkdir(LOCAL_DIR, { recursive: true });
-    await writeFile(path.join(LOCAL_DIR, name), bytes);
-    return { ok: true, image: { url: `${LOCAL_URL_PREFIX}${name}`, pathname: `products/${name}` } };
+    await mkdir(localDir(folder), { recursive: true });
+    await writeFile(path.join(localDir(folder), name), bytes);
+    return { ok: true, image: { url: `${localUrlPrefix(folder)}${name}`, pathname: `${folder}/${name}`, ...dimensions } };
   } catch (error) {
-    console.error("Storing a product photo failed", error);
+    console.error(`Storing a photo in ${folder} failed`, error);
     return { ok: false, error: "The photo could not be saved. Try again." };
   }
 }
@@ -86,27 +94,31 @@ export async function storeImage(file: unknown): Promise<StoreImageResult> {
 /**
  * Delete an uploaded photo's file. The photos that ship with the site (no
  * pathname) are left alone. A failure is logged, not raised: the photo is
- * already gone from the product.
+ * already gone from its product or review.
  */
 export async function removeStoredImage(image: { url: string; pathname: string | null }): Promise<void> {
   if (!image.pathname) return;
   try {
-    if (image.url.startsWith(LOCAL_URL_PREFIX)) {
-      const name = image.url.slice(LOCAL_URL_PREFIX.length);
-      if (LOCAL_FILE_PATTERN.test(name)) await unlink(path.join(LOCAL_DIR, name));
+    const folder = (["products", "reviews"] as const).find((entry) => image.url.startsWith(localUrlPrefix(entry)));
+    if (folder) {
+      const name = image.url.slice(localUrlPrefix(folder).length);
+      if (LOCAL_FILE_PATTERN.test(name)) await unlink(path.join(localDir(folder), name));
     } else if (process.env.BLOB_READ_WRITE_TOKEN) {
       await del(image.url);
     }
   } catch (error) {
-    console.error("Removing a product photo file failed", error);
+    console.error("Removing a photo file failed", error);
   }
 }
 
 /** A photo from the local store, for its route, or null. */
-export async function readLocalImage(name: string): Promise<{ bytes: Buffer; type: ImageType } | null> {
+export async function readLocalImage(
+  name: string,
+  folder: ImageFolder = "products"
+): Promise<{ bytes: Buffer; type: ImageType } | null> {
   if (!LOCAL_FILE_PATTERN.test(name)) return null;
   try {
-    const bytes = await readFile(path.join(LOCAL_DIR, name));
+    const bytes = await readFile(path.join(localDir(folder), name));
     const type = sniff(bytes);
     return type ? { bytes, type } : null;
   } catch {

@@ -9,6 +9,7 @@ import {
   House,
   LogOut,
   Menu,
+  MessageSquareQuote,
   Package,
   Search,
   Settings,
@@ -55,6 +56,12 @@ const INVENTORY: Section = {
   icon: Boxes,
   matches: (path) => path.startsWith("/admin/inventory"),
 };
+const REVIEWS: Section = {
+  href: "/admin/reviews",
+  label: "Reviews",
+  icon: MessageSquareQuote,
+  matches: (path) => path.startsWith("/admin/reviews"),
+};
 const SETTINGS: Section = {
   href: "/admin/settings",
   label: "Settings",
@@ -65,8 +72,9 @@ const MORE: Section = {
   href: "/admin/more",
   label: "More",
   icon: Menu,
-  // Offers, Inventory and Settings live under More on phones.
-  matches: (path) => ["/admin/more", OFFERS.href, INVENTORY.href, SETTINGS.href].some((href) => path.startsWith(href)),
+  // Offers, Inventory, Reviews and Settings live under More on phones.
+  matches: (path) =>
+    ["/admin/more", OFFERS.href, INVENTORY.href, REVIEWS.href, SETTINGS.href].some((href) => path.startsWith(href)),
 };
 
 function CountBadge({ count, className }: { count: number; className?: string }) {
@@ -84,10 +92,28 @@ function CountBadge({ count, className }: { count: number; className?: string })
   );
 }
 
+/** How many items wait in a section, with how screen readers hear it: "3 to ship", "2 new". */
+function waiting(section: Section, toShip: number, newReviews: number): { count: number; label: string } | null {
+  if (section === ORDERS) return { count: toShip, label: "to ship" };
+  if (section === REVIEWS) return { count: newReviews, label: "new" };
+  if (section === MORE) return { count: newReviews, label: newReviews === 1 ? "new review" : "new reviews" };
+  return null;
+}
+
 /** The dark sidebar on desktop: crest, search, sections, then the admin's account. */
-export function AdminSidebar({ toShip, name, email }: { toShip: number; name: string; email: string | null }) {
+export function AdminSidebar({
+  toShip,
+  newReviews,
+  name,
+  email,
+}: {
+  toShip: number;
+  newReviews: number;
+  name: string;
+  email: string | null;
+}) {
   const path = usePathname();
-  const sections = [DASHBOARD, ORDERS, PRODUCTS, OFFERS, INVENTORY, SETTINGS];
+  const sections = [DASHBOARD, ORDERS, PRODUCTS, OFFERS, INVENTORY, REVIEWS, SETTINGS];
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-58 shrink-0 flex-col bg-surface-dark text-on-dark lg:flex">
@@ -121,6 +147,7 @@ export function AdminSidebar({ toShip, name, email }: { toShip: number; name: st
         {sections.map((section) => {
           const active = section.matches(path);
           const Icon = section.icon;
+          const badge = waiting(section, toShip, newReviews);
           return (
             <Link
               key={section.href}
@@ -133,10 +160,14 @@ export function AdminSidebar({ toShip, name, email }: { toShip: number; name: st
             >
               <Icon className={cn("size-5", active && "text-brand-yellow")} strokeWidth={1.5} aria-hidden="true" />
               <span className="flex-1">{section.label}</span>
-              {section === ORDERS && (
+              {badge && (
                 <>
-                  <CountBadge count={toShip} />
-                  {toShip > 0 && <span className="sr-only">, {toShip} to ship</span>}
+                  <CountBadge count={badge.count} />
+                  {badge.count > 0 && (
+                    <span className="sr-only">
+                      , {badge.count} {badge.label}
+                    </span>
+                  )}
                 </>
               )}
             </Link>
@@ -182,18 +213,19 @@ export function AdminSidebar({ toShip, name, email }: { toShip: number; name: st
 }
 
 /**
- * Order detail pages, the product editor and the offer form end in their own
- * action bar, and Search has its own bar, so the tabs step aside there.
+ * Order detail pages, the product editor, the offer form and the review
+ * editor end in their own action bar, and Search has its own bar, so the
+ * tabs step aside there.
  */
 function hidesTabs(path: string): boolean {
   return (
-    /^\/admin\/(orders|products|offers)\/[^/]+\/?$/.test(path) ||
+    /^\/admin\/(orders|products|offers|reviews)\/[^/]+\/?$/.test(path) ||
     path.startsWith("/admin/search")
   );
 }
 
 /** The bottom navigation on phones and tablets. */
-export function AdminTabBar({ toShip }: { toShip: number }) {
+export function AdminTabBar({ toShip, newReviews }: { toShip: number; newReviews: number }) {
   const path = usePathname();
   if (hidesTabs(path)) return null;
   const sections = [{ ...DASHBOARD, label: "Home" }, ORDERS, PRODUCTS, MORE];
@@ -209,6 +241,7 @@ export function AdminTabBar({ toShip }: { toShip: number }) {
         {sections.map((section) => {
           const active = section.matches(path);
           const Icon = section.icon;
+          const badge = waiting(section, toShip, newReviews);
           return (
             <Link
               key={section.href}
@@ -221,10 +254,14 @@ export function AdminTabBar({ toShip }: { toShip: number }) {
             >
               <span className="relative">
                 <Icon className="size-[22px]" strokeWidth={1.5} aria-hidden="true" />
-                {section === ORDERS && <CountBadge count={toShip} className="absolute -top-1.5 left-3.5 min-w-4 px-1 text-[10px] leading-4" />}
+                {badge && <CountBadge count={badge.count} className="absolute -top-1.5 left-3.5 min-w-4 px-1 text-[10px] leading-4" />}
               </span>
               {section.label}
-              {section === ORDERS && toShip > 0 && <span className="sr-only">, {toShip} to ship</span>}
+              {badge && badge.count > 0 && (
+                <span className="sr-only">
+                  , {badge.count} {badge.label}
+                </span>
+              )}
             </Link>
           );
         })}

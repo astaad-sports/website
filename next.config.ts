@@ -32,11 +32,12 @@ const nextConfig: NextConfig = {
     remotePatterns: hosts.flatMap((hostname) => [
       { protocol: "https" as const, hostname, pathname: "/products/**", search: "" },
       { protocol: "https" as const, hostname, pathname: "/site/**", search: "" },
+      { protocol: "https" as const, hostname, pathname: "/reviews/**", search: "" },
     ]),
   },
   experimental: {
     serverActions: {
-      // One product photo per request; the browser shrinks it first, so 4 MB plus form overhead is plenty.
+      // One product or review photo per request; the browser shrinks it first, so 4 MB plus form overhead is plenty.
       bodySizeLimit: "5mb",
     },
   },

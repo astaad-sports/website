@@ -363,3 +363,63 @@ export const instagramToken = pgTable(
 );
 
 export type InstagramToken = typeof instagramToken.$inferSelect;
+
+/**
+ * `new` until the admin has looked at it; then `published` (on the site) or
+ * `hidden` (kept, not shown). Customers' reviews start as `new`; the admin's
+ * own start `published`.
+ */
+export const reviewStatus = pgEnum("review_status", ["new", "published", "hidden"]);
+
+export type ReviewStatus = (typeof reviewStatus.enumValues)[number];
+
+/**
+ * A customer review: a star rating and words, a photo, or both. Customers send
+ * them from /reviews/write; the admin adds ones that arrived another way
+ * (WhatsApp, Instagram). A customer can mark theirs private: then it is
+ * feedback for the store only and is never published.
+ */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    status: reviewStatus("status").notNull().default("new"),
+    /** Sent from the site by a customer, or added by the admin. */
+    source: text("source", { enum: ["customer", "admin"] }).notNull(),
+    /** Shown with the review, e.g. "Rohit S.". */
+    name: text("name"),
+    /** A team or city, shown after the name. */
+    place: text("place"),
+    /** 1 to 5 stars. */
+    rating: integer("rating"),
+    body: text("body"),
+    /** What they bought, when they said. Set to null if the product is deleted. */
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    /** An email or mobile number for replying. Only the admin sees it. */
+    contact: text("contact"),
+    /** The customer asked for it to stay with the store: it can't be published. */
+    isPrivate: boolean("is_private").notNull().default(false),
+    photoUrl: text("photo_url"),
+    /** Set for uploads, so the file goes with the review; the site's own photos have none. */
+    photoPathname: text("photo_pathname"),
+    photoWidth: integer("photo_width"),
+    photoHeight: integer("photo_height"),
+    /** What the photo shows, for screen readers. */
+    photoAlt: text("photo_alt"),
+    /** When first published. Kept while hidden, so a review published again goes back to its place. */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    /** A hash of the sender's IP address, to limit how many reviews one sender can send in a day. */
+    senderHash: text("sender_hash"),
+    ...timestamps,
+  },
+  (table) => [
+    index("reviews_status_published_at_idx").on(table.status, table.publishedAt),
+    index("reviews_sender_hash_created_at_idx").on(table.senderHash, table.createdAt),
+    check("reviews_rating_range", sql`${table.rating} between 1 and 5`),
+    check("reviews_has_content", sql`${table.body} is not null or ${table.photoUrl} is not null`),
+    check("reviews_private_unpublished", sql`not (${table.isPrivate} and ${table.status} = 'published')`),
+  ]
+);
+
+export type Review = typeof reviews.$inferSelect;
+export type NewReview = typeof reviews.$inferInsert;
