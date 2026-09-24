@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 const UPDATED = "24 September 2026";
 
 /**
- * Terms of service, including the returns policy the footer's "Returns"
- * links to (#returns). Store details, the delivery charge and the dispatch
+ * Terms of service. The full returns policy is its own page (/returns);
+ * this summarises it. Store details, the delivery charge and the dispatch
  * time come from Settings.
  */
 export default async function TermsPage() {
@@ -103,8 +103,7 @@ export default async function TermsPage() {
             </li>
             <li>
               An engraved bat is made for you alone, so it can only be returned if it arrives damaged, has a
-              defect, or is not what you ordered (see{" "}
-              <a href="#returns">returns and refunds</a>).
+              defect, or is not what you ordered (see our <Link href="/returns">returns policy</Link>).
             </li>
           </ul>
         </>
@@ -157,50 +156,26 @@ export default async function TermsPage() {
       ),
     },
     {
-      id: "cancellations",
-      title: "Cancellations",
-      body: (
-        <p>
-          You can cancel an order until we pack it. Contact us with your order number and we will refund you in
-          full. Once an order has been packed or shipped, it can no longer be cancelled, but the returns policy
-          below still applies.
-        </p>
-      ),
-    },
-    {
       id: "returns",
-      title: "Returns and refunds",
+      title: "Cancellations, returns and refunds",
       body: (
         <>
           <p>
-            You can return most items within <strong>7 days of delivery</strong> if they are unused and in their
-            original condition, with all packaging, covers, stickers and tags.
+            Our <Link href="/returns">returns policy</Link> is part of these terms. In short:
           </p>
           <ul>
+            <li>You can cancel an order until we pack it, for a full refund.</li>
             <li>
-              <strong>Damaged, defective or wrong items.</strong> Tell us within 7 days of delivery (within 48
-              hours if it was damaged in transit), with your order number and photos of the item and its
-              packaging. We will arrange the return at our cost and send a replacement or refund you in full,
-              including any delivery charge.
+              You can return most items within 7 days of delivery if they are unused and in their original
+              condition.
             </li>
             <li>
-              <strong>Change of mind.</strong> Contact us within 7 days of delivery. We will give you the return
-              address, and you send the item back at your own cost, well packed. Once it reaches us in its
-              original condition, we refund the price of the item.
+              Damaged, defective or wrong items are replaced or refunded in full, and we cover the cost of
+              sending them back.
             </li>
-            <li>
-              <strong>Not returnable,</strong> unless damaged, defective or wrong: engraved bats, and any item
-              that has been used, oiled, knocked in by you or played with. Knocking in done by us does not
-              stop a bat being returned.
-            </li>
+            <li>Engraved bats can only be returned if they are damaged, defective or wrong.</li>
+            <li>Refunds go back to the payment method you used, within 7 working days.</li>
           </ul>
-          <p>
-            Refunds go back to the payment method you used, within 7 working days of the return reaching us (or
-            of the cancellation). Your bank may take a few more working days to show the money.
-          </p>
-          <p>
-            To change a size or weight, return the item as above and place a new order.
-          </p>
         </>
       ),
     },
@@ -212,7 +187,8 @@ export default async function TermsPage() {
           A cricket bat is made from natural willow and is shaped by use. Surface cracks, marks on the face and
           edges, and changes in colour from play are normal wear, not defects. A new bat needs knocking in
           before it faces a hard ball (we do it for free if you choose it), and care while you use it. A
-          fault in how a bat was made is a defect, and is covered by the returns policy above.
+          fault in how a bat was made is a defect, and is covered by our{" "}
+          <Link href="/returns">returns policy</Link>.
         </p>
       ),
     },

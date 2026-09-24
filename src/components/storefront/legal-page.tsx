@@ -15,15 +15,18 @@ export interface LegalSection {
 }
 
 /**
- * The terms and privacy pages: title, date and introduction, a contents list
- * (beside the text on desktop, above it on phones) and numbered sections.
+ * The terms, privacy and returns pages: title, date and introduction, a
+ * contents list (beside the text on desktop, above it on phones) and
+ * numbered sections.
  */
 export function LegalPage({
+  eyebrow = "Legal",
   title,
   updated,
   intro,
   sections,
 }: {
+  eyebrow?: string;
   title: string;
   /** Shown as "Last updated 24 September 2026". */
   updated: string;
@@ -36,7 +39,7 @@ export function LegalPage({
       <main className="flex-1 bg-surface">
         <div className="site-shell grid gap-10 py-12 md:py-16 lg:grid-cols-[220px_minmax(0,720px)] lg:gap-16">
           <div className="flex flex-col gap-3 lg:col-start-2">
-            <Eyebrow bar>Legal</Eyebrow>
+            <Eyebrow bar>{eyebrow}</Eyebrow>
             <h1 className="type-heading-xl">{title}</h1>
             <p className="type-body-sm text-ink-muted">Last updated {updated}</p>
             <div className="type-body-lg mt-3 flex flex-col gap-3 text-ink">{intro}</div>
@@ -69,7 +72,7 @@ export function LegalPage({
                   <span className="tabular-nums">{index + 1}.</span>
                   {section.title}
                 </h2>
-                <div className="type-body flex flex-col gap-3 text-ink [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_strong]:font-semibold [&_ul]:flex [&_ul]:list-disc [&_ul]:flex-col [&_ul]:gap-2 [&_ul]:pl-5">
+                <div className="type-body flex flex-col gap-3 text-ink [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_ol]:flex [&_ol]:list-decimal [&_ol]:flex-col [&_ol]:gap-2 [&_ol]:pl-5 [&_strong]:font-semibold [&_ul]:flex [&_ul]:list-disc [&_ul]:flex-col [&_ul]:gap-2 [&_ul]:pl-5">
                   {section.body}
                 </div>
               </section>

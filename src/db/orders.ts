@@ -161,6 +161,21 @@ export async function getOrderForUser(userId: string, number: number): Promise<O
   return withLines;
 }
 
+/**
+ * A paid order by its number and the 10-digit mobile it ships to, for the
+ * public tracking page. Both must match, so a guessed number shows nothing.
+ */
+export async function getOrderForTracking(number: number, phone: string): Promise<OrderWithItems | undefined> {
+  const [order] = await getDb()
+    .select()
+    .from(orders)
+    .where(and(eq(orders.number, number), eq(orders.shipPhone, phone), ne(orders.status, "pending_payment")))
+    .limit(1);
+  if (!order) return undefined;
+  const [withLines] = await withItems([order]);
+  return withLines;
+}
+
 /** The address from the customer's latest order, to prefill checkout. */
 export async function getLastShippingAddress(userId: string): Promise<ShippingAddress | null> {
   const [order] = await getDb()

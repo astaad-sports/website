@@ -8,14 +8,15 @@ const HEAD = "text-left text-[11px] leading-[14px] font-semibold tracking-[0.2em
  * header row and cell padding for the dialog.
  */
 export function SizeGuideTable({ boxed, className }: { boxed?: boolean; className?: string }) {
-  const cell = boxed ? "px-3 py-3" : "py-3";
+  // Unboxed cells need a right gap too, or "Full Size" runs into "15+ years" on phones.
+  const cell = boxed ? "px-3 py-3" : "py-3 pr-3";
   return (
     <table className={cn("w-full border-collapse text-sm leading-5", className)}>
       <thead>
         <tr className={cn(HEAD, boxed && "bg-surface-sunken")}>
-          <th scope="col" className={cn("font-semibold", boxed ? "px-3 py-2.5" : "pb-2.5")}>Size</th>
-          <th scope="col" className={cn("font-semibold", boxed ? "px-3 py-2.5" : "pb-2.5")}>Age (approx.)</th>
-          <th scope="col" className={cn("font-semibold", boxed ? "px-3 py-2.5" : "pb-2.5")}>
+          <th scope="col" className={cn("font-semibold", boxed ? "px-3 py-2.5" : "pr-3 pb-2.5")}>Size</th>
+          <th scope="col" className={cn("font-semibold", boxed ? "px-3 py-2.5" : "pr-3 pb-2.5")}>Age (approx.)</th>
+          <th scope="col" className={cn("font-semibold", boxed ? "px-3 py-2.5" : "pr-3 pb-2.5")}>
             Player height{boxed ? "" : " (approx.)"}
           </th>
           {boxed && <th scope="col" className="px-3 py-2.5 font-semibold">Bat length</th>}
