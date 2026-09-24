@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { getLastShippingAddress } from "@/db/orders";
 import { requireUser } from "@/lib/auth/session";
+import { isTestAccount } from "@/lib/auth/test-account";
 import type { ShippingAddress } from "@/lib/checkout";
 import { razorpayConfigured } from "@/lib/payments/razorpay";
 import { getFreshStoreCatalogue } from "@/lib/products/catalogue";
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
 
 export default async function CheckoutPage() {
   const user = await requireUser("/checkout");
+  const test = isTestAccount(user);
   const [lastAddress, catalogue, settings] = await Promise.all([
     getLastShippingAddress(user.id),
     getFreshStoreCatalogue(),
@@ -45,7 +47,8 @@ export default async function CheckoutPage() {
             <CheckoutView
               email={user.email}
               defaults={defaults}
-              paymentsReady={razorpayConfigured()}
+              paymentsReady={razorpayConfigured({ test })}
+              testAccount={test}
               storeName={settings.storeName}
             />
           </CatalogueProvider>

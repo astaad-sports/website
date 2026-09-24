@@ -10,6 +10,7 @@ import { signOut } from "@/lib/auth/actions";
 import { listOrdersForUser, type OrderWithItems } from "@/db/orders";
 import { isAdmin } from "@/lib/auth/admin";
 import { requireUser } from "@/lib/auth/session";
+import { isTestAccount } from "@/lib/auth/test-account";
 import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ function OrdersList({ orders }: { orders: OrderWithItems[] }) {
                 <span className="type-body-sm col-span-2 truncate md:col-span-1">{itemsLine(order)}</span>
                 <span className={cn("type-body-sm font-semibold", orderStatusTone(order.status))}>
                   {ORDER_STATUS_LABEL[order.status]}
+                  {order.isTest && <span className="font-normal text-ink-muted"> · Test</span>}
                 </span>
                 <span className="font-semibold tabular-nums md:text-right">{formatPaise(order.totalPaise)}</span>
                 <ChevronRight className="hidden size-5 text-ink-muted md:block" strokeWidth={1.5} aria-hidden="true" />
@@ -99,6 +101,12 @@ export default async function AccountPage() {
             <Eyebrow bar>Your account</Eyebrow>
             <h1 className="type-heading-xl">{firstName ? `Hello, ${firstName}` : "Your account"}</h1>
             {user.email && <p className="type-body text-ink-muted">Signed in as {user.email}</p>}
+            {isTestAccount(user) && (
+              <p className="max-w-[640px] type-body">
+                <span className="font-semibold">Test account.</span> Orders you place are paid in Razorpay&apos;s
+                test mode: no money is taken, no stock is used and nothing ships.
+              </p>
+            )}
             {isAdmin(user) && (
               <Link
                 href="/admin"

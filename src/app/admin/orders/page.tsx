@@ -25,20 +25,27 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
   const filter = parseOrderFilter(params.status);
   const query = normaliseSearch(params.q);
   await requireAdmin(listHref(filter, query));
-  const [orders, counts, allCounts] = await Promise.all([
+  const [orders, counts, allCounts, testCounts] = await Promise.all([
     listOrdersForAdmin({ filter, query }),
     countOrdersByStatus(query),
     query ? countOrdersByStatus() : null,
+    countOrdersByStatus(query, { test: true }),
   ]);
 
   const countFor = (statuses: readonly string[], from = counts) =>
     statuses.reduce((sum, status) => sum + (from[status as keyof typeof from] ?? 0), 0);
-  const total = countFor(ORDER_FILTERS[0].statuses);
+  const chipCount = (entry: (typeof ORDER_FILTERS)[number]) =>
+    countFor(entry.statuses, entry.id === "test" ? testCounts : counts);
   const active = ORDER_FILTERS.find((entry) => entry.id === filter)!;
+  const testView = filter === "test";
+  const total = testView ? chipCount(active) : countFor(ORDER_FILTERS[0].statuses);
+  // The Test chip only appears while there are test orders to show.
+  const chips = ORDER_FILTERS.filter((entry) => entry.id !== "test" || testView || chipCount(entry) > 0);
 
   let empty: { title: string; detail: string } | null = null;
   if (orders.length === 0) {
     if (query) empty = { title: `No orders match “${query}”`, detail: "Search by order ID, customer, phone, product or tracking ID." };
+    else if (testView) empty = { title: "No test orders", detail: "Orders placed from a test account show up here." };
     else if ((allCounts ? countFor(ORDER_FILTERS[0].statuses, allCounts) : total) === 0)
       empty = { title: "No orders yet", detail: "New orders show up here as soon as they are paid." };
     else empty = { title: `No ${active.label.toLowerCase()} orders`, detail: "Orders show up here when their status changes." };
@@ -49,7 +56,8 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
       <header className="flex flex-col gap-1">
         <h1 className="type-heading-lg">Orders</h1>
         <p className="hidden text-[13px] leading-[18px] text-ink-muted tabular-nums lg:block">
-          {total} {total === 1 ? "order" : "orders"}
+          {total} {testView ? "test " : ""}
+          {total === 1 ? "order" : "orders"}
           {query && ` matching “${query}”`}
         </p>
       </header>
@@ -69,7 +77,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         </form>
 
         <nav aria-label="Filter by status" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
-          {ORDER_FILTERS.map((entry) => {
+          {chips.map((entry) => {
             const on = entry.id === filter;
             return (
               <Link
@@ -80,13 +88,19 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
               >
                 {entry.label}
                 <span className={cn("font-medium tabular-nums", on ? "text-on-yellow" : "text-ink-muted")}>
-                  {countFor(entry.statuses)}
+                  {chipCount(entry)}
                 </span>
               </Link>
             );
           })}
         </nav>
       </div>
+
+      {testView && (
+        <p className="text-[13px] leading-[18px] text-ink-muted">
+          Placed from test accounts. No money was taken and no stock was used, so don’t ship these.
+        </p>
+      )}
 
       {empty ? (
         <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">

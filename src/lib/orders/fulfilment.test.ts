@@ -65,6 +65,11 @@ describe("the orders list", () => {
     expect(filterStatuses("all")).not.toContain("pending_payment");
   });
 
+  test("Test holds paid test orders in every status", () => {
+    expect(parseOrderFilter("test")).toBe("test");
+    expect(filterStatuses("test")).toEqual(filterStatuses("all"));
+  });
+
   test("the filter comes from the URL, with the old to_ship name kept", () => {
     expect(parseOrderFilter("shipped")).toBe("shipped");
     expect(parseOrderFilter("to_ship")).toBe("pending");

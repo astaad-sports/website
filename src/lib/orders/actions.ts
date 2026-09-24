@@ -1,8 +1,9 @@
 "use server";
 
 import { findOfferByCode } from "@/db/offers";
-import { attachRazorpayOrder, createOrder, markOrderPaid } from "@/db/orders";
+import { attachRazorpayOrder, createOrder, isTestRazorpayOrder, markOrderPaid } from "@/db/orders";
 import { getCurrentUser } from "@/lib/auth/session";
+import { isTestAccount } from "@/lib/auth/test-account";
 import { lineProblemText, priceCart } from "@/lib/cart";
 import { paymentResponseSchema, placeOrderSchema, type AddressField } from "@/lib/checkout";
 import { formatOrderNumber } from "@/lib/format";
@@ -95,11 +96,18 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
     return { ok: false, error: "Prices changed since you opened this page. Check your order, then pay again." };
   }
 
-  if (!razorpayConfigured()) {
-    return { ok: false, error: "Online payment is not set up yet. Please try again later." };
+  // A test account's order is paid in Razorpay's test mode, so no money moves.
+  const test = isTestAccount(user);
+  if (!razorpayConfigured({ test })) {
+    return {
+      ok: false,
+      error: test
+        ? "Test payments need Razorpay test keys. Set RAZORPAY_TEST_KEY_ID and RAZORPAY_TEST_KEY_SECRET."
+        : "Online payment is not set up yet. Please try again later.",
+    };
   }
 
-  const order = await createOrder({ userId: user.id, email: user.email, address, cart });
+  const order = await createOrder({ userId: user.id, email: user.email, address, cart, test });
 
   let razorpayOrder;
   try {
@@ -107,6 +115,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
       amountPaise: order.totalPaise,
       receipt: formatOrderNumber(order.number),
       notes: { order_id: order.id, order_number: String(order.number) },
+      test,
     });
   } catch (error) {
     console.error("Razorpay order creation failed", error);
@@ -117,7 +126,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   return {
     ok: true,
     payment: {
-      keyId: razorpayKeyId(),
+      keyId: razorpayKeyId({ test }),
       razorpayOrderId: razorpayOrder.id,
       amountPaise: order.totalPaise,
       orderNumber: order.number,
@@ -146,7 +155,9 @@ export async function confirmPayment(input: unknown): Promise<ConfirmPaymentResu
     razorpay_signature: signature,
   } = parsed.data;
 
-  if (!verifyPaymentSignature({ orderId: razorpayOrderId, paymentId: razorpayPaymentId, signature })) {
+  // Checked with the keys the order was placed with: a test payment never pays for a real order.
+  const test = await isTestRazorpayOrder(razorpayOrderId);
+  if (!verifyPaymentSignature({ orderId: razorpayOrderId, paymentId: razorpayPaymentId, signature }, { test })) {
     return {
       ok: false,
       error: `We could not confirm this payment. If money left your account, contact us with payment ID ${razorpayPaymentId}.`,

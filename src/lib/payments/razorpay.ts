@@ -1,29 +1,35 @@
 import "server-only";
 
+import { razorpayKeys, type RazorpayKeys } from "./keys";
 import { isValidPaymentSignature, isValidWebhookSignature } from "./signature";
 
 const API = "https://api.razorpay.com/v1";
 
-interface RazorpayKeys {
-  keyId: string;
-  keySecret: string;
+/** `test` picks test-mode keys, for a test account's orders (see keys.ts). */
+interface Mode {
+  test?: boolean;
 }
 
-function keys(): RazorpayKeys | null {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  return keyId && keySecret ? { keyId, keySecret } : null;
+function keys(mode: Mode = {}): RazorpayKeys | null {
+  return razorpayKeys(process.env, mode);
 }
 
-/** True once RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are set. */
-export function razorpayConfigured(): boolean {
-  return keys() !== null;
+/**
+ * True once RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are set; for a test
+ * account, once there are test-mode keys.
+ */
+export function razorpayConfigured(mode: Mode = {}): boolean {
+  return keys(mode) !== null;
 }
 
-function requireKeys(): RazorpayKeys {
-  const found = keys();
-  if (!found) throw new Error("Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.");
-  return found;
+function requireKeys(mode: Mode = {}): RazorpayKeys {
+  const found = keys(mode);
+  if (found) return found;
+  throw new Error(
+    mode.test
+      ? "Razorpay has no test keys. Set RAZORPAY_TEST_KEY_ID and RAZORPAY_TEST_KEY_SECRET."
+      : "Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET."
+  );
 }
 
 export interface RazorpayStatus {
@@ -43,8 +49,8 @@ export function razorpayStatus(): RazorpayStatus {
 }
 
 /** The public key id, which Razorpay Checkout needs in the browser. */
-export function razorpayKeyId(): string {
-  return requireKeys().keyId;
+export function razorpayKeyId(mode: Mode = {}): string {
+  return requireKeys(mode).keyId;
 }
 
 export interface RazorpayOrder {
@@ -63,8 +69,9 @@ export async function createRazorpayOrder(input: {
   amountPaise: number;
   receipt: string;
   notes?: Record<string, string>;
+  test?: boolean;
 }): Promise<RazorpayOrder> {
-  const { keyId, keySecret } = requireKeys();
+  const { keyId, keySecret } = requireKeys({ test: input.test });
   const response = await fetch(`${API}/orders`, {
     method: "POST",
     headers: {
@@ -88,13 +95,15 @@ export async function createRazorpayOrder(input: {
   return (await response.json()) as RazorpayOrder;
 }
 
-/** Check the checkout handler's signature with the key secret. */
-export function verifyPaymentSignature(payment: {
-  orderId: string;
-  paymentId: string;
-  signature: string;
-}): boolean {
-  return isValidPaymentSignature(payment, requireKeys().keySecret);
+/**
+ * Check the checkout handler's signature with the key secret of the mode the
+ * order was placed in, so a test payment can never pay for a real order.
+ */
+export function verifyPaymentSignature(
+  payment: { orderId: string; paymentId: string; signature: string },
+  mode: Mode = {}
+): boolean {
+  return isValidPaymentSignature(payment, requireKeys(mode).keySecret);
 }
 
 /** Check a webhook's signature. False when RAZORPAY_WEBHOOK_SECRET is not set. */

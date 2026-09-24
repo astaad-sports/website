@@ -70,11 +70,14 @@ export function CheckoutView({
   email,
   defaults,
   paymentsReady,
+  testAccount,
   storeName,
 }: {
   email: string | null;
   defaults: Partial<ShippingAddress>;
   paymentsReady: boolean;
+  /** A test account: Razorpay opens in test mode and the order is a test order. */
+  testAccount: boolean;
   /** Settings' store name, shown in the Razorpay window. */
   storeName: string;
 }) {
@@ -327,9 +330,18 @@ export function CheckoutView({
                 />
               </div>
             )}
+            {testAccount && (
+              <p className="rounded-sm bg-surface-sunken p-3 type-body-sm">
+                <span className="font-semibold">Test account.</span> This is a test order: Razorpay opens in test
+                mode, so pay with the UPI ID <span className="font-semibold">success@razorpay</span>. No money is
+                taken, no stock is used and nothing ships.
+              </p>
+            )}
             {!paymentsReady && (
               <p className="type-body-sm text-ink-muted">
-                Online payment is not set up yet, so orders cannot be placed.
+                {testAccount
+                  ? "Test payments need Razorpay test keys, so test orders cannot be placed yet."
+                  : "Online payment is not set up yet, so orders cannot be placed."}
               </p>
             )}
             {priced.unavailable > 0 && (

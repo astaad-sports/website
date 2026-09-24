@@ -69,6 +69,12 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
                 {ORDER_STATUS_LABEL[order.status]}
               </span>
             </p>
+            {order.isTest && (
+              <p className="max-w-[640px] type-body">
+                <span className="font-semibold">Test order.</span> It was paid in Razorpay&apos;s test mode, so no
+                money was taken and nothing will ship.
+              </p>
+            )}
             {order.status === "pending_payment" && (
               <p className="max-w-[640px] type-body text-ink-muted">
                 We have not received the payment for this order. If money left your account, it
@@ -160,7 +166,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
                 </dl>
                 {order.razorpayPaymentId && order.paidAt && (
                   <p className="type-body-sm text-ink-muted">
-                    Paid on {formatOrderDate(order.paidAt)} · Razorpay payment {order.razorpayPaymentId}
+                    Paid on {formatOrderDate(order.paidAt)} · Razorpay {order.isTest && "test "}payment{" "}
+                    {order.razorpayPaymentId}
                   </p>
                 )}
               </section>

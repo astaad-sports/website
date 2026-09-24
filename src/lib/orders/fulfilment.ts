@@ -97,14 +97,18 @@ export function timestampPlan(target: FulfilmentStatus): { stamp: StepTimestamp[
 // ---------------------------------------------------------------------------
 // The orders list
 
-export type OrderFilter = "all" | "pending" | "shipped" | "delivered";
+export type OrderFilter = "all" | "pending" | "shipped" | "delivered" | "test";
+
+const PAID_STATUSES: OrderStatus[] = ["paid", "confirmed", "packed", "shipped", "delivered", "cancelled"];
 
 export const ORDER_FILTERS: { id: OrderFilter; label: string; statuses: OrderStatus[] }[] = [
-  { id: "all", label: "All", statuses: ["paid", "confirmed", "packed", "shipped", "delivered", "cancelled"] },
+  { id: "all", label: "All", statuses: PAID_STATUSES },
   // Pending means "not shipped yet", so it covers Confirmed and Packed too.
   { id: "pending", label: "Pending", statuses: ["paid", "confirmed", "packed"] },
   { id: "shipped", label: "Shipped", statuses: ["shipped"] },
   { id: "delivered", label: "Delivered", statuses: ["delivered"] },
+  // Test accounts' orders, in every status. The other filters hold real orders only.
+  { id: "test", label: "Test", statuses: PAID_STATUSES },
 ];
 
 /** The filter in the URL; "to_ship" is the old name for Pending. Anything else is All. */

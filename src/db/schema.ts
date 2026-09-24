@@ -113,6 +113,12 @@ export const orders = pgTable(
     couponCode: text("coupon_code"),
     /** How much offers and coupons took off the regular prices, in paise (already out of the line totals). */
     discountPaise: integer("discount_paise").notNull().default(0),
+    /**
+     * Placed from a test account (src/lib/auth/test-account.ts): paid in
+     * Razorpay's test mode, never taken from stock, and listed apart from
+     * real orders in the admin.
+     */
+    isTest: boolean("is_test").notNull().default(false),
     ...timestamps,
   },
   (table) => [

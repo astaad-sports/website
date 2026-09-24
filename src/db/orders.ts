@@ -27,20 +27,23 @@ export interface OrderWithItems extends Order {
 /**
  * Record a priced cart as a `pending_payment` order with its items, in one
  * transaction. Also keeps the checkout phone on the account if it has none.
+ * `test` marks a test account's order.
  */
 export async function createOrder(input: {
   userId: string;
   email: string | null;
   address: ShippingAddress;
   cart: PricedCart;
+  test: boolean;
 }): Promise<Order> {
-  const { userId, email, address, cart } = input;
+  const { userId, email, address, cart, test } = input;
   return getDb().transaction(async (tx) => {
     const [order] = await tx
       .insert(orders)
       .values({
         userId,
         email,
+        isTest: test,
         subtotalPaise: cart.subtotalPaise,
         shippingPaise: cart.shippingPaise,
         totalPaise: cart.totalPaise,
@@ -83,12 +86,22 @@ export async function attachRazorpayOrder(orderId: string, razorpayOrderId: stri
   await getDb().update(orders).set({ razorpayOrderId }).where(eq(orders.id, orderId));
 }
 
+/** Whether the order behind a Razorpay order is a test order, paid with test-mode keys. False if there is none. */
+export async function isTestRazorpayOrder(razorpayOrderId: string): Promise<boolean> {
+  const [row] = await getDb()
+    .select({ isTest: orders.isTest })
+    .from(orders)
+    .where(eq(orders.razorpayOrderId, razorpayOrderId))
+    .limit(1);
+  return row?.isTest ?? false;
+}
+
 /**
  * Mark the order behind a Razorpay order as paid. Safe to call twice: the
  * checkout handler and the webhook may both report the same payment, and
  * only the first moves it out of `pending_payment`. Returns the order (or
  * undefined if no order matches) and whether any stock count changed, so the
- * caller can refresh the storefront.
+ * caller can refresh the storefront. A test order leaves stock alone.
  */
 export async function markOrderPaid(input: {
   razorpayOrderId: string;
@@ -104,6 +117,7 @@ export async function markOrderPaid(input: {
       .where(and(eq(orders.razorpayOrderId, input.razorpayOrderId), eq(orders.status, "pending_payment")))
       .returning();
     if (!updated) return undefined;
+    if (updated.isTest) return { order: updated, stockChanged: false };
     const { changed, shortfall } = await takeOrderFromStock(tx, updated.id);
     if (shortfall.length === 0) return { order: updated, stockChanged: changed };
     // Sold more than there were: keep a note on the order for the admin.
@@ -239,7 +253,8 @@ function searchCondition(query: string): SQL {
 
 /**
  * Paid orders for the admin list. Pending is oldest first, so orders go out
- * in turn; everything else is newest first.
+ * in turn; everything else is newest first. Test orders show only under the
+ * Test filter, never among real ones.
  */
 export async function listOrdersForAdmin(
   options: { filter?: OrderFilter; query?: string | null; limit?: number } = {}
@@ -248,27 +263,45 @@ export async function listOrdersForAdmin(
   const rows = await getDb()
     .select()
     .from(orders)
-    .where(and(inArray(orders.status, filterStatuses(filter)), query ? searchCondition(query) : undefined))
+    .where(
+      and(
+        inArray(orders.status, filterStatuses(filter)),
+        eq(orders.isTest, filter === "test"),
+        query ? searchCondition(query) : undefined
+      )
+    )
     .orderBy(filter === "pending" ? asc(orders.paidAt) : desc(orders.createdAt))
     .limit(limit);
   return withItems(rows);
 }
 
-/** Orders shipped more than `days` ago and still not marked delivered, oldest first. */
+/** Real orders shipped more than `days` ago and still not marked delivered, oldest first. */
 export async function listStaleShipments(days = 7): Promise<Order[]> {
   return getDb()
     .select()
     .from(orders)
-    .where(and(eq(orders.status, "shipped"), lt(orders.shippedAt, sql`now() - make_interval(days => ${days})`)))
+    .where(
+      and(
+        eq(orders.status, "shipped"),
+        eq(orders.isTest, false),
+        lt(orders.shippedAt, sql`now() - make_interval(days => ${days})`)
+      )
+    )
     .orderBy(asc(orders.shippedAt));
 }
 
-/** How many orders are in each status (matching a search, if given), for the filters and the Home summary. */
-export async function countOrdersByStatus(query?: string | null): Promise<Partial<Record<OrderStatus, number>>> {
+/**
+ * How many real orders (or with `test`, test orders) are in each status,
+ * matching a search if given, for the filters and the Home summary.
+ */
+export async function countOrdersByStatus(
+  query?: string | null,
+  options: { test?: boolean } = {}
+): Promise<Partial<Record<OrderStatus, number>>> {
   const rows = await getDb()
     .select({ status: orders.status, count: count() })
     .from(orders)
-    .where(query ? searchCondition(query) : undefined)
+    .where(and(eq(orders.isTest, options.test ?? false), query ? searchCondition(query) : undefined))
     .groupBy(orders.status);
   return Object.fromEntries(rows.map((row) => [row.status, row.count]));
 }

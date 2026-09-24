@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, CircleAlert, Mail, Phone } from "lucide-react";
+import { ChevronLeft, CircleAlert, FlaskConical, Mail, Phone } from "lucide-react";
 
 import { NextStepButton, StatusStepper } from "@/components/admin/fulfilment-controls";
 import { StatusLabel } from "@/components/admin/status-label";
@@ -112,7 +112,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
     <main className={cn(PAGE, "gap-4 pt-1 lg:gap-6 lg:pt-6")}>
       <div className="flex flex-col gap-1">
         <Link
-          href="/admin/orders"
+          href={order.isTest ? "/admin/orders?status=test" : "/admin/orders"}
           className="-ml-1.5 inline-flex min-h-11 items-center gap-1 self-start rounded-sm pr-2 text-sm leading-5 font-semibold"
         >
           <ChevronLeft className="size-5" strokeWidth={1.5} aria-hidden="true" />
@@ -123,6 +123,15 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
           <p className="text-[13px] leading-[18px] text-ink-muted">Placed {placedAt.format(order.createdAt)}</p>
           <StatusLabel status={status} />
         </div>
+        {order.isTest && (
+          <p className="mt-2 flex items-start gap-2 text-[15px] leading-[22px] font-semibold">
+            <FlaskConical className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+            <span>
+              Test order from a test account. No money was taken and no stock was used, so don’t ship it. You can
+              still move it through the steps to see what the customer sees.
+            </span>
+          </p>
+        )}
         {order.stockShortfall && order.stockShortfall.length > 0 && (
           <p className="mt-2 flex items-start gap-2 text-[15px] leading-[22px] font-semibold text-danger">
             <CircleAlert className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
