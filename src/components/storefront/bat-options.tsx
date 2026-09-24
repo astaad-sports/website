@@ -131,7 +131,7 @@ export function ChoiceButtons({
             className={cn(
               "cursor-pointer rounded-xs text-left text-foreground transition-shadow",
               variant === "button"
-                ? "h-11 px-5 text-sm leading-5 font-medium data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
+                ? "inline-flex h-11 items-center justify-center px-5 text-sm leading-5 font-medium data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
                 : "flex min-w-0 flex-1 basis-[180px] items-center gap-3 border-2 px-4 py-3.5 md:h-[88px] data-checked:border-brand-yellow data-checked:bg-brand-yellow not-data-checked:border-surface-raised not-data-checked:bg-surface-raised not-data-checked:shadow-card not-data-checked:hover:shadow-float"
             )}
           >
@@ -175,7 +175,7 @@ export function YesNo({
           key={choice}
           value={choice}
           className={cn(
-            "cursor-pointer text-foreground",
+            "inline-flex cursor-pointer items-center justify-center text-foreground",
             variant === "pill"
               ? "h-11 rounded-full border-2 px-7 text-[13px] leading-5 font-bold tracking-[0.1em] uppercase data-checked:border-surface-dark data-checked:bg-surface-dark data-checked:text-brand-yellow not-data-checked:border-border not-data-checked:bg-surface-raised"
               : "h-11 rounded-xs px-6 text-sm leading-5 font-medium data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"

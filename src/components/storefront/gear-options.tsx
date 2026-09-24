@@ -35,7 +35,7 @@ function OptionPills({
           <RadioPrimitive.Root
             key={option}
             value={option}
-            className="h-11 cursor-pointer rounded-xs border px-5 text-sm leading-5 font-semibold text-foreground transition-colors data-checked:border-surface-dark data-checked:bg-surface-dark data-checked:text-on-dark not-data-checked:border-border not-data-checked:bg-surface-raised not-data-checked:hover:border-border-strong"
+            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xs border px-5 text-sm leading-5 font-semibold text-foreground transition-colors data-checked:border-surface-dark data-checked:bg-surface-dark data-checked:text-on-dark not-data-checked:border-border not-data-checked:bg-surface-raised not-data-checked:hover:border-border-strong"
           >
             {option}
           </RadioPrimitive.Root>

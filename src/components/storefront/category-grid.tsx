@@ -54,7 +54,7 @@ export function CategoryGrid({
             <RadioPrimitive.Root
               key={option.key}
               value={option.key}
-              className="h-11 cursor-pointer rounded-full border-2 px-5 text-[13px] leading-5 font-bold tracking-[0.06em] text-foreground uppercase transition-colors data-checked:border-surface-dark data-checked:bg-surface-dark data-checked:text-brand-yellow not-data-checked:border-border not-data-checked:bg-surface-raised not-data-checked:hover:border-border-strong"
+              className="inline-flex h-11 cursor-pointer items-center justify-center rounded-full border-2 px-5 text-[13px] leading-5 font-bold tracking-[0.06em] text-foreground uppercase transition-colors data-checked:border-surface-dark data-checked:bg-surface-dark data-checked:text-brand-yellow not-data-checked:border-border not-data-checked:bg-surface-raised not-data-checked:hover:border-border-strong"
             >
               {option.label}
             </RadioPrimitive.Root>
