@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
 import { Button } from "@/components/ui/button";
 import { RadioGroup } from "@/components/ui/radio-group";
-import type { StoreGear } from "@/lib/products/model";
+import type { StoreBat, StoreGear } from "@/lib/products/model";
 
+import { BatPlate } from "./bat-plate";
 import { GearPlate } from "./gear-plate";
 
 type SortKey = "featured" | "price-asc" | "price-desc";
@@ -18,19 +19,41 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "price-desc", label: "Price: high to low" },
 ];
 
-function sortProducts(products: StoreGear[], sort: SortKey) {
+function sortProducts<T extends { price: number }>(products: T[], sort: SortKey): T[] {
   if (sort === "featured") return products;
   const direction = sort === "price-asc" ? 1 : -1;
   return [...products].sort((a, b) => (a.price - b.price) * direction);
 }
 
-/** The category's products with a count and sort pills; a designed empty state when there are none. */
-export function CategoryGrid({
+/** The designed empty state: nothing here yet, and where to look instead. */
+function EmptyShelf({ title, action }: { title: string; action: { label: string; href: string } }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xs border border-border bg-surface-sunken px-6 py-16 text-center">
+      <p className="type-heading-md">{title}</p>
+      <p className="type-body-sm max-w-sm text-ink-muted">
+        New models are on the way. Browse the rest of the range in the meantime.
+      </p>
+      <Button
+        variant="secondary"
+        render={<Link href={action.href} />}
+        nativeButton={false}
+        className="mt-2 rounded-xs"
+      >
+        {action.label}
+      </Button>
+    </div>
+  );
+}
+
+/** Products with a count and sort pills, each drawn by `plate`; `empty` stands in when there are none. */
+function SortableGrid<T extends { slug: string; price: number }>({
   products,
-  categoryName,
+  plate,
+  empty,
 }: {
-  products: StoreGear[];
-  categoryName: string;
+  products: T[];
+  plate: (product: T) => ReactNode;
+  empty?: ReactNode;
 }) {
   const [sort, setSort] = useState<SortKey>("featured");
   const sorted = sortProducts(products, sort);
@@ -65,25 +88,49 @@ export function CategoryGrid({
       {sorted.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((product) => (
-            <GearPlate key={product.slug} product={product} />
+            <Fragment key={product.slug}>{plate(product)}</Fragment>
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-xs border border-border bg-surface-sunken px-6 py-16 text-center">
-          <p className="type-heading-md">No {categoryName.toLowerCase()} yet.</p>
-          <p className="type-body-sm max-w-sm text-ink-muted">
-            New models are on the way. Browse the rest of the range in the meantime.
-          </p>
-          <Button
-            variant="secondary"
-            render={<Link href="/#categories" />}
-            nativeButton={false}
-            className="mt-2 rounded-xs"
-          >
-            Shop all gear
-          </Button>
-        </div>
+        empty
       )}
     </section>
   );
+}
+
+/** The category's products with a count and sort pills; a designed empty state when there are none. */
+export function CategoryGrid({
+  products,
+  categoryName,
+}: {
+  products: StoreGear[];
+  categoryName: string;
+}) {
+  return (
+    <SortableGrid
+      products={products}
+      plate={(product) => <GearPlate product={product} />}
+      empty={
+        <EmptyShelf
+          title={`No ${categoryName.toLowerCase()} yet.`}
+          action={{ label: "Shop all gear", href: "/#categories" }}
+        />
+      }
+    />
+  );
+}
+
+/**
+ * A bat range's bats on their plates, with the same count and sort pills.
+ * With none yet, just the empty state: an empty shelf needs no count or sorting.
+ */
+export function BatGrid({ bats, noun }: { bats: StoreBat[]; noun: string }) {
+  if (!bats.length) {
+    return (
+      <div className="site-shell py-16 md:pt-20">
+        <EmptyShelf title={`No ${noun} yet.`} action={{ label: "Shop all bats", href: "/#collection" }} />
+      </div>
+    );
+  }
+  return <SortableGrid products={bats} plate={(bat) => <BatPlate bat={bat} />} />;
 }

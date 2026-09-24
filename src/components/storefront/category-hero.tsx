@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { type StoreCategory } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 import { deliveryPromise } from "./delivery";
 import { Eyebrow } from "./eyebrow";
@@ -10,19 +11,25 @@ import { Eyebrow } from "./eyebrow";
 /**
  * The black category stage: breadcrumb, display title, tagline, the count,
  * starting price and delivery (as Settings have it), and the cut-out under
- * the floodlight.
+ * the floodlight. `from` is the lowest price on sale, offers included, or
+ * null while the category has nothing on sale; the stats then say it is
+ * coming soon.
  */
 export function CategoryHero({
   category,
   count,
   from,
   deliveryFeePaise,
+  parent = { label: "Shop", href: "/#categories" },
+  imageClassName,
 }: {
-  category: StoreCategory;
+  category: Pick<StoreCategory, "name" | "tagline" | "image" | "tile">;
   count: number;
-  /** The lowest price, offers included. */
-  from: number;
+  from: number | null;
   deliveryFeePaise: number;
+  /** The breadcrumb step between Home and this category. */
+  parent?: { label: string; href: string };
+  imageClassName?: string;
 }) {
   const width = category.tile.width * 2;
   const height = category.tile.height * 2;
@@ -47,8 +54,8 @@ export function CategoryHero({
               Home
             </Link>
             <span aria-hidden="true">·</span>
-            <Link href="/#categories" className="transition-colors hover:text-brand-yellow">
-              Shop
+            <Link href={parent.href} className="transition-colors hover:text-brand-yellow">
+              {parent.label}
             </Link>
             <span aria-hidden="true">·</span>
             <span className="text-on-dark">{category.name}</span>
@@ -63,10 +70,16 @@ export function CategoryHero({
             {category.tagline}
           </p>
           <ul className="flex flex-col gap-2 text-xs leading-4 font-semibold tracking-[0.22em] text-on-dark-muted uppercase sm:flex-row sm:flex-wrap sm:items-center sm:gap-0">
-            <li className="sm:pr-7">
-              {count} {count === 1 ? "model" : "models"}
-            </li>
-            <li className="sm:border-l sm:border-border-on-dark sm:px-7">from {formatPrice(from)}</li>
+            {from === null ? (
+              <li className="sm:pr-7">Coming soon</li>
+            ) : (
+              <>
+                <li className="sm:pr-7">
+                  {count} {count === 1 ? "model" : "models"}
+                </li>
+                <li className="sm:border-l sm:border-border-on-dark sm:px-7">from {formatPrice(from)}</li>
+              </>
+            )}
             <li className="sm:border-l sm:border-border-on-dark sm:px-7">{deliveryPromise(deliveryFeePaise)}</li>
           </ul>
         </div>
@@ -80,7 +93,7 @@ export function CategoryHero({
             fill
             priority
             sizes={`${width}px`}
-            className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.75)]"
+            className={cn("object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.75)]", imageClassName)}
           />
         </div>
       </div>

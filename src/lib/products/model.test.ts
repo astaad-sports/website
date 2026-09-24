@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
 
 import {
+  batCounts,
   batsInSubcategory,
   builderBat,
   countInWords,
@@ -59,6 +60,18 @@ describe("finding products", () => {
     expect(slugs(gearInCategory(hidden, "helmets"))).toEqual(["club-cricket-helmet", "elite-cricket-helmet"]);
     expect(batsInSubcategory(seeded, "english-willow")).toHaveLength(6);
     expect(batsInSubcategory(seeded, "kashmir-willow")).toHaveLength(0);
+  });
+
+  test("bats are counted by subcategory, leaving out hidden ones", () => {
+    expect(batCounts(seeded)).toEqual({ "english-willow": 6, "kashmir-willow": 0, "tennis-bats": 0 });
+    const ranges = catalogueWith({
+      "run-machine": { subcategory: "kashmir-willow" },
+      "combat-pro": { subcategory: "kashmir-willow", availability: "hidden" },
+      "black-edition": { subcategory: "tennis-bats", availability: "out_of_stock" },
+    });
+    expect(slugs(batsInSubcategory(ranges, "kashmir-willow"))).toEqual(["run-machine"]);
+    expect(slugs(batsInSubcategory(ranges, "tennis-bats"))).toEqual(["black-edition"]);
+    expect(batCounts(ranges)).toEqual({ "english-willow": 3, "kashmir-willow": 1, "tennis-bats": 1 });
   });
 });
 
