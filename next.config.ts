@@ -27,9 +27,11 @@ const hosts = [...new Set([blobHost(), ...siteImageHosts].filter((host): host is
 
 const nextConfig: NextConfig = {
   images: {
+    // `search: ""` refuses query strings, so no one can make the optimizer
+    // transform the same photo again and again under different URLs.
     remotePatterns: hosts.flatMap((hostname) => [
-      { protocol: "https" as const, hostname, pathname: "/products/**" },
-      { protocol: "https" as const, hostname, pathname: "/site/**" },
+      { protocol: "https" as const, hostname, pathname: "/products/**", search: "" },
+      { protocol: "https" as const, hostname, pathname: "/site/**", search: "" },
     ]),
   },
   experimental: {
