@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Package, Plus, Search, X } from "lucide-react";
 
+import { ProductDeletedToast } from "@/components/admin/product-delete";
 import { ProductList } from "@/components/admin/product-list";
 import {
   byStoreOrder,
@@ -244,6 +245,8 @@ export default async function AdminProductsPage({ searchParams }: PageProps<"/ad
       <div className="flex flex-col gap-4">
         <Filters view={view} categoryChips={categoryChips} batCounts={batCounts} />
         <ProductList items={rows} label="Products" empty={empty && <EmptyState {...empty} />} />
+        {/* The editor sends the admin back here with ?done=deleted after deleting a product. */}
+        <ProductDeletedToast show={params.done === "deleted"} href={listHref(view)} />
       </div>
     </main>
   );

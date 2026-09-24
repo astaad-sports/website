@@ -9,6 +9,7 @@ import { changeAvailability, duplicate, type ProductActionState } from "@/lib/pr
 import { stockStatus } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { DeleteProductSheet } from "./product-delete";
 import { ProductActionsSheet, ProductMenu, type ProductMenuHandlers } from "./product-menu";
 import {
   editorHref,
@@ -43,8 +44,20 @@ interface SheetState {
   trigger: HTMLElement | null;
   /** A saved count may remove the Restock button, so focus goes to the row menu instead. */
   saved: boolean;
+  /** Closed to open "Delete {name}?", which takes focus: this sheet must not take it back. */
+  handedOff?: boolean;
   /** A new sheet starts fresh, even while the last one is still closing. */
   session: number;
+}
+
+/** "Delete {name}?": which product, where focus goes back to, and a fresh form each time. */
+interface DeleteState {
+  item: ProductListItem;
+  open: boolean;
+  trigger: HTMLElement | null;
+  session: number;
+  /** Deleted: its row, and the menu that opened the sheet, are about to go. */
+  done?: boolean;
 }
 
 /** The desktop panel under a row. */
@@ -263,12 +276,14 @@ function ProductTable({
 /**
  * The admin's product rows: a list on phones, a table on desktop. Every row
  * opens the editor and has a menu (a sheet on phones, a dropdown on desktop)
- * to update stock, change availability or duplicate. Rows that ran out show
- * Restock right there. Availability changes show at once; a failed one puts
- * the row back with the reason under it. One toast confirms every change,
- * and stays mounted when a change empties a filtered list (`empty` shows then).
+ * to update stock, change availability, duplicate or delete. Rows that ran
+ * out show Restock right there. Availability changes show at once; a failed
+ * one puts the row back with the reason under it. A deleted row goes as soon
+ * as the admin confirms. One toast confirms every change, and stays mounted
+ * when a change empties a filtered list (`empty` shows then).
  */
 export function ProductList({ items, label, empty }: { items: ProductListItem[]; label: string; empty: ReactNode }) {
+  const [deleted, setDeleted] = useState<{ id: string; toast: { message: string; at: number } } | null>(null);
   const [shown, showAvailability] = useOptimistic(
     items,
     (current, change: { id: string; availability: ProductAvailability }) =>
@@ -286,18 +301,38 @@ export function ProductList({ items, label, empty }: { items: ProductListItem[];
   const [stockSaved, setStockSaved] = useState<StockSaved | null>(null);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [panel, setPanel] = useState<PanelState | null>(null);
+  const [deleting, setDeleting] = useState<DeleteState | null>(null);
 
   // The newest result wins the toast (a failed one shows none, so an older
-  // success never comes back), and a later stock save clears an old row error.
+  // success never comes back), and a later stock save or delete clears an old row error.
   const stockAt = stockSaved?.at ?? 0;
   const rowAt = rowState.at ?? 0;
-  const toast = rowAt > stockAt ? (rowState.saved ? { message: rowState.saved, at: rowAt } : null) : stockSaved;
-  const errorFor = (id: string) => (rowState.error && rowState.productId === id && rowAt > stockAt ? rowState.error : undefined);
+  const deletedAt = deleted?.toast.at ?? 0;
+  const latest = Math.max(stockAt, rowAt, deletedAt);
+  const toast =
+    latest === 0
+      ? null
+      : latest === deletedAt
+        ? deleted!.toast
+        : latest === rowAt
+          ? rowState.saved
+            ? { message: rowState.saved, at: rowAt }
+            : null
+          : stockSaved;
+  const errorFor = (id: string) =>
+    rowState.error && rowState.productId === id && rowAt > Math.max(stockAt, deletedAt) ? rowState.error : undefined;
+
+  // Opened from a row menu; focus goes back to that menu's button if the product stays.
+  function openDelete(item: ProductListItem, place: "list" | "table") {
+    const trigger = document.getElementById(menuTriggerId(item.id, place));
+    setDeleting((current) => ({ item, open: true, trigger, session: (current?.session ?? 0) + 1 }));
+  }
 
   function handlersFor(item: ProductListItem): ProductMenuHandlers {
     return {
       onAvailability: (availability) => startTransition(() => runRowAction(rowForm(item, { availability }))),
       onDuplicate: () => startTransition(() => runRowAction(rowForm(item, { intent: "duplicate" }))),
+      onDelete: () => openDelete(item, "table"),
     };
   }
 
@@ -305,12 +340,13 @@ export function ProductList({ items, label, empty }: { items: ProductListItem[];
     setSheet((current) => ({ item, view, open: true, trigger, saved: false, session: (current?.session ?? 0) + 1 }));
   }
 
-  function closeSheet(saved = false) {
-    setSheet((current) => current && { ...current, open: false, saved });
+  function closeSheet(saved = false, handedOff = false) {
+    setSheet((current) => current && { ...current, open: false, saved, handedOff });
   }
 
   function sheetFinalFocus(): HTMLElement | boolean {
     if (!sheet) return true;
+    if (sheet.handedOff) return false;
     if (!sheet.saved && sheet.trigger?.isConnected) return sheet.trigger;
     return document.getElementById(menuTriggerId(sheet.item.id, "list")) ?? true;
   }
@@ -340,15 +376,17 @@ export function ProductList({ items, label, empty }: { items: ProductListItem[];
   }
 
   const sheetItem = sheet ? (shown.find((item) => item.id === sheet.item.id) ?? sheet.item) : null;
+  // A deleted row goes at once, before the refreshed list arrives.
+  const rows = deleted ? shown.filter((item) => item.id !== deleted.id) : shown;
 
   return (
     <>
-      {shown.length === 0 ? (
+      {rows.length === 0 ? (
         empty
       ) : (
         <>
           <ul aria-label={label} className="flex flex-col border-t border-border lg:hidden">
-            {shown.map((item) => (
+            {rows.map((item) => (
               <ProductListRow
                 key={item.id}
                 item={item}
@@ -360,7 +398,7 @@ export function ProductList({ items, label, empty }: { items: ProductListItem[];
           </ul>
 
           <ProductTable
-            items={shown}
+            items={rows}
             label={label}
             errorFor={errorFor}
             panel={panel}
@@ -393,6 +431,28 @@ export function ProductList({ items, label, empty }: { items: ProductListItem[];
           closeSheet();
           handlersFor(sheetItem).onDuplicate();
         }}
+        onDelete={() => {
+          if (!sheetItem) return;
+          closeSheet(false, true);
+          openDelete(sheetItem, "list");
+        }}
+      />
+
+      <DeleteProductSheet
+        product={deleting?.item ?? null}
+        open={Boolean(deleting?.open)}
+        session={deleting?.session ?? 0}
+        onClose={() => setDeleting((current) => current && { ...current, open: false })}
+        onDeleted={(done) => {
+          if (deleting) setDeleted({ id: deleting.item.id, toast: done });
+          setDeleting((current) => current && { ...current, open: false, done: true });
+        }}
+        // Back to the row menu when cancelled; after a delete, to Add product at the top.
+        finalFocus={() =>
+          !deleting?.done && deleting?.trigger?.isConnected
+            ? deleting.trigger
+            : (document.querySelector<HTMLElement>('main a[href="/admin/products/new"]') ?? true)
+        }
       />
 
       <Toast message={toast?.message} at={toast?.at} />

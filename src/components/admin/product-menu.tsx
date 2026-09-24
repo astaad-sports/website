@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
-import { CircleAlert, Copy, Ellipsis, Eye, EyeOff, Layers, Pencil, type LucideIcon } from "lucide-react";
+import { CircleAlert, Copy, Ellipsis, Eye, EyeOff, Layers, Pencil, Trash2, type LucideIcon } from "lucide-react";
 
 import type { ProductAvailability } from "@/db/schema";
 import { STOCK_STATUS_LABEL, stockStatus, type StockStatus } from "@/lib/products/model";
@@ -35,6 +35,8 @@ const STATUS_LINE: Record<StockStatus, string> = { ...STOCK_STATUS_LABEL, hidden
 export interface ProductMenuHandlers {
   onAvailability: (availability: ProductAvailability) => void;
   onDuplicate: () => void;
+  /** Opens "Delete {name}?"; nothing is deleted until the admin confirms. */
+  onDelete: () => void;
 }
 
 function SheetAction({
@@ -96,6 +98,7 @@ export function ProductActionsSheet({
   onStockSaved,
   onAvailability,
   onDuplicate,
+  onDelete,
 }: ProductMenuHandlers & {
   item: ProductListItem | null;
   open: boolean;
@@ -156,6 +159,13 @@ export function ProductActionsSheet({
           )}
           <SheetAction icon={Copy} title="Duplicate" detail="Copy it as a hidden draft" onClick={onDuplicate} />
           <SheetAction icon={Pencil} title="Edit product" detail="Details, price, photos" href={editorHref(item)} />
+          <SheetAction
+            icon={Trash2}
+            iconClass="text-danger"
+            title="Delete product"
+            detail="Removed for good, with its photos"
+            onClick={onDelete}
+          />
         </ul>
         <Dialog.Close className={cn(BUTTON_SECONDARY, "mt-3 min-h-12 w-full")}>Cancel</Dialog.Close>
       </>
@@ -191,6 +201,7 @@ export function ProductMenu({
   onUpdateStock,
   onAvailability,
   onDuplicate,
+  onDelete,
 }: ProductMenuHandlers & { item: ProductListItem; onUpdateStock: () => void }) {
   const choices = menuChoices(item);
   const opensPanel = useRef(false);
@@ -250,6 +261,18 @@ export function ProductMenu({
               <MenuIcon icon={Pencil} />
               Edit product
             </Menu.LinkItem>
+            <Menu.Separator className="my-1 h-px bg-border" />
+            <Menu.Item
+              className={cn(MENU_ITEM, "text-danger")}
+              onClick={() => {
+                // The confirmation sheet takes focus, not the trigger.
+                opensPanel.current = true;
+                onDelete();
+              }}
+            >
+              <MenuIcon icon={Trash2} />
+              Delete product
+            </Menu.Item>
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>

@@ -7,6 +7,7 @@ import { availabilityForSave, availabilityForStock, MAX_SLUG_LENGTH, type Produc
 
 import { getDb } from "./index";
 import {
+  offers,
   orderItems,
   productImages,
   products,
@@ -338,20 +339,48 @@ function fitSlug(base: string, suffix = ""): string {
 export async function freeSlug(base: string): Promise<string> {
   // Every candidate starts with this much of the base, whatever suffix it gets (up to "-9999").
   const prefix = base.slice(0, MAX_SLUG_LENGTH - 5);
-  const taken = new Set(
-    (
-      await getDb()
-        .select({ slug: products.slug })
-        .from(products)
-        .where(sql`${products.slug} like ${`${prefix}%`}`)
-    ).map((row) => row.slug)
-  );
+  // A deleted product's slug stays taken if it was ever ordered: order lines
+  // find their product by slug, so a new product must not inherit them.
+  const [live, ordered] = await Promise.all([
+    getDb().select({ slug: products.slug }).from(products).where(sql`${products.slug} like ${`${prefix}%`}`),
+    getDb()
+      .selectDistinct({ slug: orderItems.productSlug })
+      .from(orderItems)
+      .where(sql`${orderItems.productSlug} like ${`${prefix}%`}`),
+  ]);
+  const taken = new Set([...live, ...ordered].map((row) => row.slug));
   const first = fitSlug(base);
   if (!taken.has(first)) return first;
   for (let n = 2; ; n++) {
     const candidate = fitSlug(base, `-${n}`);
     if (!taken.has(candidate)) return candidate;
   }
+}
+
+/**
+ * Delete a product for good, with its photo rows. Orders keep their own copy
+ * of its name, options and price, so they are untouched; offers that list it
+ * stop listing it. Returns the product and the photos whose files no other
+ * product uses (a duplicate shares its original's files), for the caller to
+ * remove from storage once this has committed.
+ */
+export async function deleteProduct(id: string): Promise<{ product: Product; unusedImages: ProductImage[] } | undefined> {
+  return getDb().transaction(async (tx) => {
+    const [product] = await tx.select().from(products).where(eq(products.id, id)).for("update");
+    if (!product) return undefined;
+    const images = await tx.select().from(productImages).where(eq(productImages.productId, id));
+    // Its photo rows go with it (ON DELETE CASCADE).
+    await tx.delete(products).where(eq(products.id, id));
+    await tx
+      .update(offers)
+      .set({ productIds: sql`${offers.productIds} - ${id}::text` })
+      .where(sql`${offers.productIds} ? ${id}::text`);
+    const unusedImages: ProductImage[] = [];
+    for (const image of images) {
+      if (!(await fileUsedElsewhere(tx, image.url, image.id))) unusedImages.push(image);
+    }
+    return { product, unusedImages };
+  });
 }
 
 /**
