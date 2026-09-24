@@ -9,15 +9,26 @@ import {
   lineKey,
   MAX_QUANTITY,
   normaliseEngraving,
-  priceCart,
-  priceCartItem,
+  lineProblemText,
+  priceCart as priceCartIn,
+  priceCartItem as priceCartItemIn,
   type CartItem,
 } from "./cart";
 import { DEFAULT_BAT_CONFIG, getBat, getGear } from "./catalogue";
+import { NO_CUSTOMIZATION, seedProductRows, toStoreCatalogue, type ProductWithImages, type StoreCatalogue } from "./products/model";
 
 const runMachine = getBat("run-machine")!;
 const eliteGloves = getGear("elite-batting-gloves")!;
 const kitbag = getGear("pro-cricket-kitbag")!;
+
+/** The seeded catalogue, with some products changed the way an admin would. */
+function catalogueWith(changes: Record<string, Partial<ProductWithImages>> = {}): StoreCatalogue {
+  return toStoreCatalogue(seedProductRows().map((row) => ({ ...row, ...changes[row.slug] })));
+}
+
+const seeded = catalogueWith();
+const priceCart = (items: CartItem[], catalogue = seeded) => priceCartIn(items, catalogue);
+const priceCartItem = (item: CartItem, catalogue = seeded) => priceCartItemIn(item, catalogue);
 
 describe("pricing comes from the catalogue", () => {
   test("a standard bat costs its catalogue price, in paise", () => {
@@ -102,5 +113,75 @@ describe("adding to the cart", () => {
     const items = addToItems([batCartItem("run-machine")], batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, size: 3 }));
     expect(items).toHaveLength(2);
     expect(lineKey(items[0])).not.toBe(lineKey(items[1]));
+  });
+});
+
+describe("stock", () => {
+  test("an uncounted product can be bought in any quantity", () => {
+    const cart = priceCart([batCartItem("run-machine", DEFAULT_BAT_CONFIG, MAX_QUANTITY)]);
+    expect(cart.unavailable).toBe(0);
+    expect(cart.lines[0].stockLeft).toBeNull();
+  });
+
+  test("a sold-out product stays in the cart but cannot be bought", () => {
+    const catalogue = catalogueWith({ "run-machine": { stock: 0, availability: "out_of_stock" } });
+    const cart = priceCart([batCartItem("run-machine"), gearCartItem(kitbag)], catalogue);
+    expect(cart.lines).toHaveLength(2);
+    expect(cart.unavailable).toBe(1);
+    expect(cart.lines[0].problem).toBe("sold_out");
+    expect(lineProblemText(cart.lines[0])).toBe("Out of stock. Remove it to check out.");
+  });
+
+  test("marking a product out of stock by hand works even with stock left", () => {
+    const catalogue = catalogueWith({ "run-machine": { stock: 5, availability: "out_of_stock" } });
+    expect(priceCartItem(batCartItem("run-machine"), catalogue)!.problem).toBe("sold_out");
+  });
+
+  test("different builds of one bat share its stock", () => {
+    const catalogue = catalogueWith({ "run-machine": { stock: 2 } });
+    const cart = priceCart(
+      [batCartItem("run-machine"), batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, size: 3 }, 2)],
+      catalogue
+    );
+    expect(cart.lines.map((line) => line.problem)).toEqual(["not_enough", "not_enough"]);
+    expect(lineProblemText(cart.lines[0])).toBe("Only 2 left. Lower the quantity to check out.");
+
+    const fits = priceCart([batCartItem("run-machine"), batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, size: 3 })], catalogue);
+    expect(fits.unavailable).toBe(0);
+  });
+
+  test("a hidden product is no longer sold", () => {
+    const catalogue = catalogueWith({ "run-machine": { availability: "hidden" } });
+    const cart = priceCart([batCartItem("run-machine")], catalogue);
+    expect(cart.lines).toHaveLength(0);
+    expect(cart.invalid).toBe(1);
+  });
+});
+
+describe("a bat sells only the build options it offers", () => {
+  const plain = catalogueWith({ "run-machine": { customization: NO_CUSTOMIZATION } });
+  const plainBat = plain.bats.find((bat) => bat.slug === "run-machine")!;
+
+  test("without customisation only the size is chosen", () => {
+    const item = batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat", knock: true }, 1, plainBat.customization);
+    expect(item.options).toMatchObject({ weight: "", profile: "", handle: "", engraving: "", knocking: false, scuffSheet: false });
+    const line = priceCartItem(item, plain)!;
+    expect(line.options.map((option) => option.label)).toEqual(["Willow", "Size"]);
+    expect(line.summary).toBe("SH / Full Size");
+  });
+
+  test("a customised build of a bat that no longer offers it is refused", () => {
+    expect(priceCartItem(batCartItem("run-machine"), plain)).toBeNull();
+  });
+
+  test("an option the bat does not offer is refused", () => {
+    const noEngraving = catalogueWith({
+      "run-machine": { customization: { ...seeded.bats[0].customization, engraving: false } },
+    });
+    expect(priceCartItem(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat" }), noEngraving)).toBeNull();
+    const bat = noEngraving.bats.find((entry) => entry.slug === "run-machine")!;
+    const item = batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat" }, 1, bat.customization);
+    expect(item.options.engraving).toBe("");
+    expect(priceCartItem(item, noEngraving)).not.toBeNull();
   });
 });

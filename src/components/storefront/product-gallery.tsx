@@ -1,18 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { RotateCw } from "lucide-react";
 
-import { BAT_IMAGE, type Bat } from "@/lib/catalogue";
+import { BAT_IMAGE } from "@/lib/catalogue";
+import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
+
+import { PhotoThumbnails, StageRail, StageThumb } from "./stage-thumbnails";
 
 interface View {
   id: string;
   name: string;
   label: string;
   transform: string;
-  swatch: React.ReactNode;
+  swatch: ReactNode;
 }
 
 const SWATCH = "block rounded-[3px]";
@@ -64,12 +67,8 @@ function buildViews(grade: string): View[] {
   ];
 }
 
-/** The dark product stage: the blade under a floodlight glow with six views. */
-export function ProductGallery({ bat }: { bat: Bat }) {
-  const views = buildViews(bat.grade);
-  const [active, setActive] = useState(0);
-  const view = views[active];
-
+/** The dark stage: floodlight glow, a floor shadow, the caption and the script line. */
+function Stage({ caption, children }: { caption: string; children: ReactNode }) {
   return (
     <div className="relative h-[560px] overflow-hidden bg-[linear-gradient(180deg,#161616_0%,#0e0e0e_70%)] text-on-dark md:h-[760px]">
       <div
@@ -84,47 +83,8 @@ export function ProductGallery({ bat }: { bat: Bat }) {
         aria-hidden="true"
         className="absolute top-[640px] left-1/2 hidden h-[60px] w-[380px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0)_70%)] md:block"
       />
-      <div className="absolute inset-x-0 top-10 bottom-16 flex items-center justify-center overflow-hidden md:bottom-10">
-        <Image
-          src={BAT_IMAGE}
-          alt={`Astaad ${bat.name}, ${bat.grade} bat`}
-          width={224}
-          height={568}
-          priority
-          style={{ transform: view.transform }}
-          className="h-[420px] w-auto drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)] transition-[transform,filter] duration-500 ease-out md:h-[568px]"
-        />
-      </div>
-
-      <nav
-        aria-label="Product views"
-        className="absolute top-6 left-4 flex flex-col gap-2 md:top-[120px] md:left-10 md:gap-2.5"
-      >
-        {views.map((item, index) => {
-          const selected = index === active;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => setActive(index)}
-              className={cn(
-                "flex h-14 w-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border py-1.5 text-[10px] leading-3 font-semibold tracking-[0.12em] uppercase transition-colors md:h-[76px] md:w-16",
-                selected
-                  ? "border-brand-yellow bg-surface-dark-raised text-on-dark"
-                  : "border-border-dark bg-surface-dark-sunken text-on-dark-subtle hover:text-on-dark"
-              )}
-            >
-              <span className="hidden md:block">{item.swatch}</span>
-              {item.name}
-            </button>
-          );
-        })}
-      </nav>
-
-      <p className="type-eyebrow absolute bottom-4 left-4 text-on-dark-subtle md:bottom-9 md:left-10">
-        {view.label}
-      </p>
+      {children}
+      <p className="type-eyebrow absolute bottom-4 left-4 text-on-dark-subtle md:bottom-9 md:left-10">{caption}</p>
       <p
         aria-hidden="true"
         className="type-script-accent absolute right-10 bottom-[30px] hidden text-[36px] text-brand-yellow md:block"
@@ -133,4 +93,66 @@ export function ProductGallery({ bat }: { bat: Bat }) {
       </p>
     </div>
   );
+}
+
+/** The standard cut-out, shown from six angles. */
+function StudioViews({ bat }: { bat: StoreBat }) {
+  const views = buildViews(bat.grade);
+  const [active, setActive] = useState(0);
+  const view = views[active];
+
+  return (
+    <Stage caption={view.label}>
+      <div className="absolute inset-x-0 top-10 bottom-16 flex items-center justify-center overflow-hidden md:bottom-10">
+        <Image
+          src={BAT_IMAGE}
+          alt={`Astaad ${bat.name}, ${bat.grade} bat`}
+          width={224}
+          height={568}
+          preload
+          style={{ transform: view.transform }}
+          className="h-[420px] w-auto drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)] transition-[transform,filter] duration-500 ease-out md:h-[568px]"
+        />
+      </div>
+      <StageRail label="Product views">
+        {views.map((item, index) => (
+          <StageThumb key={item.id} selected={index === active} onSelect={() => setActive(index)}>
+            <span className="hidden md:block">{item.swatch}</span>
+            {item.name}
+          </StageThumb>
+        ))}
+      </StageRail>
+    </Stage>
+  );
+}
+
+/** The bat's own photos, primary first, with thumbnails when there is more than one. */
+function Photos({ bat }: { bat: StoreBat }) {
+  const [active, setActive] = useState(0);
+  const count = bat.images.length;
+
+  return (
+    <Stage caption={count > 1 ? `${bat.grade} · ${active + 1} of ${count}` : bat.grade}>
+      <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
+        <Image
+          src={bat.images[active]}
+          alt={count > 1 ? `Astaad ${bat.name}, photo ${active + 1} of ${count}` : `Astaad ${bat.name}, ${bat.grade} bat`}
+          fill
+          preload={active === 0}
+          sizes="(min-width: 1024px) 40vw, 80vw"
+          className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
+        />
+      </div>
+      <PhotoThumbnails images={bat.images} active={active} onSelect={setActive} />
+    </Stage>
+  );
+}
+
+/**
+ * The dark product stage. The standard cut-out gets six studio views; a bat
+ * with its own photos shows those instead.
+ */
+export function ProductGallery({ bat }: { bat: StoreBat }) {
+  const studio = bat.images.length === 1 && bat.images[0] === BAT_IMAGE;
+  return studio ? <StudioViews bat={bat} /> : <Photos bat={bat} />;
 }

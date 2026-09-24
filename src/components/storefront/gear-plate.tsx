@@ -5,26 +5,34 @@ import { Badge } from "@/components/ui/badge";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
 import { gearCartItem } from "@/lib/cart";
-import { gearHref, type GearProduct } from "@/lib/catalogue";
+import { gearHref } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
+import { gearLine, type StoreGear } from "@/lib/products/model";
 
+import { OutOfStockChip } from "./out-of-stock-chip";
 import { WishlistButton } from "./wishlist-button";
 
-/** One gear product on its grey plate: badge, wishlist heart, name, note, price and Add to Cart. */
-export function GearPlate({ product }: { product: GearProduct }) {
+/**
+ * One gear product on its grey plate: badge, wishlist heart, name, note,
+ * price and Add to Cart. Out of stock, it says so and cannot be added.
+ */
+export function GearPlate({ product }: { product: StoreGear }) {
   const href = gearHref(product);
   return (
     <article className="group flex flex-col gap-4">
       <div className="relative flex h-[320px] items-center justify-center overflow-hidden rounded-xs bg-surface-sunken">
-        {product.badge && (
-          <Badge className="absolute top-4 left-4 h-6 rounded-xs px-2.5 text-xs leading-6 tracking-[0.04em]">
-            {product.badge}
-          </Badge>
+        {(product.badge || product.soldOut) && (
+          <span className="absolute top-4 left-4 flex gap-1.5">
+            {product.soldOut && <OutOfStockChip />}
+            {product.badge && (
+              <Badge className="h-6 rounded-xs px-2.5 text-xs leading-6 tracking-[0.04em]">{product.badge}</Badge>
+            )}
+          </span>
         )}
         <WishlistButton name={product.name} className="absolute top-2 right-2" />
         <Link href={href} aria-label={`View ${product.name}`} className="block">
           <Image
-            src={product.image}
+            src={product.images[0]}
             alt={`Astaad ${product.name}`}
             width={product.imageWidth}
             height={product.imageHeight}
@@ -37,9 +45,7 @@ export function GearPlate({ product }: { product: GearProduct }) {
         <h3 className="text-2xl leading-8 font-bold tracking-[-0.01em]">
           <Link href={href}>{product.name}</Link>
         </h3>
-        <p className="text-[13px] leading-[18px] text-ink-muted">
-          {product.line} · {product.note}
-        </p>
+        <p className="text-[13px] leading-[18px] text-ink-muted">{gearLine(product)}</p>
       </div>
       <div className="flex items-baseline gap-3">
         <span className="text-2xl leading-[30px] font-bold">{formatPrice(product.price)}</span>
@@ -53,6 +59,7 @@ export function GearPlate({ product }: { product: GearProduct }) {
         <AddToCartButton
           item={gearCartItem(product)}
           productName={`Astaad ${product.name}`}
+          soldOut={product.soldOut}
           className="h-12 flex-1 rounded-xs font-bold"
         >
           Add to Cart

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { type KitItem } from "@/lib/catalogue";
-
 import { KitCard } from "./kit-card";
+import type { KitTile } from "./kit-tiles";
 import { SectionHeading } from "./section-heading";
 
 /** "Complete your kit" — four tiles that pair with what the player is looking at. */
@@ -13,7 +12,7 @@ export function CompleteYourKit({
   href = "/#categories",
 }: {
   eyebrow: string;
-  items: KitItem[];
+  items: KitTile[];
   href?: string;
 }) {
   return (

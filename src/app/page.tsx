@@ -7,24 +7,32 @@ import { EnglishWillow } from "@/components/storefront/english-willow";
 import { FinalCta } from "@/components/storefront/final-cta";
 import { HomeBatBuilder } from "@/components/storefront/home-bat-builder";
 import { HomeHero } from "@/components/storefront/hero";
+import { bestsellerTiles } from "@/components/storefront/kit-tiles";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SizeGuideSection } from "@/components/storefront/size-guide-section";
 import { HOME_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
+import { getStoreCatalogue } from "@/lib/products/catalogue";
+import { batsInSubcategory, builderBat } from "@/lib/products/model";
 
-export default function Home() {
+export default async function Home() {
+  const catalogue = await getStoreCatalogue();
+  const englishWillow = batsInSubcategory(catalogue, "english-willow");
+  const builder = builderBat(catalogue);
+  const bestsellers = bestsellerTiles(catalogue);
+
   return (
     <>
       <SiteHeader />
       <main className="flex-1">
         <HomeHero />
         <CategoryTiles />
-        <BatCollection />
-        <EnglishWillow />
+        <BatCollection englishWillow={englishWillow.length} />
+        {englishWillow.length > 0 && <EnglishWillow bats={englishWillow} />}
         <Engineered />
-        <HomeBatBuilder />
+        {builder && <HomeBatBuilder bat={builder} />}
         <SizeGuideSection />
-        <Bestsellers />
+        {bestsellers.length > 0 && <Bestsellers items={bestsellers} />}
         <BrandStory />
         <TrustStrip items={HOME_TRUST} />
         <FinalCta

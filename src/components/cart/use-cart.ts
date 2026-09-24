@@ -1,34 +1,31 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
-import {
-  addToItems,
-  cartItemSchema,
-  lineKey,
-  MAX_QUANTITY,
-  priceCart,
-  priceCartItem,
-  type CartItem,
-  type PricedCart,
-} from "@/lib/cart";
+import { addToItems, cartItemSchema, lineKey, MAX_QUANTITY, priceCart, type CartItem } from "@/lib/cart";
+
+import { useCatalogue } from "./catalogue-provider";
 
 // The cart lives in this browser's localStorage. It holds choices only; the
 // server prices the order at checkout.
 const STORAGE_KEY = "astaad-cart";
 
 const listeners = new Set<() => void>();
-let snapshot: { items: CartItem[]; priced: PricedCart } | null = null;
+let snapshot: { items: CartItem[] } | null = null;
 let listeningToStorage = false;
 
-/** Stored items that still parse and still match the catalogue, with duplicate lines merged. */
+/**
+ * Stored items that still parse, with duplicate lines merged. An item the
+ * catalogue no longer sells (a hidden product) stays stored but is left out of
+ * the cart, so it comes back if the product does.
+ */
 function readStorage(): CartItem[] {
   try {
     const raw: unknown = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]");
     if (!Array.isArray(raw)) return [];
     return raw.reduce<CartItem[]>((items, entry) => {
       const parsed = cartItemSchema.safeParse(entry);
-      return parsed.success && priceCartItem(parsed.data) ? addToItems(items, parsed.data) : items;
+      return parsed.success ? addToItems(items, parsed.data) : items;
     }, []);
   } catch {
     return [];
@@ -36,7 +33,7 @@ function readStorage(): CartItem[] {
 }
 
 function setSnapshot(items: CartItem[]) {
-  snapshot = { items, priced: priceCart(items) };
+  snapshot = { items };
 }
 
 function emit() {
@@ -96,15 +93,19 @@ const actions = {
 };
 
 /**
- * The shopping cart. `items` and `priced` are null during server rendering
- * and the first client render, then the stored cart.
+ * The shopping cart, priced against the current catalogue. `items` (the lines
+ * that can be shown) and `priced` are null during server rendering and the
+ * first client render, then the stored cart.
  */
 export function useCart() {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const catalogue = useCatalogue();
+  const priced = useMemo(() => (state ? priceCart(state.items, catalogue) : null), [state, catalogue]);
+  const items = useMemo(() => priced?.lines.map((line) => line.item) ?? null, [priced]);
   return {
-    items: state?.items ?? null,
-    priced: state?.priced ?? null,
-    count: state?.priced.count ?? 0,
+    items,
+    priced,
+    count: priced?.count ?? 0,
     ...actions,
   };
 }

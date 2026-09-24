@@ -5,6 +5,7 @@ import { ArrowRight, ShoppingCart } from "lucide-react";
 
 import { CartLineItem } from "@/components/astaad";
 import { Button } from "@/components/ui/button";
+import { lineProblemText, MAX_QUANTITY } from "@/lib/cart";
 import { formatPaise } from "@/lib/format";
 
 import { OrderSummary } from "./order-summary";
@@ -63,6 +64,8 @@ export function CartView() {
               qty={line.item.quantity}
               onQty={(quantity) => setQuantity(line.key, quantity)}
               onRemove={() => remove(line.key)}
+              notice={lineProblemText(line) ?? undefined}
+              maxQty={line.stockLeft === null ? MAX_QUANTITY : Math.min(MAX_QUANTITY, Math.max(1, line.stockLeft))}
             />
           </li>
         ))}
@@ -74,10 +77,24 @@ export function CartView() {
         totalPaise={priced.totalPaise}
         className="lg:sticky lg:top-6"
       >
-        <Button size="lg" render={<Link href="/checkout" />} nativeButton={false} className="w-full">
-          Proceed to checkout
-          <ArrowRight aria-hidden="true" />
-        </Button>
+        {priced.unavailable > 0 ? (
+          <>
+            <p role="status" className="type-body-sm font-semibold text-danger">
+              {priced.unavailable === 1
+                ? "One item can't be bought right now. Update it to check out."
+                : `${priced.unavailable} items can't be bought right now. Update them to check out.`}
+            </p>
+            <Button size="lg" className="w-full" disabled>
+              Proceed to checkout
+              <ArrowRight aria-hidden="true" />
+            </Button>
+          </>
+        ) : (
+          <Button size="lg" render={<Link href="/checkout" />} nativeButton={false} className="w-full">
+            Proceed to checkout
+            <ArrowRight aria-hidden="true" />
+          </Button>
+        )}
       </OrderSummary>
     </div>
   );

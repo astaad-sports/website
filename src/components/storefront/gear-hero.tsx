@@ -17,14 +17,15 @@ import {
 import {
   type GearCategoryContent,
   type GearCategorySlug,
-  type GearProduct,
   type StoreCategory,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
+import { gearLine, type StoreGear } from "@/lib/products/model";
 
 import { Eyebrow } from "./eyebrow";
 import { GearGallery } from "./gear-gallery";
 import { GearOptions } from "./gear-options";
+import { StockStatus } from "./stock-status";
 
 const PROMISES = [
   "Free delivery across India",
@@ -59,13 +60,13 @@ const HIGHLIGHTS: Record<GearCategorySlug, { icon: typeof Truck; label: string }
   ],
 };
 
-/** The gear product hero: the stage on the left; name, price, options and highlights on the right. */
+/** The gear product hero: the stage on the left; name, stock, price, options and highlights on the right. */
 export function GearHero({
   product,
   category,
   content,
 }: {
-  product: GearProduct;
+  product: StoreGear;
   category: StoreCategory;
   content: GearCategoryContent;
 }) {
@@ -89,15 +90,10 @@ export function GearHero({
           >
             {product.name}
           </h1>
-          <p className="text-lg leading-[26px] text-ink-muted">
-            {product.line} · {product.note}
-          </p>
+          <p className="text-lg leading-[26px] text-ink-muted">{gearLine(product)}</p>
         </div>
         <div className="flex items-center gap-4 text-sm leading-5">
-          <span className="inline-flex items-center gap-2 font-semibold text-success">
-            <span aria-hidden="true" className="block size-2 rounded-full bg-success" />
-            In Stock
-          </span>
+          <StockStatus product={product} />
         </div>
         <div className="flex flex-col gap-1 border-y border-border py-4">
           <div className="flex flex-wrap items-center gap-3.5">
@@ -122,6 +118,7 @@ export function GearHero({
         </ul>
         <GearOptions
           product={{ slug: product.slug, categorySlug: product.categorySlug, name: product.name }}
+          soldOut={product.soldOut}
           content={content}
           categoryName={category.name}
           categoryHref={category.href}

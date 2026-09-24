@@ -4,7 +4,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { type GearCategoryContent, type GearProduct } from "@/lib/catalogue";
+import { type GearCategoryContent } from "@/lib/catalogue";
+import { gearLine, type StoreGear } from "@/lib/products/model";
 
 import { Eyebrow } from "./eyebrow";
 
@@ -13,14 +14,14 @@ export function GearDetails({
   product,
   content,
 }: {
-  product: GearProduct;
+  product: StoreGear;
   content: GearCategoryContent;
 }) {
   const rows = [
     {
       id: "details",
       title: "Product Details",
-      body: `${product.name} · ${product.line} · ${product.note}. ${content.summary}`,
+      body: `${[product.name, gearLine(product)].filter(Boolean).join(" · ")}. ${content.summary}`,
     },
     content.sizing ? { id: "sizing", title: "Sizing", body: content.sizing } : null,
     { id: "care", title: "Care", body: content.care },

@@ -23,6 +23,10 @@ export interface CartLineItemProps {
   imageAlt?: string;
   onQty?: (qty: number) => void;
   onRemove?: () => void;
+  /** A problem with this line, e.g. "Out of stock. Remove it to check out." Shown in `danger` under the price. */
+  notice?: string;
+  /** Highest quantity the + button allows. */
+  maxQty?: number;
   className?: string;
 }
 
@@ -41,6 +45,8 @@ export function CartLineItem({
   imageAlt = "",
   onQty,
   onRemove,
+  notice,
+  maxQty,
   className,
 }: CartLineItemProps) {
   const [internalQty, setInternalQty] = useState(defaultQty);
@@ -77,6 +83,7 @@ export function CartLineItem({
         </p>
         {meta && <span className="type-body-sm text-ink-muted">{meta}</span>}
         <span className="type-price">{price}</span>
+        {notice && <span className="type-body-sm font-semibold text-danger">{notice}</span>}
         <div className="mt-auto flex items-center justify-between">
           <div
             role="group"
@@ -101,6 +108,7 @@ export function CartLineItem({
               size="icon-sm"
               aria-label="Increase quantity"
               className="rounded-sm"
+              disabled={maxQty !== undefined && current >= maxQty}
               onClick={() => setQty(current + 1)}
             >
               <Icon name="plus" />

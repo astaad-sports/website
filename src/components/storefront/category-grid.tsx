@@ -6,7 +6,7 @@ import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
 import { Button } from "@/components/ui/button";
 import { RadioGroup } from "@/components/ui/radio-group";
-import { type GearProduct } from "@/lib/catalogue";
+import type { StoreGear } from "@/lib/products/model";
 
 import { GearPlate } from "./gear-plate";
 
@@ -18,7 +18,7 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "price-desc", label: "Price: high to low" },
 ];
 
-function sortProducts(products: GearProduct[], sort: SortKey) {
+function sortProducts(products: StoreGear[], sort: SortKey) {
   if (sort === "featured") return products;
   const direction = sort === "price-asc" ? 1 : -1;
   return [...products].sort((a, b) => (a.price - b.price) * direction);
@@ -29,7 +29,7 @@ export function CategoryGrid({
   products,
   categoryName,
 }: {
-  products: GearProduct[];
+  products: StoreGear[];
   categoryName: string;
 }) {
   const [sort, setSort] = useState<SortKey>("featured");

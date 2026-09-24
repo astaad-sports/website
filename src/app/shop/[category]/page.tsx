@@ -5,18 +5,13 @@ import { CategoryGrid } from "@/components/storefront/category-grid";
 import { CategoryHero } from "@/components/storefront/category-hero";
 import { CompleteYourKit } from "@/components/storefront/complete-your-kit";
 import { FinalCta } from "@/components/storefront/final-cta";
+import { kitTilesForGear } from "@/components/storefront/kit-tiles";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
-import {
-  batAsKitItem,
-  GEAR,
-  GEAR_CATEGORY_SLUGS,
-  getBat,
-  getCategory,
-  getGearByCategory,
-  type KitItem,
-} from "@/lib/catalogue";
+import { GEAR_CATEGORY_SLUGS, getCategory } from "@/lib/catalogue";
+import { getStoreCatalogue } from "@/lib/products/catalogue";
+import { gearInCategory } from "@/lib/products/model";
 
 export function generateStaticParams() {
   return GEAR_CATEGORY_SLUGS.map((category) => ({ category }));
@@ -39,16 +34,11 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
   const category = getCategory(slug);
   if (!category || category.kind !== "gear") notFound();
 
-  const products = getGearByCategory(slug);
+  const catalogue = await getStoreCatalogue();
+  const products = gearInCategory(catalogue, slug);
   const from = products.length
     ? Math.min(...products.map((product) => product.price))
     : category.from;
-
-  // The other categories' entry models, plus the entry English Willow bat.
-  const crossSell: KitItem[] = [
-    ...GEAR.filter((item) => item.featured && item.categorySlug !== slug),
-    batAsKitItem(getBat("run-machine")!),
-  ];
 
   return (
     <>
@@ -59,7 +49,7 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
         <CompleteYourKit
           eyebrow={`Pairs with your ${category.name.toLowerCase()}`}
-          items={crossSell}
+          items={kitTilesForGear(catalogue, slug)}
         />
         <FinalCta
           label="Shop Astaad"

@@ -45,14 +45,19 @@ function OptionPills({
   );
 }
 
-/** Size and hand choices (where the category has them), the selection line and Add to cart. */
+/**
+ * Size and hand choices (where the category has them), the selection line and
+ * Add to cart, which reads "Out of stock" and cannot be pressed when `soldOut`.
+ */
 export function GearOptions({
   product,
+  soldOut,
   content,
   categoryName,
   categoryHref,
 }: {
   product: Pick<GearProduct, "slug" | "categorySlug" | "name">;
+  soldOut: boolean;
   content: GearCategoryContent;
   categoryName: string;
   categoryHref: string;
@@ -78,6 +83,7 @@ export function GearOptions({
         <AddToCartButton
           item={gearCartItem(product, { size, hand })}
           productName={`Astaad ${product.name}`}
+          soldOut={soldOut}
           size="lg"
           className="h-15 w-full rounded-xs text-[15px] font-bold tracking-[0.1em] uppercase"
         >

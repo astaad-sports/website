@@ -1,10 +1,11 @@
-import { BATS } from "@/lib/catalogue";
+import { countInWords, type StoreBat } from "@/lib/products/model";
 
 import { BatPlate } from "./bat-plate";
 import { SectionHeading } from "./section-heading";
 
-/** "Six grades. One standard." — the six English Willow models. */
-export function EnglishWillow() {
+/** "Six grades. One standard." — the English Willow models on the store, counted in the heading. */
+export function EnglishWillow({ bats }: { bats: StoreBat[] }) {
+  const one = bats.length === 1;
   return (
     <section
       id="english-willow"
@@ -13,8 +14,8 @@ export function EnglishWillow() {
     >
       <SectionHeading
         id="ew-title"
-        eyebrow="English Willow · 6 models"
-        title="Six grades. One standard."
+        eyebrow={`English Willow · ${bats.length} ${one ? "model" : "models"}`}
+        title={`${countInWords(bats.length)} ${one ? "grade" : "grades"}. One standard.`}
         aside={
           <div className="flex flex-wrap items-center gap-3 text-[13px] leading-[18px] text-ink-muted">
             <span className="inline-flex items-center gap-2">
@@ -27,7 +28,7 @@ export function EnglishWillow() {
         }
       />
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-        {BATS.map((bat) => (
+        {bats.map((bat) => (
           <BatPlate key={bat.slug} bat={bat} />
         ))}
       </div>

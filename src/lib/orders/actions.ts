@@ -2,9 +2,10 @@
 
 import { attachRazorpayOrder, createOrder, markOrderPaid } from "@/db/orders";
 import { getCurrentUser } from "@/lib/auth/session";
-import { priceCart } from "@/lib/cart";
+import { lineProblemText, priceCart } from "@/lib/cart";
 import { paymentResponseSchema, placeOrderSchema, type AddressField } from "@/lib/checkout";
 import { formatOrderNumber } from "@/lib/format";
+import { getFreshStoreCatalogue, productsChanged } from "@/lib/products/catalogue";
 import {
   createRazorpayOrder,
   razorpayConfigured,
@@ -50,12 +51,17 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   }
 
   const { items, address } = parsed.data;
-  const cart = priceCart(items);
+  // Priced against the database, not the cached storefront, so stock is current.
+  const cart = priceCart(items, await getFreshStoreCatalogue());
   if (cart.invalid > 0 || cart.lines.length === 0) {
     return {
       ok: false,
       error: "Some items in your cart are no longer available. Review your cart and try again.",
     };
+  }
+  const blocked = cart.lines.find((line) => line.problem);
+  if (blocked) {
+    return { ok: false, error: `${blocked.name}: ${lineProblemText(blocked)}` };
   }
 
   if (!razorpayConfigured()) {
@@ -116,7 +122,8 @@ export async function confirmPayment(input: unknown): Promise<ConfirmPaymentResu
     };
   }
 
-  const order = await markOrderPaid({ razorpayOrderId, razorpayPaymentId });
+  const { order, stockChanged } = await markOrderPaid({ razorpayOrderId, razorpayPaymentId });
+  if (stockChanged) productsChanged();
   if (!order || order.userId !== user.id) {
     return { ok: false, error: "We could not find the order for this payment. Contact us with your payment ID." };
   }

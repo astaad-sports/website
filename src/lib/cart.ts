@@ -1,25 +1,23 @@
 // The cart model, shared by the browser (to show the cart) and the server
-// (to price an order). Prices always come from the catalogue: the browser
-// stores only what was chosen, never what it costs.
+// (to price an order). Prices always come from the store catalogue: the
+// browser stores only what was chosen, never what it costs.
 import { z } from "zod";
 
+import type { BatCustomization } from "@/db/schema";
 import {
   BAT_HANDLES,
-  BAT_IMAGE,
   BAT_PROFILES,
   BAT_SIZES,
   BAT_WEIGHTS,
   DEFAULT_BAT_CONFIG,
   ENGRAVING_MAX,
   GEAR_CATEGORY_CONTENT,
-  gearHref,
-  getBat,
-  getGear,
   HANDS,
   type BatConfig,
   type GearProduct,
   type Hand,
 } from "./catalogue";
+import { FULL_CUSTOMIZATION, type StoreCatalogue } from "./products/model";
 
 export const MAX_QUANTITY = 10;
 export const MAX_LINES = 20;
@@ -81,12 +79,21 @@ export interface PricedLine {
   summary: string;
   unitPricePaise: number;
   lineTotalPaise: number;
+  /**
+   * Why this line cannot be bought right now: the product is out of stock, or
+   * the cart asks for more than are left. Null when it can.
+   */
+  problem: "sold_out" | "not_enough" | null;
+  /** Counted stock for this product, or null when it is not counted. */
+  stockLeft: number | null;
 }
 
 export interface PricedCart {
   lines: PricedLine[];
-  /** Items that no longer match the catalogue (a removed model or option). */
+  /** Items that no longer match the catalogue (a removed or hidden model, or an option it no longer offers). */
   invalid: number;
+  /** Lines that match but cannot be bought now (see PricedLine.problem). */
+  unavailable: number;
   count: number;
   subtotalPaise: number;
   /** Delivery is free across India. */
@@ -120,19 +127,34 @@ export function lineKey(item: CartItem): string {
   return `${item.kind}:${item.slug}:${JSON.stringify(options)}`;
 }
 
-/** A bat as configured in a builder, or the standard build. */
-export function batCartItem(slug: string, config: BatConfig = DEFAULT_BAT_CONFIG, qty = 1): BatCartItem {
+/**
+ * A bat as configured in a builder, or the standard build. Options the bat
+ * does not offer are left out (a bat that cannot be customised is sold in its
+ * standard build, choosing only the size); a choice it no longer offers falls
+ * back to the first one it does.
+ */
+export function batCartItem(
+  slug: string,
+  config: BatConfig = DEFAULT_BAT_CONFIG,
+  qty = 1,
+  customization: BatCustomization = FULL_CUSTOMIZATION
+): BatCartItem {
+  const pick = (labels: string[], allowed: string[], index: number) => {
+    const label = labels[index];
+    return label && allowed.includes(label) ? label : (allowed[0] ?? "");
+  };
+  const on = customization.enabled;
   return {
     kind: "bat",
     slug,
     options: {
       size: BAT_SIZES[config.size]?.code ?? "",
-      weight: BAT_WEIGHTS[config.weight]?.label ?? "",
-      profile: BAT_PROFILES[config.profile]?.label ?? "",
-      handle: BAT_HANDLES[config.handle]?.label ?? "",
-      engraving: normaliseEngraving(config.name),
-      knocking: config.knock,
-      scuffSheet: config.scuff,
+      weight: on ? pick(BAT_WEIGHTS.map((entry) => entry.label), customization.weights, config.weight) : "",
+      profile: on ? pick(BAT_PROFILES.map((entry) => entry.label), customization.profiles, config.profile) : "",
+      handle: on ? pick(BAT_HANDLES.map((entry) => entry.label), customization.handles, config.handle) : "",
+      engraving: on && customization.engraving ? normaliseEngraving(config.name) : "",
+      knocking: on && customization.matchReady ? config.knock : false,
+      scuffSheet: on && customization.scuffSheet ? config.scuff : false,
     },
     quantity: qty,
   };
@@ -156,39 +178,52 @@ export function gearCartItem(
   };
 }
 
-function priceBat(item: BatCartItem): Omit<PricedLine, "key" | "item" | "lineTotalPaise"> | null {
-  const bat = getBat(item.slug);
+type PricedFields = Omit<PricedLine, "key" | "item" | "lineTotalPaise" | "problem"> & { soldOut: boolean };
+
+/** Whether the chosen build is one this bat offers. */
+function batOptionsValid(options: BatCartItem["options"], customization: BatCustomization): boolean {
+  if (options.engraving !== normaliseEngraving(options.engraving) || !ENGRAVING_PATTERN.test(options.engraving)) {
+    return false;
+  }
+  if (!customization.enabled) {
+    return !options.weight && !options.profile && !options.handle && !options.engraving && !options.knocking && !options.scuffSheet;
+  }
+  return (
+    customization.weights.includes(options.weight) &&
+    customization.profiles.includes(options.profile) &&
+    customization.handles.includes(options.handle) &&
+    (customization.engraving || !options.engraving) &&
+    (customization.matchReady || !options.knocking) &&
+    (customization.scuffSheet || !options.scuffSheet)
+  );
+}
+
+function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | null {
+  const bat = catalogue.bats.find((entry) => entry.slug === item.slug);
   const { options } = item;
   const size = BAT_SIZES.find((entry) => entry.code === options.size);
-  const valid =
-    bat &&
-    size &&
-    BAT_WEIGHTS.some((entry) => entry.label === options.weight) &&
-    BAT_PROFILES.some((entry) => entry.label === options.profile) &&
-    BAT_HANDLES.some((entry) => entry.label === options.handle) &&
-    options.engraving === normaliseEngraving(options.engraving) &&
-    ENGRAVING_PATTERN.test(options.engraving);
-  if (!valid) return null;
+  if (!bat || !size || !batOptionsValid(options, bat.customization)) return null;
+  const custom = bat.customization.enabled;
 
   return {
     name: `Astaad ${bat.name}`,
     href: `/bats/${bat.slug}`,
-    image: BAT_IMAGE,
+    image: bat.images[0],
     options: [
       { label: "Willow", value: bat.grade },
       { label: "Size", value: size.label },
-      { label: "Weight", value: options.weight },
-      { label: "Profile", value: options.profile },
-      { label: "Handle", value: options.handle },
+      ...(options.weight ? [{ label: "Weight", value: options.weight }] : []),
+      ...(options.profile ? [{ label: "Profile", value: options.profile }] : []),
+      ...(options.handle ? [{ label: "Handle", value: options.handle }] : []),
       ...(options.engraving ? [{ label: "Engraving", value: options.engraving }] : []),
-      { label: "Knocking", value: options.knocking ? "Yes" : "No" },
-      { label: "Scuff sheet", value: options.scuffSheet ? "Yes" : "No" },
+      ...(custom && bat.customization.matchReady ? [{ label: "Knocking", value: options.knocking ? "Yes" : "No" }] : []),
+      ...(custom && bat.customization.scuffSheet ? [{ label: "Scuff sheet", value: options.scuffSheet ? "Yes" : "No" }] : []),
     ],
     summary: [
       size.label,
       options.weight,
       options.profile,
-      `${options.handle} handle`,
+      options.handle ? `${options.handle} handle` : null,
       options.engraving ? `Engraved \u201c${options.engraving}\u201d` : null,
       options.knocking ? "Knocked in" : null,
       options.scuffSheet ? "Scuff sheet" : null,
@@ -197,11 +232,13 @@ function priceBat(item: BatCartItem): Omit<PricedLine, "key" | "item" | "lineTot
       .join(" \u00b7 "),
     // Customisation is included in the price.
     unitPricePaise: rupeesToPaise(bat.price),
+    soldOut: bat.soldOut,
+    stockLeft: bat.stockLeft,
   };
 }
 
-function priceGear(item: GearCartItem): Omit<PricedLine, "key" | "item" | "lineTotalPaise"> | null {
-  const product = getGear(item.slug);
+function priceGear(item: GearCartItem, catalogue: StoreCatalogue): PricedFields | null {
+  const product = catalogue.gear.find((entry) => entry.slug === item.slug);
   if (!product) return null;
   const content = GEAR_CATEGORY_CONTENT[product.categorySlug];
   const { size, hand } = item.options;
@@ -213,48 +250,80 @@ function priceGear(item: GearCartItem): Omit<PricedLine, "key" | "item" | "lineT
 
   return {
     name: `Astaad ${product.name}`,
-    href: gearHref(product),
-    image: product.image,
+    href: product.href ?? `/shop/${product.categorySlug}/${product.slug}`,
+    image: product.images[0] ?? product.image,
     options: [
       ...(size ? [{ label: "Size", value: size }] : []),
       ...(hand ? [{ label: "Hand", value: hand }] : []),
     ],
     summary: [size, hand].filter(Boolean).join(" \u00b7 "),
     unitPricePaise: rupeesToPaise(product.price),
+    soldOut: product.soldOut,
+    stockLeft: product.stockLeft,
   };
 }
 
-/** Resolve one item against the catalogue, or null if it no longer matches. */
-export function priceCartItem(item: CartItem): PricedLine | null {
-  const priced = item.kind === "bat" ? priceBat(item) : priceGear(item);
+/**
+ * Resolve one item against the catalogue, or null if it no longer matches.
+ * Stock is judged for this line alone; priceCart also adds up lines of the same product.
+ */
+export function priceCartItem(item: CartItem, catalogue: StoreCatalogue): PricedLine | null {
+  const priced = item.kind === "bat" ? priceBat(item, catalogue) : priceGear(item, catalogue);
   if (!priced) return null;
+  const { soldOut, ...fields } = priced;
+  const tooMany = fields.stockLeft !== null && item.quantity > fields.stockLeft;
   return {
-    ...priced,
+    ...fields,
     key: lineKey(item),
     item,
     lineTotalPaise: priced.unitPricePaise * item.quantity,
+    problem: soldOut ? "sold_out" : tooMany ? "not_enough" : null,
   };
 }
 
-/** Price a whole cart. Lines that no longer match the catalogue are dropped and counted. */
-export function priceCart(items: CartItem[]): PricedCart {
+/**
+ * Price a whole cart. Lines that no longer match the catalogue are dropped
+ * and counted; lines that match but cannot be bought now (sold out, or more
+ * than are left across all lines of that product) are kept and flagged.
+ */
+export function priceCart(items: CartItem[], catalogue: StoreCatalogue): PricedCart {
   const lines: PricedLine[] = [];
   let invalid = 0;
   for (const item of items) {
-    const line = priceCartItem(item);
+    const line = priceCartItem(item, catalogue);
     if (line) lines.push(line);
     else invalid += 1;
   }
+
+  // Different builds of one bat share its stock.
+  const wanted = new Map<string, number>();
+  for (const line of lines) wanted.set(line.item.slug, (wanted.get(line.item.slug) ?? 0) + line.item.quantity);
+  for (const line of lines) {
+    if (!line.problem && line.stockLeft !== null && (wanted.get(line.item.slug) ?? 0) > line.stockLeft) {
+      line.problem = "not_enough";
+    }
+  }
+
   const subtotalPaise = lines.reduce((sum, line) => sum + line.lineTotalPaise, 0);
   const shippingPaise = 0;
   return {
     lines,
     invalid,
+    unavailable: lines.filter((line) => line.problem).length,
     count: lines.reduce((sum, line) => sum + line.item.quantity, 0),
     subtotalPaise,
     shippingPaise,
     totalPaise: subtotalPaise + shippingPaise,
   };
+}
+
+/** What the cart says under a line that cannot be bought, or null. */
+export function lineProblemText(line: Pick<PricedLine, "problem" | "stockLeft">): string | null {
+  if (line.problem === "sold_out") return "Out of stock. Remove it to check out.";
+  if (line.problem === "not_enough") {
+    return `Only ${line.stockLeft} left. Lower the quantity to check out.`;
+  }
+  return null;
 }
 
 /** Add an item to a list of items, merging it into a matching line. */

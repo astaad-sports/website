@@ -5,31 +5,43 @@ import { ShoppingCart } from "lucide-react";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Input } from "@/components/ui/input";
+import { batCartItem, cleanEngravingInput } from "@/lib/cart";
 import {
   BAT_HANDLES,
   BAT_IMAGE,
   BAT_PROFILES,
   BAT_WEIGHTS,
   ENGRAVING_MAX,
-  getBat,
 } from "@/lib/catalogue";
-import { batCartItem, cleanEngravingInput } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
+import { countInWords, listInWords, startingBatConfig, type StoreBat } from "@/lib/products/model";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
 import { SectionHeading } from "./section-heading";
 
-/** "Build your bat": a live Legacy One preview beside the six customisation choices. */
-export function HomeBatBuilder() {
-  const bat = getBat("legacy-one")!;
-  const { config, update } = useBatConfig();
+/** "Six choices. No extra cost for engraving or knocking.", counting only what this bat offers. */
+function choicesNote({ engraving, matchReady, scuffSheet }: StoreBat["customization"]): string {
+  const choices = 3 + [engraving, matchReady, scuffSheet].filter(Boolean).length;
+  const free = [engraving && "engraving", matchReady && "knocking"].filter((extra) => extra !== false);
+  const extras = free.length ? ` No extra cost for ${listInWords(free, "or")}.` : "";
+  return `${countInWords(choices)} choices.${extras} Your bat, made your way.`;
+}
+
+/**
+ * "Build your bat": a live preview of `bat` beside its customisation choices,
+ * showing only the options the bat offers.
+ */
+export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
+  const custom = bat.customization;
+  const { config, update } = useBatConfig(startingBatConfig(custom));
+  const engraved = custom.engraving ? config.name.trim() : "";
   const chips = [
     BAT_WEIGHTS[config.weight].label,
     BAT_PROFILES[config.profile].label,
     `${BAT_HANDLES[config.handle].label} handle`,
-    config.name.trim() ? "Engraved" : null,
-    config.knock ? "Knocked in" : null,
-    config.scuff ? "Scuff sheet" : null,
+    engraved ? "Engraved" : null,
+    custom.matchReady && config.knock ? "Knocked in" : null,
+    custom.scuffSheet && config.scuff ? "Scuff sheet" : null,
   ].filter((chip): chip is string => chip !== null);
 
   return (
@@ -42,7 +54,7 @@ export function HomeBatBuilder() {
           title="Build your bat"
           aside={
             <p className="max-w-[380px] text-[15px] leading-[22px] text-ink-muted md:text-right">
-              Six choices. No extra cost for engraving or knocking. Your bat, made your way.
+              {choicesNote(custom)}
             </p>
           }
         />
@@ -59,17 +71,18 @@ export function HomeBatBuilder() {
                   Building
                 </span>
                 <span className="text-xl leading-[26px] font-bold">{bat.name}</span>
-                <span className="text-[13px] leading-[18px] text-on-dark-subtle">
-                  Top 1% Grade 1+ Players English Willow
-                </span>
+                <span className="text-[13px] leading-[18px] text-on-dark-subtle">{bat.grade}</span>
               </div>
               <div className="flex flex-col items-end gap-0.5">
                 <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
-                <span className="text-xs leading-4 text-ink-subtle line-through">
-                  MRP {formatPrice(bat.mrp)}
-                </span>
+                {bat.mrp > bat.price && (
+                  <span className="text-xs leading-4 text-ink-subtle line-through">
+                    MRP {formatPrice(bat.mrp)}
+                  </span>
+                )}
               </div>
             </div>
+            {/* The standard cut-out, which the engraving is drawn onto */}
             <div className="relative mx-auto mt-6 h-[360px] w-[142px] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[426px] md:w-[168px]">
               <Image
                 src={BAT_IMAGE}
@@ -78,12 +91,14 @@ export function HomeBatBuilder() {
                 sizes="168px"
                 className="object-contain drop-shadow-[0_32px_40px_rgba(0,0,0,0.8)]"
               />
-              <span
-                aria-hidden="true"
-                className="type-script-accent absolute top-[65%] left-[24%] origin-top-left -rotate-90 text-[32px] whitespace-nowrap text-brand-yellow"
-              >
-                {config.name.trim() || "Your Name"}
-              </span>
+              {custom.engraving && (
+                <span
+                  aria-hidden="true"
+                  className="type-script-accent absolute top-[65%] left-[24%] origin-top-left -rotate-90 text-[32px] whitespace-nowrap text-brand-yellow"
+                >
+                  {engraved || "Your Name"}
+                </span>
+              )}
             </div>
             <div className="relative mt-6 flex flex-wrap gap-2 md:absolute md:inset-x-8 md:bottom-7 md:mt-0">
               {chips.map((chip) => (
@@ -99,41 +114,51 @@ export function HomeBatBuilder() {
 
           <div className="flex flex-1 flex-col justify-between gap-5">
             <OptionGroup label="Weight">
-              <ChoiceButtons label="Weight" options={BAT_WEIGHTS} value={config.weight} onChange={(v) => update("weight", v)} />
+              <ChoiceButtons label="Weight" options={BAT_WEIGHTS} offered={custom.weights} value={config.weight} onChange={(v) => update("weight", v)} />
             </OptionGroup>
             <OptionGroup label="Profile">
-              <ChoiceButtons label="Profile" options={BAT_PROFILES} value={config.profile} onChange={(v) => update("profile", v)} />
+              <ChoiceButtons label="Profile" options={BAT_PROFILES} offered={custom.profiles} value={config.profile} onChange={(v) => update("profile", v)} />
             </OptionGroup>
             <OptionGroup label="Handle shape">
-              <ChoiceButtons label="Handle shape" options={BAT_HANDLES} value={config.handle} onChange={(v) => update("handle", v)} />
+              <ChoiceButtons label="Handle shape" options={BAT_HANDLES} offered={custom.handles} value={config.handle} onChange={(v) => update("handle", v)} />
             </OptionGroup>
-            <OptionGroup label="Name engraving" badge={<FreeChip />} htmlFor="home-engrave">
-              <div className="flex flex-wrap items-center gap-3">
-                <Input
-                  id="home-engrave"
-                  value={config.name}
-                  maxLength={ENGRAVING_MAX}
-                  placeholder="Your Name"
-                  onChange={(event) => update("name", cleanEngravingInput(event.target.value))}
-                  className="h-11 max-w-[360px] flex-1 rounded-xs border-0 shadow-card"
-                />
-                <span className="text-[13px] leading-[18px] whitespace-nowrap text-ink-muted">
-                  Maximum {ENGRAVING_MAX} letters
-                </span>
+            {custom.engraving && (
+              <OptionGroup label="Name engraving" badge={<FreeChip />} htmlFor="home-engrave">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Input
+                    id="home-engrave"
+                    value={config.name}
+                    maxLength={ENGRAVING_MAX}
+                    placeholder="Your Name"
+                    aria-describedby="home-engrave-hint"
+                    onChange={(event) => update("name", cleanEngravingInput(event.target.value))}
+                    className="h-11 max-w-[360px] flex-1 rounded-xs border-0 shadow-card"
+                  />
+                  <span id="home-engrave-hint" className="text-[13px] leading-[18px] whitespace-nowrap text-ink-muted">
+                    Maximum {ENGRAVING_MAX} letters
+                  </span>
+                </div>
+              </OptionGroup>
+            )}
+            {(custom.matchReady || custom.scuffSheet) && (
+              <div className="flex flex-wrap gap-10">
+                {custom.matchReady && (
+                  <OptionGroup label="Match-ready knocking" badge={<FreeChip />}>
+                    <YesNo label="Match-ready knocking" variant="button" value={config.knock} onChange={(v) => update("knock", v)} />
+                  </OptionGroup>
+                )}
+                {custom.scuffSheet && (
+                  <OptionGroup label="Clear scuff sheet">
+                    <YesNo label="Clear scuff sheet" variant="button" value={config.scuff} onChange={(v) => update("scuff", v)} />
+                  </OptionGroup>
+                )}
               </div>
-            </OptionGroup>
-            <div className="flex flex-wrap gap-10">
-              <OptionGroup label="Match-ready knocking" badge={<FreeChip />}>
-                <YesNo label="Match-ready knocking" variant="button" value={config.knock} onChange={(v) => update("knock", v)} />
-              </OptionGroup>
-              <OptionGroup label="Clear scuff sheet">
-                <YesNo label="Clear scuff sheet" variant="button" value={config.scuff} onChange={(v) => update("scuff", v)} />
-              </OptionGroup>
-            </div>
+            )}
             <div className="flex flex-wrap items-center gap-5">
               <AddToCartButton
-                item={batCartItem(bat.slug, config)}
+                item={batCartItem(bat.slug, config, 1, custom)}
                 productName={`Astaad ${bat.name}`}
+                soldOut={bat.soldOut}
                 size="lg"
                 className="h-14 rounded-xs px-8 text-[15px] font-bold"
               >

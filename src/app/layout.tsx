@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Caveat, Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 
+import { CatalogueProvider } from "@/components/cart/catalogue-provider";
+import { getStoreCatalogue } from "@/lib/products/catalogue";
+
 // The three Astaad families: `sans` for everything readable, `display` for
 // uppercase hero and campaign headlines, `script` for one handwritten tagline.
 const inter = Inter({
@@ -33,7 +36,8 @@ export const metadata: Metadata = {
   description: "Premium cricket gear for players who never settle.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const catalogue = await getStoreCatalogue();
   // Browser extensions (ColorZilla, Grammarly, dark-mode tools) add attributes
   // to <html> and <body> before React hydrates. suppressHydrationWarning
   // ignores attribute differences on these two elements only, not their children.
@@ -44,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
-        {children}
+        <CatalogueProvider catalogue={catalogue}>{children}</CatalogueProvider>
       </body>
     </html>
   );

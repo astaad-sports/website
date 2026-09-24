@@ -34,7 +34,7 @@ export function AdminHeader() {
       </Link>
       <Link
         href="/admin/search"
-        aria-label="Search orders"
+        aria-label="Search"
         className="flex size-11 items-center justify-center rounded-full text-on-dark transition-colors hover:bg-surface-dark-raised focus-visible:outline-brand-yellow"
       >
         <Search className="size-[22px]" strokeWidth={1.5} aria-hidden="true" />

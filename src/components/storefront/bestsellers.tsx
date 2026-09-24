@@ -4,13 +4,13 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { BESTSELLERS } from "@/lib/catalogue";
 
 import { KitCard } from "./kit-card";
+import type { KitTile } from "./kit-tiles";
 import { SectionHeading } from "./section-heading";
 
-/** "What players are buying." — four tiles; the arrows scroll the row on small screens. */
-export function Bestsellers() {
+/** "What players are buying." — up to four tiles; the arrows scroll the row on small screens. */
+export function Bestsellers({ items }: { items: KitTile[] }) {
   const row = useRef<HTMLDivElement>(null);
 
   function scroll(direction: 1 | -1) {
@@ -55,7 +55,7 @@ export function Bestsellers() {
         ref={row}
         className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-6 overflow-x-auto px-4 md:-mx-8 md:px-8 xl:mx-0 xl:grid xl:grid-cols-4 xl:overflow-visible xl:px-0"
       >
-        {BESTSELLERS.map((item) => (
+        {items.map((item) => (
           <KitCard
             key={item.slug}
             {...item}

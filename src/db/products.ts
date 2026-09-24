@@ -1,0 +1,355 @@
+import "server-only";
+
+import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+
+import { availabilityForSave, availabilityForStock, type ProductWithImages } from "@/lib/products/model";
+
+import { getDb } from "./index";
+import {
+  orderItems,
+  productImages,
+  products,
+  type NewProduct,
+  type Product,
+  type ProductAvailability,
+  type ProductImage,
+} from "./schema";
+
+export type ProductWithAllImages = Product & { images: ProductImage[] };
+
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+function isUniqueViolation(error: unknown, constraint?: string): boolean {
+  for (let current = error; current; current = (current as { cause?: unknown }).cause) {
+    const pg = current as { code?: string; constraint?: string };
+    if (pg.code === "23505" && (!constraint || pg.constraint === constraint)) return true;
+  }
+  return false;
+}
+
+async function attachImages(rows: Product[]): Promise<ProductWithAllImages[]> {
+  if (rows.length === 0) return [];
+  const images = await getDb()
+    .select()
+    .from(productImages)
+    .where(
+      inArray(
+        productImages.productId,
+        rows.map((row) => row.id)
+      )
+    )
+    .orderBy(asc(productImages.position), asc(productImages.createdAt));
+  return rows.map((row) => ({ ...row, images: images.filter((image) => image.productId === row.id) }));
+}
+
+/** Every product with its photos (primary first), hidden ones included. The store has a few dozen at most. */
+export async function listProductsWithImages(): Promise<ProductWithAllImages[]> {
+  const rows = await getDb().select().from(products).orderBy(asc(products.category), asc(products.sortOrder), asc(products.name));
+  return attachImages(rows);
+}
+
+export async function getProductBySlug(slug: string): Promise<ProductWithAllImages | undefined> {
+  const [row] = await getDb().select().from(products).where(eq(products.slug, slug)).limit(1);
+  if (!row) return undefined;
+  const [withImages] = await attachImages([row]);
+  return withImages;
+}
+
+export async function getProductById(id: string): Promise<ProductWithAllImages | undefined> {
+  const [row] = await getDb().select().from(products).where(eq(products.id, id)).limit(1);
+  if (!row) return undefined;
+  const [withImages] = await attachImages([row]);
+  return withImages;
+}
+
+export type ProductWriteResult =
+  | { ok: true; product: Product }
+  | { ok: false; reason: "not_found" | "slug_taken" | "sku_taken" | "changed" };
+
+/** The editable fields; stock and availability follow the same rules as the quick stock controls. */
+export type ProductInput = Omit<NewProduct, "id" | "createdAt" | "updatedAt">;
+
+/** A new product at the end of its category. Its photos are added separately. */
+export async function createProduct(input: ProductInput): Promise<ProductWriteResult> {
+  try {
+    const [{ next }] = await getDb()
+      .select({ next: sql<number>`coalesce(max(${products.sortOrder}) + 1, 0)` })
+      .from(products)
+      .where(eq(products.category, input.category));
+    const availability = availabilityForSave(input.availability ?? "available", null, null, input.stock ?? null);
+    const [product] = await getDb()
+      .insert(products)
+      .values({ ...input, availability, sortOrder: Number(next) })
+      .returning();
+    return { ok: true, product };
+  } catch (error) {
+    if (isUniqueViolation(error, "products_slug_unique")) return { ok: false, reason: "slug_taken" };
+    if (isUniqueViolation(error, "products_sku_unique")) return { ok: false, reason: "sku_taken" };
+    throw error;
+  }
+}
+
+/**
+ * Save the editor. `seenUpdatedAt` is when the admin loaded the product: if
+ * someone saved it since, nothing changes and the admin is asked to reload.
+ * The slug never changes, so links keep working.
+ */
+export async function updateProduct(
+  id: string,
+  input: Omit<ProductInput, "slug" | "kind">,
+  seenUpdatedAt: Date
+): Promise<ProductWriteResult> {
+  const db = getDb();
+  try {
+    return await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(products).where(eq(products.id, id)).for("update");
+      if (!current) return { ok: false, reason: "not_found" } as const;
+      if (Math.abs(current.updatedAt.getTime() - seenUpdatedAt.getTime()) > 1) return { ok: false, reason: "changed" } as const;
+      const nextStock = input.stock ?? null;
+      const availability = availabilityForSave(
+        input.availability ?? current.availability,
+        current.availability,
+        current.stock,
+        nextStock
+      );
+      const [product] = await tx
+        .update(products)
+        .set({ ...input, availability, stock: nextStock })
+        .where(eq(products.id, id))
+        .returning();
+      return { ok: true, product } as const;
+    });
+  } catch (error) {
+    if (isUniqueViolation(error, "products_sku_unique")) return { ok: false, reason: "sku_taken" };
+    throw error;
+  }
+}
+
+export type AvailabilityResult =
+  | { ok: true; product: Product }
+  | { ok: false; reason: "not_found" | "no_stock" };
+
+/**
+ * Available, out of stock or hidden. A counted product with no stock cannot be
+ * made available: restock it instead.
+ */
+export async function setProductAvailability(id: string, availability: ProductAvailability): Promise<AvailabilityResult> {
+  const [current] = await getDb().select().from(products).where(eq(products.id, id)).limit(1);
+  if (!current) return { ok: false, reason: "not_found" };
+  if (availability === "available" && current.stock !== null && current.stock <= 0) return { ok: false, reason: "no_stock" };
+  const [product] = await getDb().update(products).set({ availability }).where(eq(products.id, id)).returning();
+  return { ok: true, product };
+}
+
+async function writeStock(tx: Tx, id: string, stock: number | null): Promise<Product | undefined> {
+  const [current] = await tx.select().from(products).where(eq(products.id, id)).for("update");
+  if (!current) return undefined;
+  const availability = availabilityForStock(current.availability, current.stock, stock);
+  const [product] = await tx.update(products).set({ stock, availability }).where(eq(products.id, id)).returning();
+  return product;
+}
+
+/** Set one product's stock (null: stop counting). Reaching 0 marks it out of stock; restocking makes it available again. */
+export async function setProductStock(id: string, stock: number | null): Promise<Product | undefined> {
+  return getDb().transaction((tx) => writeStock(tx, id, stock));
+}
+
+/** Save several stock counts at once, as the Inventory page does. Unknown ids are skipped. */
+export async function setProductStocks(entries: { id: string; stock: number | null }[]): Promise<Product[]> {
+  return getDb().transaction(async (tx) => {
+    const saved: Product[] = [];
+    for (const entry of entries) {
+      const product = await writeStock(tx, entry.id, entry.stock);
+      if (product) saved.push(product);
+    }
+    return saved;
+  });
+}
+
+/**
+ * Take a paid order's items out of stock, inside the transaction that marks it
+ * paid. Uncounted products are left alone. Stock never goes below 0; a product
+ * that reaches 0 becomes out of stock. Returns whether any count changed.
+ */
+export async function takeOrderFromStock(tx: Tx, orderId: string): Promise<boolean> {
+  const lines = await tx
+    .select({ slug: orderItems.productSlug, quantity: sql<number>`sum(${orderItems.quantity})::int` })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId))
+    .groupBy(orderItems.productSlug);
+  let changed = false;
+  for (const line of lines) {
+    const [current] = await tx
+      .select()
+      .from(products)
+      .where(and(eq(products.slug, line.slug), isNotNull(products.stock)))
+      .for("update");
+    if (!current || current.stock === null) continue;
+    const stock = Math.max(0, current.stock - Number(line.quantity));
+    const availability = availabilityForStock(current.availability, current.stock, stock);
+    await tx.update(products).set({ stock, availability }).where(eq(products.id, current.id));
+    changed = true;
+  }
+  return changed;
+}
+
+// ---------------------------------------------------------------------------
+// Photos
+
+/** Add a photo after the existing ones. */
+export async function addProductImage(
+  productId: string,
+  image: { url: string; pathname: string | null; alt?: string | null }
+): Promise<ProductImage> {
+  const [{ next }] = await getDb()
+    .select({ next: sql<number>`coalesce(max(${productImages.position}) + 1, 0)` })
+    .from(productImages)
+    .where(eq(productImages.productId, productId));
+  const [row] = await getDb()
+    .insert(productImages)
+    .values({ productId, url: image.url, pathname: image.pathname, alt: image.alt ?? null, position: Number(next) })
+    .returning();
+  return row;
+}
+
+async function fileUsedElsewhere(tx: Tx, url: string, imageId: string): Promise<boolean> {
+  const [shared] = await tx
+    .select({ id: productImages.id })
+    .from(productImages)
+    .where(and(eq(productImages.url, url), ne(productImages.id, imageId)))
+    .limit(1);
+  return Boolean(shared);
+}
+
+/**
+ * Point an existing photo at a new file, keeping its place. Returns the old
+ * row and whether its file is still used elsewhere, so it can be removed.
+ */
+export async function replaceProductImage(
+  imageId: string,
+  image: { url: string; pathname: string | null }
+): Promise<{ image: ProductImage; old: ProductImage; fileStillUsed: boolean } | undefined> {
+  return getDb().transaction(async (tx) => {
+    const [old] = await tx.select().from(productImages).where(eq(productImages.id, imageId)).for("update");
+    if (!old) return undefined;
+    const [updated] = await tx
+      .update(productImages)
+      .set({ url: image.url, pathname: image.pathname })
+      .where(eq(productImages.id, imageId))
+      .returning();
+    return { image: updated, old, fileStillUsed: await fileUsedElsewhere(tx, old.url, imageId) };
+  });
+}
+
+/**
+ * Remove a photo and close the gap. Returns the removed row and whether its
+ * file is still used elsewhere (a duplicated product shares its photos).
+ */
+export async function deleteProductImage(
+  imageId: string
+): Promise<{ image: ProductImage; fileStillUsed: boolean } | undefined> {
+  return getDb().transaction(async (tx) => {
+    const [image] = await tx.delete(productImages).where(eq(productImages.id, imageId)).returning();
+    if (!image) return undefined;
+    const rest = await tx
+      .select({ id: productImages.id })
+      .from(productImages)
+      .where(eq(productImages.productId, image.productId))
+      .orderBy(asc(productImages.position), asc(productImages.createdAt));
+    for (const [position, row] of rest.entries()) {
+      await tx.update(productImages).set({ position }).where(eq(productImages.id, row.id));
+    }
+    return { image, fileStillUsed: await fileUsedElsewhere(tx, image.url, image.id) };
+  });
+}
+
+/** One photo, to check which product it belongs to. */
+export async function getProductImage(imageId: string): Promise<ProductImage | undefined> {
+  const [image] = await getDb().select().from(productImages).where(eq(productImages.id, imageId)).limit(1);
+  return image;
+}
+
+/** Put a product's photos in this order; the first becomes the primary image. Ids not on the product are ignored. */
+export async function reorderProductImages(productId: string, orderedIds: string[]): Promise<void> {
+  await getDb().transaction(async (tx) => {
+    const current = await tx
+      .select({ id: productImages.id })
+      .from(productImages)
+      .where(eq(productImages.productId, productId))
+      .orderBy(asc(productImages.position), asc(productImages.createdAt));
+    const known = new Set(current.map((row) => row.id));
+    const ordered = orderedIds.filter((id) => known.has(id));
+    const rest = current.map((row) => row.id).filter((id) => !ordered.includes(id));
+    for (const [position, id] of [...ordered, ...rest].entries()) {
+      await tx.update(productImages).set({ position }).where(eq(productImages.id, id));
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Duplicating
+
+/** A slug no other product uses: "run-machine", then "run-machine-2", "run-machine-3"… */
+export async function freeSlug(base: string): Promise<string> {
+  const taken = new Set(
+    (
+      await getDb()
+        .select({ slug: products.slug })
+        .from(products)
+        .where(sql`${products.slug} = ${base} or ${products.slug} like ${`${base}-%`}`)
+    ).map((row) => row.slug)
+  );
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+}
+
+/**
+ * Copy a product as a hidden draft ("… copy"), with its photos and build
+ * options but no stock count or SKU, so the admin can adjust it before it goes on sale.
+ */
+export async function duplicateProduct(id: string): Promise<Product | undefined> {
+  const source = await getProductById(id);
+  if (!source) return undefined;
+  const name = `${source.name} copy`;
+  const slug = await freeSlug(`${source.slug}-copy`);
+  return getDb().transaction(async (tx) => {
+    const [{ next }] = await tx
+      .select({ next: sql<number>`coalesce(max(${products.sortOrder}) + 1, 0)` })
+      .from(products)
+      .where(eq(products.category, source.category));
+    const { images, ...fields } = source;
+    const [copy] = await tx
+      .insert(products)
+      .values({
+        ...fields,
+        // A new row: its own id and timestamps.
+        id: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
+        slug,
+        name,
+        sku: null,
+        stock: null,
+        availability: "hidden",
+        sortOrder: Number(next),
+      })
+      .returning();
+    if (images.length) {
+      await tx.insert(productImages).values(
+        images.map((image) => ({
+          productId: copy.id,
+          url: image.url,
+          pathname: image.pathname,
+          alt: image.alt,
+          position: image.position,
+        }))
+      );
+    }
+    return copy;
+  });
+}
+
+/** Rows for the public catalogue (see toStoreCatalogue). */
+export async function listProductsForCatalogue(): Promise<ProductWithImages[]> {
+  return listProductsWithImages();
+}

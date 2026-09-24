@@ -130,3 +130,101 @@ export const orderItems = pgTable(
 );
 
 export type OrderItem = typeof orderItems.$inferSelect;
+
+/**
+ * What the admin chose: on sale, shown but not for sale, or not shown at all.
+ * Stock also decides: a counted product with no stock is out of stock whatever
+ * this says (see src/lib/products/model.ts).
+ */
+export const productAvailability = pgEnum("product_availability", ["available", "out_of_stock", "hidden"]);
+
+export type ProductAvailability = (typeof productAvailability.enumValues)[number];
+
+/**
+ * Which build options an English willow bat offers. Labels come from
+ * BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES in src/lib/catalogue.ts.
+ */
+export interface BatCustomization {
+  enabled: boolean;
+  weights: string[];
+  profiles: string[];
+  handles: string[];
+  /** Free name engraving, up to 15 letters. */
+  engraving: boolean;
+  /** Knocking in (match-ready preparation). */
+  matchReady: boolean;
+  scuffSheet: boolean;
+}
+
+/**
+ * A product in the store. The five categories are fixed in code; bats also
+ * have a subcategory. Money is integer paise, as on orders. `stock` is null
+ * until the admin counts it: an uncounted product stays on sale.
+ */
+export const products = pgTable(
+  "products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The URL name, e.g. "run-machine". Fixed once created, so links keep working. */
+    slug: text("slug").notNull().unique(),
+    kind: text("kind", { enum: ["bat", "gear"] }).notNull(),
+    /** One of the five category slugs in STORE_CATEGORIES. */
+    category: text("category").notNull(),
+    /** Bats only: english-willow, kashmir-willow or tennis-bats. */
+    subcategory: text("subcategory"),
+    name: text("name").notNull(),
+    /** Gear range name, e.g. "Elite". */
+    line: text("line"),
+    /** A short line beside the name, e.g. "Greatest Of All Time". */
+    tagline: text("tagline"),
+    /** Gear: the short note under the name, e.g. "Pro sheepskin palm". */
+    note: text("note"),
+    /** Bats: e.g. "Grade 4 English Willow". */
+    grade: text("grade"),
+    /** The short description: for bats, the willow grade note. */
+    shortDescription: text("short_description"),
+    /** The longer product details line. */
+    description: text("description"),
+    pricePaise: integer("price_paise").notNull(),
+    mrpPaise: integer("mrp_paise"),
+    sku: text("sku").unique(),
+    stock: integer("stock"),
+    lowStockThreshold: integer("low_stock_threshold").notNull().default(3),
+    availability: productAvailability("availability").notNull().default("available"),
+    customization: jsonb("customization").$type<BatCustomization>(),
+    /** Chips beside the name: "Bestseller", "Top 1%". */
+    badges: jsonb("badges").$type<string[]>().notNull().default([]),
+    /** Shown on the home page. */
+    featured: boolean("featured").notNull().default(false),
+    /** Order within its category. */
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [index("products_category_sort_idx").on(table.category, table.sortOrder)]
+);
+
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
+
+/**
+ * A product photo. The lowest position is the primary image. `pathname` is set
+ * for uploads (Vercel Blob, or .uploads/ on a machine without Blob) so they
+ * can be deleted; the photos that ship with the site have none.
+ */
+export const productImages = pgTable(
+  "product_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    pathname: text("pathname"),
+    alt: text("alt"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("product_images_product_position_idx").on(table.productId, table.position)]
+);
+
+export type ProductImage = typeof productImages.$inferSelect;

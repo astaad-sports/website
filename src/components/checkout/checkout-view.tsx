@@ -12,6 +12,7 @@ import { useCart } from "@/components/cart/use-cart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { lineProblemText } from "@/lib/cart";
 import { INDIAN_STATES, type AddressField, type ShippingAddress } from "@/lib/checkout";
 import { formatOrderNumber, formatPaise } from "@/lib/format";
 import { confirmPayment, placeOrder, type CheckoutPayment } from "@/lib/orders/actions";
@@ -263,6 +264,9 @@ export function CheckoutView({
                     <span className="text-sm leading-5 font-semibold">{line.name}</span>
                     {line.summary && <span className="type-body-sm text-ink-muted">{line.summary}</span>}
                     <span className="type-body-sm text-ink-muted">Qty {line.item.quantity}</span>
+                    {line.problem && (
+                      <span className="type-body-sm font-semibold text-danger">{lineProblemText(line)}</span>
+                    )}
                   </span>
                   <span className="text-sm leading-5 font-semibold tabular-nums">
                     {formatPaise(line.lineTotalPaise)}
@@ -283,12 +287,26 @@ export function CheckoutView({
                 Online payment is not set up yet, so orders cannot be placed.
               </p>
             )}
+            {priced.unavailable > 0 && (
+              <p className="type-body-sm font-semibold text-danger">
+                Some items can&apos;t be bought right now.{" "}
+                <Link href="/cart" className="underline underline-offset-4">
+                  Update your cart
+                </Link>{" "}
+                to continue.
+              </p>
+            )}
             {error && (
               <p role="alert" className="type-body-sm text-danger">
                 {error}
               </p>
             )}
-            <Button type="submit" size="lg" className="w-full" disabled={pending || !paymentsReady}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={pending || !paymentsReady || priced.unavailable > 0}
+            >
               {pending ? "Please wait…" : `Pay ${formatPaise(priced.totalPaise)}`}
             </Button>
           </OrderSummary>

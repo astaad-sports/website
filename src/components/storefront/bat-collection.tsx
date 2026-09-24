@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
+import { countInWords } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { SectionHeading } from "./section-heading";
@@ -52,8 +53,11 @@ function SmallTile({
   );
 }
 
-/** "The Astaad bat collection": English Willow, Kashmir Willow and Tennis bats. */
-export function BatCollection() {
+/**
+ * "The Astaad bat collection": English Willow, Kashmir Willow and Tennis bats.
+ * `englishWillow` is how many English willow models are on the store.
+ */
+export function BatCollection({ englishWillow }: { englishWillow: number }) {
   return (
     <section
       id="collection"
@@ -99,15 +103,16 @@ export function BatCollection() {
                 Willow
               </span>
               <span className="max-w-[380px] text-[15px] leading-[22px] text-on-dark-subtle">
-                Six models from Grade 4 to the top 1% of Grade 1+ Players willow. Every one
-                built to your weight, profile and handle, with free name engraving.
+                {countInWords(englishWillow)} {englishWillow === 1 ? "model" : "models"} from Grade 4
+                to the top 1% of Grade 1+ Players willow. Every one built to your weight, profile
+                and handle, with free name engraving.
               </span>
             </span>
             <span className="absolute bottom-9 left-10 flex flex-wrap items-center gap-6">
               <span className="text-[40px] leading-[44px] font-bold tracking-[-0.03em]">
-                6{" "}
+                {englishWillow}{" "}
                 <span className="text-[13px] leading-[18px] font-medium tracking-[0.2em] text-on-dark-subtle uppercase">
-                  Models
+                  {englishWillow === 1 ? "Model" : "Models"}
                 </span>
               </span>
               <span

@@ -17,6 +17,7 @@ import {
 } from "@/lib/orders/fulfilment";
 
 import { getDb } from "./index";
+import { takeOrderFromStock } from "./products";
 import { orderItems, orders, users, type Order, type OrderItem, type OrderStatus } from "./schema";
 
 export interface OrderWithItems extends Order {
@@ -82,27 +83,34 @@ export async function attachRazorpayOrder(orderId: string, razorpayOrderId: stri
 /**
  * Mark the order behind a Razorpay order as paid. Safe to call twice: the
  * checkout handler and the webhook may both report the same payment, and
- * only the first moves it out of `pending_payment`. Returns the order, or
- * undefined if no order matches.
+ * only the first moves it out of `pending_payment`. Returns the order (or
+ * undefined if no order matches) and whether any stock count changed, so the
+ * caller can refresh the storefront.
  */
 export async function markOrderPaid(input: {
   razorpayOrderId: string;
   razorpayPaymentId: string;
-}): Promise<Order | undefined> {
+}): Promise<{ order: Order | undefined; stockChanged: boolean }> {
   const db = getDb();
-  const [updated] = await db
-    .update(orders)
-    .set({ status: "paid", razorpayPaymentId: input.razorpayPaymentId, paidAt: new Date() })
-    .where(and(eq(orders.razorpayOrderId, input.razorpayOrderId), eq(orders.status, "pending_payment")))
-    .returning();
-  if (updated) return updated;
+  // Paying takes the items out of stock in the same transaction, once: a
+  // repeated confirmation (the webhook after the browser) finds the order paid.
+  const paid = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(orders)
+      .set({ status: "paid", razorpayPaymentId: input.razorpayPaymentId, paidAt: new Date() })
+      .where(and(eq(orders.razorpayOrderId, input.razorpayOrderId), eq(orders.status, "pending_payment")))
+      .returning();
+    if (!updated) return undefined;
+    return { order: updated, stockChanged: await takeOrderFromStock(tx, updated.id) };
+  });
+  if (paid) return paid;
 
   const [existing] = await db
     .select()
     .from(orders)
     .where(eq(orders.razorpayOrderId, input.razorpayOrderId))
     .limit(1);
-  return existing;
+  return { order: existing, stockChanged: false };
 }
 
 async function withItems(rows: Order[]): Promise<OrderWithItems[]> {

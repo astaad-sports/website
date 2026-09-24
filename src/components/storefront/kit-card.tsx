@@ -2,31 +2,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export interface KitCardProps {
-  name: string;
-  note?: string;
-  price: number;
-  mrp?: number;
+import type { KitTile } from "./kit-tiles";
+import { OutOfStockChip } from "./out-of-stock-chip";
+
+export type KitCardProps = KitTile & {
   /** Category line above the name (product page). */
   eyebrow?: string;
-  /** Black chip top-left — "No. 1". */
-  badge?: string;
-  href?: string;
-  image: string;
-  imageWidth: number;
-  imageHeight: number;
-  imageTop: number;
   height?: 400 | 380;
   className?: string;
-}
+};
+
+const CHIP = "h-6 rounded-xs bg-surface-dark px-2.5 text-xs leading-6 font-bold tracking-[0.04em] text-on-dark";
 
 /**
  * A grey product tile with the cut-out floating above the name, a note, the
- * price and a round yellow add-to-cart button.
+ * price and a round yellow add-to-cart button (greyed out when out of stock).
  */
 export function KitCard({
   name,
@@ -40,6 +34,8 @@ export function KitCard({
   imageWidth,
   imageHeight,
   imageTop,
+  cartItem,
+  soldOut,
   height = 400,
   className,
 }: KitCardProps) {
@@ -51,9 +47,10 @@ export function KitCard({
         className
       )}
     >
-      {badge && (
-        <span className="absolute top-5 left-5 z-10 h-6 rounded-xs bg-surface-dark px-2.5 text-xs leading-6 font-bold tracking-[0.04em] text-on-dark">
-          {badge}
+      {(badge || soldOut) && (
+        <span className="absolute top-5 left-5 z-10 flex gap-1.5">
+          {soldOut && <OutOfStockChip />}
+          {badge && <span className={CHIP}>{badge}</span>}
         </span>
       )}
       <Image
@@ -72,7 +69,7 @@ export function KitCard({
             </span>
           )}
           <span className="text-lg leading-6 font-bold">
-            {href ? <Link href={href}>{name}</Link> : name}
+            <Link href={href}>{name}</Link>
           </span>
           {note && <span className="text-[13px] leading-[18px] text-ink-muted">{note}</span>}
           <span className="mt-1 text-base leading-[22px] font-bold">
@@ -84,9 +81,16 @@ export function KitCard({
             )}
           </span>
         </div>
-        <Button size="icon" aria-label={`Add ${name} to cart`} className="size-11 shrink-0 rounded-full">
+        <AddToCartButton
+          item={cartItem}
+          productName={`Astaad ${name}`}
+          soldOut={soldOut}
+          size="icon"
+          aria-label={`Add ${name} to cart`}
+          className="size-11 shrink-0 rounded-full"
+        >
           <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
-        </Button>
+        </AddToCartButton>
       </div>
     </article>
   );

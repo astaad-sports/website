@@ -1,4 +1,5 @@
 import { markOrderPaid } from "@/db/orders";
+import { productsChanged } from "@/lib/products/catalogue";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay";
 
 interface RazorpayWebhook {
@@ -38,7 +39,8 @@ export async function POST(request: Request) {
     event.event === "order.paid" ? event.payload?.order?.entity?.id : payment?.order_id;
 
   if ((event.event === "order.paid" || event.event === "payment.captured") && razorpayOrderId && payment?.id) {
-    await markOrderPaid({ razorpayOrderId, razorpayPaymentId: payment.id });
+    const { stockChanged } = await markOrderPaid({ razorpayOrderId, razorpayPaymentId: payment.id });
+    if (stockChanged) productsChanged();
   }
 
   // Acknowledge every verified event, handled or not, so Razorpay does not retry it.

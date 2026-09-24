@@ -95,6 +95,8 @@ export function HandleGlyph({ index }: { index: number }) {
 export interface ChoiceButtonsProps {
   label: string;
   options: BatOption[];
+  /** The labels this bat offers; the rest are left out. Values stay indexes into `options`. */
+  offered?: string[];
   value: number;
   onChange: (index: number) => void;
   /** `button` = the compact home builder; `card` = the 88px product cards. */
@@ -107,6 +109,7 @@ export interface ChoiceButtonsProps {
 export function ChoiceButtons({
   label,
   options,
+  offered,
   value,
   onChange,
   variant = "button",
@@ -120,28 +123,30 @@ export function ChoiceButtons({
       onValueChange={(next) => onChange(Number(next))}
       className={cn("flex w-auto flex-wrap gap-2", variant === "card" && "gap-3", className)}
     >
-      {options.map((option, index) => (
-        <RadioPrimitive.Root
-          key={option.label}
-          value={String(index)}
-          className={cn(
-            "cursor-pointer rounded-xs text-left text-foreground transition-shadow",
-            variant === "button"
-              ? "h-11 px-5 text-sm leading-5 font-medium data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
-              : "flex min-w-0 flex-1 basis-[180px] items-center gap-3 border-2 px-4 py-3.5 md:h-[88px] data-checked:border-brand-yellow data-checked:bg-brand-yellow not-data-checked:border-surface-raised not-data-checked:bg-surface-raised not-data-checked:shadow-card not-data-checked:hover:shadow-float"
-          )}
-        >
-          {glyph?.(index)}
-          {variant === "card" ? (
-            <span className="flex flex-col gap-0.5">
-              <span className="text-[15px] leading-5 font-bold">{option.label}</span>
-              <span className="text-xs leading-4 opacity-70">{option.hint}</span>
-            </span>
-          ) : (
-            option.label
-          )}
-        </RadioPrimitive.Root>
-      ))}
+      {options.map((option, index) =>
+        offered && !offered.includes(option.label) ? null : (
+          <RadioPrimitive.Root
+            key={option.label}
+            value={String(index)}
+            className={cn(
+              "cursor-pointer rounded-xs text-left text-foreground transition-shadow",
+              variant === "button"
+                ? "h-11 px-5 text-sm leading-5 font-medium data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
+                : "flex min-w-0 flex-1 basis-[180px] items-center gap-3 border-2 px-4 py-3.5 md:h-[88px] data-checked:border-brand-yellow data-checked:bg-brand-yellow not-data-checked:border-surface-raised not-data-checked:bg-surface-raised not-data-checked:shadow-card not-data-checked:hover:shadow-float"
+            )}
+          >
+            {glyph?.(index)}
+            {variant === "card" ? (
+              <span className="flex flex-col gap-0.5">
+                <span className="text-[15px] leading-5 font-bold">{option.label}</span>
+                <span className="text-xs leading-4 opacity-70">{option.hint}</span>
+              </span>
+            ) : (
+              option.label
+            )}
+          </RadioPrimitive.Root>
+        )
+      )}
     </RadioGroup>
   );
 }

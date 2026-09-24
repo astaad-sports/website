@@ -4,41 +4,76 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { type Bat } from "@/lib/catalogue";
+import { countInWords, listInWords, type StoreBat } from "@/lib/products/model";
 
 import { Eyebrow } from "./eyebrow";
 
+interface Row {
+  id: string;
+  title: string;
+  body: string;
+}
+
+/** The rows that describe build options, naming only the ones this bat offers. */
+function buildRows({ customization }: StoreBat): { profile: Row | null; weight: Row | null; handle: Row; care: Row } {
+  const { enabled, profiles, weights, handles } = customization;
+  const handleShapes = listInWords(handles.map((label) => label.toLowerCase()), "or");
+  const care = "Oil lightly twice a season, keep the scuff sheet on, and store dry and out of direct sun.";
+  return {
+    profile: enabled
+      ? {
+          id: "profile",
+          title: "Bat Profile",
+          body:
+            profiles.length > 1
+              ? `Choose ${listInWords(profiles, "or")} when you customize. Your choice is shaped by hand before pressing.`
+              : `${profiles[0]}, shaped by hand before pressing.`,
+        }
+      : null,
+    weight: enabled
+      ? {
+          id: "weight",
+          title: "Weight",
+          body:
+            weights.length > 1
+              ? `${countInWords(weights.length)} ranges: ${listInWords(weights)}, weighed without grip and scuff sheet.`
+              : `${weights[0]}, weighed without grip and scuff sheet.`,
+        }
+      : null,
+    handle: {
+      id: "handle",
+      title: "Handle",
+      body: enabled
+        ? `Multi-piece Sarawak cane with rubber inserts for shock absorption. ${handleShapes.charAt(0).toUpperCase()}${handleShapes.slice(1)} shape, fitted with an Astaad chevron grip.`
+        : "Multi-piece Sarawak cane with rubber inserts for shock absorption, fitted with an Astaad chevron grip.",
+    },
+    care: {
+      id: "care",
+      title: "Preparation and care",
+      body:
+        enabled && customization.matchReady
+          ? `Knocked in professionally when you choose match-ready preparation. ${care}`
+          : care,
+    },
+  };
+}
+
 /** Specifications as an accordion, one row open at a time. */
-export function ProductDetails({ bat }: { bat: Bat }) {
+export function ProductDetails({ bat }: { bat: StoreBat }) {
+  const build = buildRows(bat);
   const rows = [
     { id: "details", title: "Product Details", body: bat.details },
-    {
-      id: "profile",
-      title: "Bat Profile",
-      body: "Choose Duckbill Players, Mid to Low or Full Spine when you customize. Your choice is shaped by hand before pressing.",
-    },
+    build.profile,
     { id: "willow", title: "Willow Grade", body: bat.willow },
-    {
-      id: "weight",
-      title: "Weight",
-      body: "Three ranges: 1120–1150 g, 1150–1180 g and 1180–1220 g, weighed without grip and scuff sheet.",
-    },
+    build.weight,
     {
       id: "size",
       title: "Size",
       body: "Size 6, Harrow, Short Handle and Long Handle. See the size guide above for age and height ranges.",
     },
-    {
-      id: "handle",
-      title: "Handle",
-      body: "Multi-piece Sarawak cane with rubber inserts for shock absorption. Round, semi oval or oval shape, fitted with an Astaad chevron grip.",
-    },
-    {
-      id: "care",
-      title: "Preparation and care",
-      body: "Knocked in professionally when you choose match-ready preparation. Oil lightly twice a season, keep the scuff sheet on, and store dry and out of direct sun.",
-    },
-  ];
+    build.handle,
+    build.care,
+  ].filter((row): row is Row => row !== null);
 
   return (
     <section

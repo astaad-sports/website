@@ -29,6 +29,20 @@
       "when": 1790226175737,
       "tag": "0003_fulfilment_steps",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790228160187,
+      "tag": "0004_products",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790228240010,
+      "tag": "0005_seed_products",
+      "breakpoints": true
     }
   ]
 }
