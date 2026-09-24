@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { Mail, Phone } from "lucide-react";
 
 import { Crest } from "@/components/astaad";
 import { STORE_CATEGORIES } from "@/lib/catalogue";
+import { mobileHref } from "@/lib/format";
+import { getStoreSettings } from "@/lib/settings/store";
 
 const SUPPORT_LINKS = [
   { label: "Track Order", href: "/track-order" },
@@ -9,6 +12,8 @@ const SUPPORT_LINKS = [
   { label: "Size Guide", href: "/size-guide" },
   { label: "Contact Us", href: "/contact" },
 ];
+
+const LINK = "text-[15px] leading-[22px] text-on-dark transition-colors hover:text-on-dark-muted";
 
 function FooterNav({
   label,
@@ -23,11 +28,7 @@ function FooterNav({
         {label}
       </span>
       {links.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className="text-[15px] leading-[22px] text-on-dark transition-colors hover:text-on-dark-muted"
-        >
+        <Link key={link.href} href={link.href} className={LINK}>
           {link.label}
         </Link>
       ))}
@@ -35,8 +36,36 @@ function FooterNav({
   );
 }
 
-/** The near-black footer: crest and blurb, Shop and Support columns, legal line. */
-export function SiteFooter() {
+/** The support email and phone from Settings, under the Support links. Nothing when neither is set. */
+function FooterContact({ email, phone }: { email: string | null; phone: string | null }) {
+  if (!email && !phone) return null;
+  return (
+    <address className="flex flex-col gap-3 not-italic">
+      {email && (
+        <a href={`mailto:${email}`} className={`${LINK} inline-flex items-center gap-2 break-all`}>
+          <Mail className="size-4 shrink-0 text-on-dark-subtle" strokeWidth={1.5} aria-hidden="true" />
+          {email}
+        </a>
+      )}
+      {phone && (
+        <a href={mobileHref(phone)} className={`${LINK} inline-flex items-center gap-2 tabular-nums`}>
+          <Phone className="size-4 shrink-0 text-on-dark-subtle" strokeWidth={1.5} aria-hidden="true" />
+          {phone}
+        </a>
+      )}
+    </address>
+  );
+}
+
+/**
+ * The near-black footer: crest and blurb, Shop and Support columns (with the
+ * store's contact details), and the legal line with the store's name and GSTIN.
+ */
+export async function SiteFooter() {
+  const settings = await getStoreSettings();
+  // "Astaad Sports Pvt. Ltd." would otherwise end the sentence with two full stops.
+  const holder = settings.storeName.replace(/\.+$/, "");
+
   return (
     <footer className="bg-surface-dark-sunken text-on-dark">
       <div className="site-shell flex flex-col gap-8 pt-14 pb-8">
@@ -55,10 +84,18 @@ export function SiteFooter() {
               href: category.href,
             }))}
           />
-          <FooterNav label="Support" links={SUPPORT_LINKS} />
+          <div className="flex flex-col gap-5">
+            <FooterNav label="Support" links={SUPPORT_LINKS} />
+            <FooterContact email={settings.supportEmail} phone={settings.supportPhone} />
+          </div>
         </div>
         <div className="flex flex-col gap-3 border-t border-border-dark pt-6 text-[13px] leading-[18px] text-on-dark-subtle sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Astaad Sports. All rights reserved.</span>
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <span>
+              © {new Date().getFullYear()} {holder}. All rights reserved.
+            </span>
+            {settings.gstin && <span className="tabular-nums">GSTIN {settings.gstin}</span>}
+          </span>
           <span className="inline-flex gap-6">
             <Link href="/privacy" className="transition-colors hover:text-on-dark">
               Privacy policy

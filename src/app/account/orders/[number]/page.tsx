@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CircleCheck } from "lucide-react";
 
+import { lineOfferText, RegularPrice } from "@/components/cart/line-offer";
 import { OrderProgress } from "@/components/orders/order-progress";
 import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
@@ -23,7 +24,11 @@ export async function generateMetadata({
   };
 }
 
-/** One order: its items, totals, delivery address and payment. Only its owner can see it. */
+/**
+ * One order: its items (with the offer or coupon behind each price), totals
+ * with the discount and coupon, delivery address and payment. Only its owner
+ * can see it.
+ */
 export default async function OrderPage({ params, searchParams }: PageProps<"/account/orders/[number]">) {
   const { number: raw } = await params;
   const { placed } = await searchParams;
@@ -100,9 +105,15 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
                           ))}
                         </dl>
                       )}
+                      {item.offer && <p className="type-body-sm font-semibold">{lineOfferText(item.offer)}</p>}
                     </div>
                     <div className="flex shrink-0 flex-col sm:items-end">
-                      <span className="font-semibold tabular-nums">{formatPaise(item.lineTotalPaise)}</span>
+                      <span className="flex flex-wrap items-baseline gap-x-2 sm:justify-end">
+                        <span className="font-semibold tabular-nums">{formatPaise(item.lineTotalPaise)}</span>
+                        {item.offer && item.offer.regularPricePaise > item.unitPricePaise && (
+                          <RegularPrice paise={item.offer.regularPricePaise * item.quantity} />
+                        )}
+                      </span>
                       <span className="type-body-sm text-ink-muted">
                         {item.quantity} × {formatPaise(item.unitPricePaise)}
                       </span>
@@ -121,10 +132,23 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
                   Payment
                 </h2>
                 <dl className="flex flex-col gap-2 type-body">
+                  {/* At regular prices, so the rows add up with the discount taken off. */}
                   <div className="flex justify-between gap-4">
                     <dt className="text-ink-muted">Subtotal</dt>
-                    <dd className="tabular-nums">{formatPaise(order.subtotalPaise)}</dd>
+                    <dd className="tabular-nums">{formatPaise(order.subtotalPaise + order.discountPaise)}</dd>
                   </div>
+                  {order.discountPaise > 0 && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-muted">Discount</dt>
+                      <dd className="tabular-nums">&minus;{formatPaise(order.discountPaise)}</dd>
+                    </div>
+                  )}
+                  {order.couponCode && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-muted">Coupon</dt>
+                      <dd className="font-semibold">{order.couponCode}</dd>
+                    </div>
+                  )}
                   <div className="flex justify-between gap-4">
                     <dt className="text-ink-muted">Delivery</dt>
                     <dd>{order.shippingPaise ? formatPaise(order.shippingPaise) : "Free"}</dd>

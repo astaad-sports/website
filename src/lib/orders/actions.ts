@@ -1,10 +1,12 @@
 "use server";
 
+import { findOfferByCode } from "@/db/offers";
 import { attachRazorpayOrder, createOrder, markOrderPaid } from "@/db/orders";
 import { getCurrentUser } from "@/lib/auth/session";
 import { lineProblemText, priceCart } from "@/lib/cart";
 import { paymentResponseSchema, placeOrderSchema, type AddressField } from "@/lib/checkout";
 import { formatOrderNumber } from "@/lib/format";
+import { CODE_PATTERN, couponProblem, normaliseCode, toAppliedCoupon, type AppliedCoupon } from "@/lib/offers/model";
 import { getFreshStoreCatalogue, productsChanged } from "@/lib/products/catalogue";
 import {
   createRazorpayOrder,
@@ -26,6 +28,25 @@ export type PlaceOrderResult =
   | { ok: false; error: string; fieldErrors?: Partial<Record<AddressField, string>> };
 
 const SIGNED_OUT = "Your session has ended. Sign in again to place your order.";
+
+export type CheckCouponResult = { ok: true; coupon: AppliedCoupon } | { ok: false; error: string };
+
+/** The coupon behind a code, if it can be used now, or why not. */
+async function couponFor(raw: unknown): Promise<CheckCouponResult> {
+  const code = normaliseCode(typeof raw === "string" ? raw : "");
+  if (!code) return { ok: false, error: "Enter a coupon code." };
+  const offer = CODE_PATTERN.test(code) && process.env.DATABASE_URL ? await findOfferByCode(code) : undefined;
+  const problem = couponProblem(offer);
+  return problem || !offer ? { ok: false, error: problem ?? "This code isn't valid." } : { ok: true, coupon: toAppliedCoupon(offer) };
+}
+
+/**
+ * Check a coupon code the customer typed in the cart. The cart keeps what
+ * comes back; placeOrder checks the code again.
+ */
+export async function checkCoupon(code: unknown): Promise<CheckCouponResult> {
+  return couponFor(code);
+}
 
 /**
  * Turn the cart and address into an order and a Razorpay order to pay.
@@ -50,9 +71,15 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
       : { ok: false, error: "Your cart could not be read. Refresh the page and try again." };
   }
 
-  const { items, address, expectedTotalPaise } = parsed.data;
-  // Priced against the database, not the cached storefront, so stock is current.
-  const cart = priceCart(items, await getFreshStoreCatalogue());
+  const { items, address, expectedTotalPaise, couponCode } = parsed.data;
+  let coupon: AppliedCoupon | null = null;
+  if (couponCode) {
+    const checked = await couponFor(couponCode);
+    if (!checked.ok) return { ok: false, error: `${checked.error} Remove it from your cart to continue.` };
+    coupon = checked.coupon;
+  }
+  // Priced against the database, not the cached storefront, so stock and offers are current.
+  const cart = priceCart(items, await getFreshStoreCatalogue(), coupon);
   if (cart.invalid > 0 || cart.lines.length === 0) {
     return {
       ok: false,

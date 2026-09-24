@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 import type { StoreCatalogue } from "@/lib/products/model";
 
@@ -9,23 +8,13 @@ const CatalogueContext = createContext<StoreCatalogue | null>(null);
 
 /**
  * The public catalogue, handed down from the root layout so the cart can
- * show current prices and stock in the browser. Checkout prices it again on the server.
+ * show current prices and stock in the browser. The cart and checkout pages
+ * wrap their views in another provider with a catalogue read fresh from the
+ * database (the nearest provider wins); placing the order prices it again on
+ * the server.
  */
 export function CatalogueProvider({ catalogue, children }: { catalogue: StoreCatalogue; children: ReactNode }) {
   return <CatalogueContext value={catalogue}>{children}</CatalogueContext>;
-}
-
-/**
- * Fetch the current catalogue once this page opens. The root layout is not
- * refetched on client navigation, so a tab left open would otherwise price
- * the cart against stock and prices from when it first loaded. The cart and
- * checkout, where a purchase is decided, call this.
- */
-export function useFreshCatalogue(): void {
-  const router = useRouter();
-  useEffect(() => {
-    router.refresh();
-  }, [router]);
 }
 
 export function useCatalogue(): StoreCatalogue {

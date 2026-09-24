@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CircleAlert, CircleCheck, Layers, Plus, Truck, type LucideIcon } from "lucide-react";
+import { ArrowRight, BadgePercent, CircleAlert, CircleCheck, Layers, Plus, Truck, type LucideIcon } from "lucide-react";
 
 import { HomeAttention, type StockAttention } from "@/components/admin/home-attention";
+import { offerHref } from "@/components/admin/offer-rows";
 import { OrderRow } from "@/components/admin/order-rows";
 import { byStoreOrder, matchesStockFilter, toProductListItem } from "@/components/admin/product-row";
 import { BUTTON_SECONDARY, PAGE, SECTION_LABEL } from "@/components/admin/styles";
-import { countOrdersByStatus, listOrdersForAdmin, listStaleShipments } from "@/db/orders";
+import { listActiveOffers } from "@/db/offers";
+import { listOrdersForAdmin, listStaleShipments } from "@/db/orders";
 import { listProductsWithImages } from "@/db/products";
 import type { Order } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatOrderNumber } from "@/lib/format";
+import { daysLeft, offerNote } from "@/lib/offers/model";
 import { cn } from "@/lib/utils";
 
 // The layout's title template only reaches child segments, so this page spells out its own.
@@ -21,6 +24,9 @@ const STALE_SHIPMENT_DAYS = 7;
 
 /** Home names at most this many products; the rest are one row pointing to Inventory. */
 const STOCK_ROWS = 3;
+
+/** An offer this close to its last day is worth a look: extend it, or let it go. */
+const OFFER_ENDING_DAYS = 3;
 
 const ATTENTION_HEADING = "attention-title";
 
@@ -79,7 +85,7 @@ function SummaryCell({
   href: string;
   count: number;
   label: string;
-  /** The colour the stock labels use: yellow for low, red for out. */
+  /** The colour the labels use: yellow for low stock and running offers, red for out of stock. */
   dot?: string;
   first?: boolean;
 }) {
@@ -87,8 +93,8 @@ function SummaryCell({
     <Link
       href={href}
       className={cn(
-        "flex min-h-16 min-w-0 flex-col justify-center gap-0.5 py-2 pr-2 transition-colors hover:bg-surface-sunken/60",
-        !first && "border-l border-border pl-3 lg:pl-4"
+        "flex min-h-16 min-w-0 flex-col justify-center gap-0.5 py-2 pr-1.5 transition-colors hover:bg-surface-sunken/60 lg:pr-2",
+        !first && "border-l border-border pl-2.5 lg:pl-4"
       )}
     >
       <span className="text-xl leading-[26px] font-bold tabular-nums">{count}</span>
@@ -102,13 +108,14 @@ function SummaryCell({
 
 const QUICK_ACTIONS = [
   { href: "/admin/products/new", label: "Add product", icon: Plus },
+  { href: "/admin/offers/new", label: "Create offer", icon: BadgePercent },
   { href: "/admin/inventory", label: "Update stock", icon: Layers },
 ];
 
 const QUICK_TILE =
   "flex min-h-14 items-center gap-2.5 rounded-sm bg-surface-sunken px-3.5 text-sm leading-5 font-semibold transition-colors hover:bg-border";
 
-/** Add product and Update stock: tiles at the foot of the page on phones, buttons beside the greeting on desktop. */
+/** Add product, Create offer and Update stock: tiles at the foot of the page on phones, buttons beside the greeting on desktop. */
 function QuickActions({ className, tiles }: { className?: string; tiles?: boolean }) {
   return (
     <nav aria-label="Quick actions" className={className}>
@@ -123,21 +130,20 @@ function QuickActions({ className, tiles }: { className?: string; tiles?: boolea
 }
 
 /**
- * Home: what needs the admin now (orders to ship, products running out),
- * then the latest orders. Not a report.
+ * Home: what needs the admin now (orders to ship, products running out,
+ * offers about to end), then the latest orders. Not a report.
  */
 export default async function AdminHomePage() {
   await requireAdmin("/admin");
-  const [unshipped, stale, recent, counts, products] = await Promise.all([
+  const [unshipped, stale, recent, products, offers] = await Promise.all([
     listOrdersForAdmin({ filter: "pending" }),
     listStaleShipments(STALE_SHIPMENT_DAYS),
     listOrdersForAdmin({ limit: 5 }),
-    countOrdersByStatus(),
     listProductsWithImages(),
+    listActiveOffers(),
   ]);
   const now = new Date();
   const toShip = unshipped.length;
-  const inTransit = counts.shipped ?? 0;
 
   products.sort(byStoreOrder);
   const out = products.filter((product) => matchesStockFilter(product, "out"));
@@ -191,6 +197,17 @@ export default async function AdminHomePage() {
       icon: Layers,
     });
   }
+  // listActiveOffers puts the soonest to end first.
+  for (const offer of offers.filter((entry) => daysLeft(entry, now) <= OFFER_ENDING_DAYS)) {
+    later.push({
+      key: offer.id,
+      href: offerHref(offer),
+      title: offer.name,
+      detail: offerNote(offer, now),
+      action: "View offer",
+      icon: BadgePercent,
+    });
+  }
   const attentionCount = first.length + stockRows.length + later.length;
 
   return (
@@ -203,14 +220,19 @@ export default async function AdminHomePage() {
         <QuickActions className="hidden items-center gap-2 lg:flex" />
       </header>
 
-      <nav aria-label="Store summary" className="grid max-w-190 grid-cols-4 border-y border-border">
+      <nav aria-label="Store summary" className="grid max-w-190 grid-cols-5 border-y border-border">
         <SummaryCell first href="/admin/orders?status=pending" count={toShip} label="To ship" />
-        <SummaryCell href="/admin/orders?status=shipped" count={inTransit} label="In transit" />
         <SummaryCell href="/admin/products?stock=low" count={low.length} label="Low stock" dot="bg-brand-yellow-hover" />
         <SummaryCell href="/admin/products?stock=out" count={out.length} label="Out of stock" dot="bg-danger" />
+        <SummaryCell
+          href="/admin/offers"
+          count={offers.length}
+          label={offers.length === 1 ? "Active offer" : "Active offers"}
+          dot="bg-brand-yellow ring-1 ring-brand-yellow-hover"
+        />
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-10">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-10">
         <section aria-labelledby={ATTENTION_HEADING} className="flex flex-col">
           <div className="flex min-h-11 items-center justify-between">
             <h2 id={ATTENTION_HEADING} tabIndex={-1} className={cn(SECTION_LABEL, "focus:outline-none")}>
@@ -270,7 +292,7 @@ export default async function AdminHomePage() {
         <h2 id="quick-title" className={cn(SECTION_LABEL, "flex min-h-11 items-center")}>
           Quick actions
         </h2>
-        <QuickActions tiles className="grid grid-cols-2 gap-2" />
+        <QuickActions tiles className="grid grid-cols-2 gap-2 [&>:last-child:nth-child(odd)]:col-span-2" />
       </section>
     </main>
   );

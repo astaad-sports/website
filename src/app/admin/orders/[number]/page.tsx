@@ -11,6 +11,7 @@ import { PAGE, SECTION_LABEL } from "@/components/admin/styles";
 import { TrackingForm } from "@/components/admin/tracking-form";
 import { getOrderForAdmin } from "@/db/orders";
 import { primaryImagesBySlug } from "@/db/products";
+import type { OrderItemOffer } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import {
   formatMobile,
@@ -23,6 +24,8 @@ import {
 } from "@/lib/format";
 import { isFulfilmentStatus } from "@/lib/orders/fulfilment";
 import { productImage } from "@/lib/orders/product-image";
+import { defaultCarrier } from "@/lib/settings/model";
+import { getStoreSettings } from "@/lib/settings/store";
 import { cn } from "@/lib/utils";
 
 export async function generateMetadata({ params }: PageProps<"/admin/orders/[number]">): Promise<Metadata> {
@@ -49,6 +52,42 @@ function Section({ id, title, children, className }: { id: string; title: string
   );
 }
 
+/** "Diwali Sale · 20% off · Coupon DIWALI20": the offer that set a line's price at checkout. */
+function LineOffer({ offer }: { offer: OrderItemOffer }) {
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] leading-[18px]">
+      <span>{offer.name}</span>
+      <span aria-hidden="true" className="text-ink-muted">
+        ·
+      </span>
+      <span className="rounded-xs bg-brand-yellow px-1.5 font-semibold text-on-yellow tabular-nums">{offer.percentOff}% off</span>
+      {offer.code && (
+        <>
+          <span aria-hidden="true" className="text-ink-muted">
+            ·
+          </span>
+          <span>
+            Coupon <span className="font-semibold tracking-[0.04em]">{offer.code}</span>
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
+/** A row above the total: "Offers" with its coupon under it, and the amount. */
+function TotalsRow({ label, detail, amount }: { label: string; detail?: ReactNode; amount: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="flex flex-col">
+        <span className="text-[15px] leading-[22px]">{label}</span>
+        {detail && <span className="text-[13px] leading-[18px] text-ink-muted">{detail}</span>}
+      </span>
+      <span className="text-[15px] leading-[22px] whitespace-nowrap tabular-nums">{amount}</span>
+    </div>
+  );
+}
+
 /** One order: move it along, add its tracking ID, and see who and what it is for. */
 export default async function AdminOrderPage({ params }: PageProps<"/admin/orders/[number]">) {
   const { number: raw } = await params;
@@ -58,7 +97,10 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   const order = await getOrderForAdmin(number);
   if (!order) notFound();
   // The product's current primary photo; the built-in cut-out for a product since removed.
-  const photos = await primaryImagesBySlug(order.items.map((item) => item.productSlug));
+  const [photos, settings] = await Promise.all([
+    primaryImagesBySlug(order.items.map((item) => item.productSlug)),
+    getStoreSettings(),
+  ]);
 
   const status = order.status;
   const inFulfilment = isFulfilmentStatus(status);
@@ -110,6 +152,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                   carrier={order.carrier}
                   trackingNumber={order.trackingNumber}
                   shippedOn={order.shippedAt ? formatShortDate(order.shippedAt) : null}
+                  defaultCarrier={defaultCarrier(settings)}
                 />
               </Section>
               <div className="border-t border-border pt-5 max-lg:hidden">
@@ -157,6 +200,8 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
             <ul className="flex flex-col gap-4">
               {order.items.map((item) => {
                 const image = photos.get(item.productSlug) ?? productImage(item.productKind, item.productSlug);
+                const regularPaise =
+                  item.offer && item.offer.regularPricePaise > item.unitPricePaise ? item.offer.regularPricePaise : null;
                 return (
                   <li key={item.id} className="flex flex-col gap-2">
                     <div className="flex items-start gap-3">
@@ -169,9 +214,19 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                           Qty {item.quantity}
                           {item.quantity > 1 && ` × ${formatPaise(item.unitPricePaise)}`}
                         </span>
+                        {item.offer && <LineOffer offer={item.offer} />}
                       </span>
-                      <span className="text-[15px] leading-[22px] font-semibold whitespace-nowrap tabular-nums">
-                        {formatPaise(item.lineTotalPaise)}
+                      <span className="flex shrink-0 items-baseline gap-2">
+                        {regularPaise !== null && (
+                          <span className="text-[13px] leading-[18px] whitespace-nowrap text-ink-muted tabular-nums">
+                            <span className="sr-only">Regular price </span>
+                            <s>{formatPaise(regularPaise * item.quantity)}</s>
+                          </span>
+                        )}
+                        <span className="text-[15px] leading-[22px] font-semibold whitespace-nowrap tabular-nums">
+                          {regularPaise !== null && <span className="sr-only">Paid </span>}
+                          {formatPaise(item.lineTotalPaise)}
+                        </span>
                       </span>
                     </div>
                     {item.options.length > 0 && (
@@ -188,20 +243,40 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 );
               })}
             </ul>
-            <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
-              <span className="flex flex-col">
-                <span className="text-[15px] leading-[22px] font-semibold">Total</span>
-                <span className="text-[13px] leading-[18px] text-ink-muted">
-                  {order.paidAt ? `Paid via Razorpay on ${formatOrderDate(order.paidAt)}` : "Not paid"}
-                  {order.shippingPaise === 0 && " · Free delivery"}
+            {/* With an offer the subtotal is at regular prices, so the rows add up to the total. */}
+            <div className="flex flex-col gap-3 border-t border-border pt-3">
+              {order.discountPaise > 0 && (
+                <>
+                  <TotalsRow label="Subtotal" amount={formatPaise(order.subtotalPaise + order.discountPaise)} />
+                  <TotalsRow
+                    label="Offers"
+                    detail={
+                      order.couponCode && (
+                        <>
+                          Coupon <span className="font-semibold tracking-[0.04em] text-foreground">{order.couponCode}</span>
+                        </>
+                      )
+                    }
+                    amount={`−${formatPaise(order.discountPaise)}`}
+                  />
+                </>
+              )}
+              {order.shippingPaise > 0 && <TotalsRow label="Delivery" amount={formatPaise(order.shippingPaise)} />}
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex flex-col">
+                  <span className="text-[15px] leading-[22px] font-semibold">Total</span>
+                  <span className="text-[13px] leading-[18px] text-ink-muted">
+                    {order.paidAt ? `Paid via Razorpay on ${formatOrderDate(order.paidAt)}` : "Not paid"}
+                    {order.shippingPaise === 0 && " · Free delivery"}
+                  </span>
+                  {order.razorpayPaymentId && (
+                    <span className="text-[13px] leading-[18px] break-all text-ink-muted">{order.razorpayPaymentId}</span>
+                  )}
                 </span>
-                {order.razorpayPaymentId && (
-                  <span className="text-[13px] leading-[18px] break-all text-ink-muted">{order.razorpayPaymentId}</span>
-                )}
-              </span>
-              <span className="text-[15px] leading-[22px] font-bold whitespace-nowrap tabular-nums">
-                {formatPaise(order.totalPaise)}
-              </span>
+                <span className="text-[15px] leading-[22px] font-bold whitespace-nowrap tabular-nums">
+                  {formatPaise(order.totalPaise)}
+                </span>
+              </div>
             </div>
           </Section>
         </div>

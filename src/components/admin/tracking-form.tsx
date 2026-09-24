@@ -5,7 +5,7 @@ import { ChevronDown, CircleAlert, Pencil } from "lucide-react";
 
 import { removeTracking, saveTracking, type AdminActionState } from "@/lib/orders/admin-actions";
 import { stepIndex, type FulfilmentStatus } from "@/lib/orders/fulfilment";
-import { CARRIERS, carrierName, DEFAULT_CARRIER, isCarrierId, type CarrierId } from "@/lib/shipping";
+import { CARRIERS, carrierName, isCarrierId, type CarrierId } from "@/lib/shipping";
 import { cn } from "@/lib/utils";
 
 import { TRACKING_FIELD_ID } from "./fulfilment-controls";
@@ -53,6 +53,7 @@ export function TrackingForm({
   carrier,
   trackingNumber,
   shippedOn,
+  defaultCarrier,
 }: {
   orderId: string;
   /** The status the admin sees, so a save never undoes someone else's change. */
@@ -61,11 +62,13 @@ export function TrackingForm({
   trackingNumber: string | null;
   /** "22 Oct", once shipped. */
   shippedOn: string | null;
+  /** The courier the form starts on while the order has none (Settings). */
+  defaultCarrier: CarrierId;
 }) {
   const [saveState, save, saving] = useActionState(saveAndRemember, {});
   const [removeState, remove, removing] = useActionState(removeAndRemember, {});
   const shipped = stepIndex(status) >= stepIndex("shipped");
-  const savedCarrier: CarrierId = isCarrierId(carrier) ? carrier : DEFAULT_CARRIER;
+  const savedCarrier: CarrierId = isCarrierId(carrier) ? carrier : defaultCarrier;
   const [courier, setCourier] = useState<CarrierId>(savedCarrier);
   const [value, setValue] = useState(trackingNumber ?? "");
   // The value that was last sent, so an error about it disappears once the admin types something else.

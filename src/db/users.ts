@@ -56,3 +56,8 @@ export async function getUserByFirebaseUid(firebaseUid: string): Promise<User | 
     .limit(1);
   return user;
 }
+
+/** The name the admin gives themselves in Settings. Sign-ins keep it (see upsertUser). */
+export async function setUserName(id: string, name: string): Promise<void> {
+  await getDb().update(users).set({ name }).where(eq(users.id, id));
+}

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { lineProblemText, MAX_QUANTITY } from "@/lib/cart";
 import { formatPaise } from "@/lib/format";
 
-import { useFreshCatalogue } from "./catalogue-provider";
+import { CouponBox } from "./coupon-box";
+import { lineOfferText } from "./line-offer";
 import { OrderSummary } from "./order-summary";
 import { useCart } from "./use-cart";
 
@@ -43,10 +44,13 @@ export function EmptyCart() {
   );
 }
 
-/** The cart page body: line items with quantity and remove, beside the order summary. */
+/**
+ * The cart page body: line items with quantity, remove and any offer (the
+ * regular price struck through beside the price paid), beside the order
+ * summary with the coupon box.
+ */
 export function CartView() {
   const { priced, setQuantity, remove } = useCart();
-  useFreshCatalogue();
 
   if (!priced) return <CartPlaceholder />;
   if (priced.lines.length === 0) return <EmptyCart />;
@@ -61,6 +65,12 @@ export function CartView() {
               name={line.name}
               meta={line.summary || undefined}
               price={formatPaise(line.lineTotalPaise)}
+              regularPrice={
+                line.unitPricePaise < line.regularUnitPricePaise
+                  ? formatPaise(line.regularUnitPricePaise * line.item.quantity)
+                  : undefined
+              }
+              offer={line.offer ? lineOfferText(line.offer) : undefined}
               image={line.image}
               imageAlt=""
               qty={line.item.quantity}
@@ -75,10 +85,12 @@ export function CartView() {
       <OrderSummary
         count={priced.count}
         subtotalPaise={priced.subtotalPaise}
+        discountPaise={priced.discountPaise}
         shippingPaise={priced.shippingPaise}
         totalPaise={priced.totalPaise}
         className="lg:sticky lg:top-6"
       >
+        <CouponBox />
         {priced.unavailable > 0 ? (
           <>
             <p role="status" className="type-body-sm font-semibold text-danger">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CompleteYourKit } from "@/components/storefront/complete-your-kit";
+import { deliveryTerms } from "@/components/storefront/delivery";
 import { FinalCta } from "@/components/storefront/final-cta";
 import { kitTilesForBat } from "@/components/storefront/kit-tiles";
 import { ProductBuilder } from "@/components/storefront/product-builder";
@@ -13,6 +14,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { findStoreBat, listInWords, type StoreBat } from "@/lib/products/model";
+import { getStoreSettings } from "@/lib/settings/store";
 
 // Bats added after the build still render on first visit (dynamicParams is on by default).
 export async function generateStaticParams() {
@@ -42,18 +44,19 @@ export async function generateMetadata({ params }: PageProps<"/bats/[slug]">): P
 
 export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
   const { slug } = await params;
-  const catalogue = await getStoreCatalogue();
+  const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
   const bat = findStoreBat(catalogue, slug);
   if (!bat) notFound();
 
   const cta = bat.customization.enabled ? `Customize your ${bat.name}` : `Choose your ${bat.name}`;
+  const delivery = deliveryTerms(settings);
 
   return (
     <>
       <SiteHeader activeHref="/#collection" />
       <main className="flex-1">
-        <ProductHero bat={bat} />
-        <ProductBuilder key={bat.slug} bat={bat} />
+        <ProductHero bat={bat} delivery={delivery} />
+        <ProductBuilder key={bat.slug} bat={bat} deliveryFeePaise={delivery.feePaise} />
         <ProductStory bat={bat} />
         <ProductDetails bat={bat} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />

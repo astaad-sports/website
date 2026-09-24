@@ -114,7 +114,7 @@ Line icons, 1.5px stroke, 20–24px, in the current text colour. The system ship
 | `PromoBanner` | `rounded-lg` campaign tile, dark or light. | `eyebrow`, `title`, `emphasis`, `cta`, `href`, `tone`, `image`. |
 | `TrustBadge` | Icon in a ring with a two-line label. | Use `TRUST_CLAIMS`; `layout="stack"` under the checkout button. |
 | `SizeSelector` | Radio group of size cells with a Size Guide link. | `sizes` (`{ value, hint, disabled }`), `value`/`onChange` or `defaultValue`, `guideHref`. |
-| `CartLineItem` | Image, name, meta, price, − / + stepper, trash. | `name`, `meta`, `price`, `image`, `qty`/`onQty` or `defaultQty`, `onRemove`. Quantity never goes below 1. |
+| `CartLineItem` | Image, name, meta, price (with the regular price struck through and the offer under it during an offer), − / + stepper, trash. | `name`, `meta`, `price`, `regularPrice`, `offer`, `notice`, `image`, `qty`/`onQty` or `defaultQty`, `maxQty`, `onRemove`. Quantity never goes below 1. |
 | `BottomTabBar` | Fixed mobile navigation, four tabs. | `active`/`onChange` or `defaultActive`; position it with `fixed inset-x-0 bottom-0 md:hidden`. |
 
 Product images passed to `ProductCard`, `CategoryChip`, `PromoBanner` and `CartLineItem` go through `next/image`: local files in `public/` or static imports work as is; remote hosts need `images.remotePatterns` in `next.config.ts`.

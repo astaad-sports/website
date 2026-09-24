@@ -9,10 +9,14 @@ import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
 import { WishlistButton } from "./wishlist-button";
 
-/** One bat on its plate: the blade, name, grade, price and two actions. Out of stock, it says so and cannot be added. */
+/**
+ * One bat on its plate: the blade, name, grade, price (with the running offer
+ * under it) and two actions. Out of stock, it says so and cannot be added.
+ */
 export function BatPlate({ bat }: { bat: StoreBat }) {
   const href = `/bats/${bat.slug}`;
   const image = bat.images[0];
@@ -70,13 +74,18 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
         </h3>
         <p className="text-[13px] leading-[18px] text-ink-muted">{bat.grade}</p>
       </div>
-      <div className="flex items-baseline gap-3">
-        <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
-        {discounted && (
-          <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
-            MRP {formatPrice(bat.mrp)}
-          </span>
-        )}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-baseline gap-3">
+          <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
+          {discounted && (
+            <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
+              {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
+              {bat.mrp > bat.regularPrice && "MRP "}
+              {formatPrice(bat.mrp)}
+            </span>
+          )}
+        </div>
+        {bat.offer && <OfferNote offer={bat.offer} />}
       </div>
       <div className="flex gap-3">
         <AddToCartButton

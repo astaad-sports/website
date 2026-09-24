@@ -2,7 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, ExternalLink, House, LogOut, Menu, Package, Search, ShoppingBag, type LucideIcon } from "lucide-react";
+import {
+  BadgePercent,
+  Boxes,
+  ExternalLink,
+  House,
+  LogOut,
+  Menu,
+  Package,
+  Search,
+  Settings,
+  ShoppingBag,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Crest } from "@/components/astaad/crest";
 import { signOut } from "@/lib/auth/actions";
@@ -18,7 +30,6 @@ interface Section {
   matches: (path: string) => boolean;
 }
 
-// Offers and Settings join these as they are built.
 const DASHBOARD: Section = { href: "/admin", label: "Dashboard", icon: House, matches: (path) => path === "/admin" };
 const ORDERS: Section = {
   href: "/admin/orders",
@@ -32,18 +43,30 @@ const PRODUCTS: Section = {
   icon: Package,
   matches: (path) => path.startsWith("/admin/products"),
 };
+const OFFERS: Section = {
+  href: "/admin/offers",
+  label: "Offers",
+  icon: BadgePercent,
+  matches: (path) => path.startsWith("/admin/offers"),
+};
 const INVENTORY: Section = {
   href: "/admin/inventory",
   label: "Inventory",
   icon: Boxes,
   matches: (path) => path.startsWith("/admin/inventory"),
 };
+const SETTINGS: Section = {
+  href: "/admin/settings",
+  label: "Settings",
+  icon: Settings,
+  matches: (path) => path.startsWith("/admin/settings"),
+};
 const MORE: Section = {
   href: "/admin/more",
   label: "More",
   icon: Menu,
-  // Inventory lives under More on phones.
-  matches: (path) => path.startsWith("/admin/more") || path.startsWith("/admin/inventory"),
+  // Offers, Inventory and Settings live under More on phones.
+  matches: (path) => ["/admin/more", OFFERS.href, INVENTORY.href, SETTINGS.href].some((href) => path.startsWith(href)),
 };
 
 function CountBadge({ count, className }: { count: number; className?: string }) {
@@ -64,7 +87,7 @@ function CountBadge({ count, className }: { count: number; className?: string })
 /** The dark sidebar on desktop: crest, search, sections, then the admin's account. */
 export function AdminSidebar({ toShip, name, email }: { toShip: number; name: string; email: string | null }) {
   const path = usePathname();
-  const sections = [DASHBOARD, ORDERS, PRODUCTS, INVENTORY];
+  const sections = [DASHBOARD, ORDERS, PRODUCTS, OFFERS, INVENTORY, SETTINGS];
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-58 shrink-0 flex-col bg-surface-dark text-on-dark lg:flex">
@@ -159,13 +182,12 @@ export function AdminSidebar({ toShip, name, email }: { toShip: number; name: st
 }
 
 /**
- * Order detail pages and the product editor end in their own action bar, and
- * Search has its own bar, so the tabs step aside there.
+ * Order detail pages, the product editor and the offer form end in their own
+ * action bar, and Search has its own bar, so the tabs step aside there.
  */
 function hidesTabs(path: string): boolean {
   return (
-    /^\/admin\/orders\/[^/]+\/?$/.test(path) ||
-    /^\/admin\/products\/[^/]+\/?$/.test(path) ||
+    /^\/admin\/(orders|products|offers)\/[^/]+\/?$/.test(path) ||
     path.startsWith("/admin/search")
   );
 }

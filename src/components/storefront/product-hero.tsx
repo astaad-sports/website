@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Check, Leaf, Scale, ShoppingCart, Star, Target, Zap } from "lucide-react";
+import { ArrowRight, Leaf, Scale, ShoppingCart, Star, Target, Zap } from "lucide-react";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
@@ -8,18 +8,19 @@ import { DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
 
+import type { DeliveryTerms } from "./delivery";
 import { Eyebrow } from "./eyebrow";
+import { OfferNote } from "./offer-note";
 import { ProductGallery } from "./product-gallery";
+import { ProductPromises } from "./product-promises";
 import { StockStatus } from "./stock-status";
 
-const PROMISES = [
-  "Free delivery across India",
-  "Easy returns within 7 days",
-  "100% Genuine Astaad Product",
-];
-
-/** The product hero: the gallery on the left; name, stock, price and actions on the right. */
-export function ProductHero({ bat }: { bat: StoreBat }) {
+/**
+ * The product hero: the gallery on the left; name, stock, price (with any
+ * running offer), delivery promises and actions on the right. From xl it is
+ * 760px tall, growing when an offer or a dispatch time needs the room.
+ */
+export function ProductHero({ bat, delivery }: { bat: StoreBat; delivery: DeliveryTerms }) {
   const highlights = [
     { icon: Leaf, label: bat.grade },
     { icon: Scale, label: "Balanced Pickup" },
@@ -29,7 +30,7 @@ export function ProductHero({ bat }: { bat: StoreBat }) {
   const discounted = bat.mrp > bat.price;
 
   return (
-    <section aria-labelledby="pdp-title" className="grid lg:grid-cols-[54%_1fr] xl:h-[760px]">
+    <section aria-labelledby="pdp-title" className="grid grid-cols-1 lg:grid-cols-[54%_1fr] xl:min-h-[760px]">
       <ProductGallery bat={bat} />
       <div className="flex flex-col gap-[18px] px-4 py-8 md:px-8 md:py-10 xl:py-14 xl:pr-16 xl:pl-14">
         <Eyebrow bar>Astaad Sports</Eyebrow>
@@ -75,20 +76,14 @@ export function ProductHero({ bat }: { bat: StoreBat }) {
               </>
             )}
           </div>
+          {bat.offer && <OfferNote offer={bat.offer} />}
           <span className="text-[13px] leading-[18px] text-ink-muted">
             {discounted
               ? `You save ${formatPrice(bat.mrp - bat.price)} · inclusive of all taxes`
               : "Inclusive of all taxes"}
           </span>
         </div>
-        <ul className="flex flex-col gap-1.5 text-sm leading-5">
-          {PROMISES.map((promise) => (
-            <li key={promise} className="flex items-center gap-2.5">
-              <Check className="size-4 text-success" strokeWidth={2.2} aria-hidden="true" />
-              {promise}
-            </li>
-          ))}
-        </ul>
+        <ProductPromises delivery={delivery} />
         <div className="mt-1 flex flex-col gap-2.5">
           <Button
             size="lg"

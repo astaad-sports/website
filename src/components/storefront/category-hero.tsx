@@ -4,17 +4,25 @@ import Link from "next/link";
 import { type StoreCategory } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 
+import { deliveryPromise } from "./delivery";
 import { Eyebrow } from "./eyebrow";
 
-/** The black category stage: breadcrumb, display title, tagline and the cut-out under the floodlight. */
+/**
+ * The black category stage: breadcrumb, display title, tagline, the count,
+ * starting price and delivery (as Settings have it), and the cut-out under
+ * the floodlight.
+ */
 export function CategoryHero({
   category,
   count,
   from,
+  deliveryFeePaise,
 }: {
   category: StoreCategory;
   count: number;
+  /** The lowest price, offers included. */
   from: number;
+  deliveryFeePaise: number;
 }) {
   const width = category.tile.width * 2;
   const height = category.tile.height * 2;
@@ -59,7 +67,7 @@ export function CategoryHero({
               {count} {count === 1 ? "model" : "models"}
             </li>
             <li className="sm:border-l sm:border-border-on-dark sm:px-7">from {formatPrice(from)}</li>
-            <li className="sm:border-l sm:border-border-on-dark sm:px-7">Free delivery across India</li>
+            <li className="sm:border-l sm:border-border-on-dark sm:px-7">{deliveryPromise(deliveryFeePaise)}</li>
           </ul>
         </div>
         <div

@@ -28,6 +28,11 @@ const caveat = Caveat({
   display: "swap",
 });
 
+// Offers start and end at midnight with no one saving anything, so pages are
+// rebuilt at least this often (seconds; CATALOGUE_REVALIDATE in
+// src/lib/products/catalogue.ts, which can't be imported into this literal).
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: {
     default: "Astaad Sports",

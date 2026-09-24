@@ -9,6 +9,7 @@ import {
   type StoreBat,
   type StoreCatalogue,
   type StoreGear,
+  type StoreOffer,
 } from "@/lib/products/model";
 
 /** A product as a kit tile: what the tile shows, and what its cart button adds. */
@@ -16,6 +17,8 @@ export interface KitTile extends KitItem {
   href: string;
   cartItem: CartItem;
   soldOut: boolean;
+  /** The running offer already in `price`. */
+  offer: StoreOffer | null;
 }
 
 /** A bat as a tile, sold in its standard build. */
@@ -34,6 +37,7 @@ export function batTile(bat: StoreBat): KitTile {
     imageTop: 40,
     cartItem: batCartItem(bat.slug, DEFAULT_BAT_CONFIG, 1, bat.customization),
     soldOut: bat.soldOut,
+    offer: bat.offer,
   };
 }
 
@@ -54,6 +58,7 @@ export function gearTile(product: StoreGear): KitTile {
     imageTop: product.imageTop,
     cartItem: gearCartItem(product),
     soldOut: product.soldOut,
+    offer: product.offer,
   };
 }
 

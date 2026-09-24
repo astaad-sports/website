@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   ArrowLeftRight,
   Award,
-  Check,
   Feather,
   Grip,
   Hand,
@@ -20,18 +19,15 @@ import {
   type StoreCategory,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { gearLine, type StoreGear } from "@/lib/products/model";
+import { gearLine, percentOff, type StoreGear } from "@/lib/products/model";
 
+import type { DeliveryTerms } from "./delivery";
 import { Eyebrow } from "./eyebrow";
 import { GearGallery } from "./gear-gallery";
 import { GearOptions } from "./gear-options";
+import { OfferNote } from "./offer-note";
+import { ProductPromises } from "./product-promises";
 import { StockStatus } from "./stock-status";
-
-const PROMISES = [
-  "Free delivery across India",
-  "Easy returns within 7 days",
-  "100% Genuine Astaad Product",
-];
 
 const HIGHLIGHTS: Record<GearCategorySlug, { icon: typeof Truck; label: string }[]> = {
   "batting-pads": [
@@ -60,18 +56,28 @@ const HIGHLIGHTS: Record<GearCategorySlug, { icon: typeof Truck; label: string }
   ],
 };
 
-/** The gear product hero: the stage on the left; name, stock, price, options and highlights on the right. */
+/**
+ * The gear product hero: the stage on the left; name, stock, price (with any
+ * running offer), delivery promises, options and highlights on the right.
+ * From xl it is at least 760px tall, growing with the options beside the stage.
+ */
 export function GearHero({
   product,
   category,
   content,
+  delivery,
 }: {
   product: StoreGear;
   category: StoreCategory;
   content: GearCategoryContent;
+  delivery: DeliveryTerms;
 }) {
+  // The % OFF chip and the saving show only while an offer runs; an MRP alone
+  // is struck through as before. The struck price is then the MRP, or the
+  // regular price when there is none.
+  const offerMrp = product.offer ? product.mrp : undefined;
   return (
-    <section aria-labelledby="pdp-title" className="grid lg:grid-cols-[54%_1fr] xl:h-[760px]">
+    <section aria-labelledby="pdp-title" className="grid grid-cols-1 lg:grid-cols-[54%_1fr] xl:min-h-[760px]">
       <GearGallery product={product} />
       <div className="flex flex-col gap-[18px] px-4 py-8 md:px-8 md:py-10 xl:py-14 xl:pr-16 xl:pl-14">
         <Eyebrow bar>
@@ -105,17 +111,20 @@ export function GearHero({
                 {formatPrice(product.mrp)}
               </span>
             )}
+            {offerMrp && (
+              <span className="h-[26px] rounded-xs bg-brand-yellow px-2.5 text-xs leading-[26px] font-bold tracking-[0.06em] text-on-yellow">
+                {percentOff(product.price, offerMrp)}% OFF
+              </span>
+            )}
           </div>
-          <span className="text-[13px] leading-[18px] text-ink-muted">Inclusive of all taxes</span>
+          {product.offer && <OfferNote offer={product.offer} />}
+          <span className="text-[13px] leading-[18px] text-ink-muted">
+            {offerMrp
+              ? `You save ${formatPrice(offerMrp - product.price)} · inclusive of all taxes`
+              : "Inclusive of all taxes"}
+          </span>
         </div>
-        <ul className="flex flex-col gap-1.5 text-sm leading-5">
-          {PROMISES.map((promise) => (
-            <li key={promise} className="flex items-center gap-2.5">
-              <Check className="size-4 text-success" strokeWidth={2.2} aria-hidden="true" />
-              {promise}
-            </li>
-          ))}
-        </ul>
+        <ProductPromises delivery={delivery} />
         <GearOptions
           product={{ slug: product.slug, categorySlug: product.categorySlug, name: product.name }}
           soldOut={product.soldOut}

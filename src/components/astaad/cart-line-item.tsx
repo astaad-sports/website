@@ -16,6 +16,10 @@ export interface CartLineItemProps {
   meta?: string;
   /** A formatted price — "₹ 28,999". */
   price: string;
+  /** The price before an offer, struck through beside `price` — "₹ 36,249". */
+  regularPrice?: string;
+  /** The offer behind the price, under it — "Diwali Sale · 20% off". */
+  offer?: string;
   /** Controlled quantity; leave undefined for internal state. Never below 1. */
   qty?: number;
   defaultQty?: number;
@@ -31,14 +35,17 @@ export interface CartLineItemProps {
 }
 
 /**
- * One product in the cart: image, name, a `meta` line in `ink-muted`, price,
- * a − / + quantity stepper and a `danger` trash IconButton. Quantity never
- * goes below 1 — removal is the trash button.
+ * One product in the cart: image, name, a `meta` line in `ink-muted`, price
+ * (with the regular price struck through and the offer under it when one
+ * applies), a − / + quantity stepper and a `danger` trash IconButton.
+ * Quantity never goes below 1 — removal is the trash button.
  */
 export function CartLineItem({
   name,
   meta,
   price,
+  regularPrice,
+  offer,
   qty,
   defaultQty = 1,
   image,
@@ -82,7 +89,16 @@ export function CartLineItem({
           {name}
         </p>
         {meta && <span className="type-body-sm text-ink-muted">{meta}</span>}
-        <span className="type-price">{price}</span>
+        <span className="flex flex-wrap items-baseline gap-x-2">
+          <span className="type-price">{price}</span>
+          {regularPrice && (
+            <s className="type-body-sm text-ink-muted tabular-nums">
+              <span className="sr-only">Regular price </span>
+              {regularPrice}
+            </s>
+          )}
+        </span>
+        {offer && <span className="type-body-sm font-semibold text-foreground">{offer}</span>}
         {notice && <span className="type-body-sm font-semibold text-danger">{notice}</span>}
         <div className="mt-auto flex items-center justify-between">
           <div

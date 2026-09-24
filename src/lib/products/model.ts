@@ -2,7 +2,7 @@
 // options a bat offers, and the mapping from database rows to the shapes the
 // storefront components read (Bat and GearProduct from src/lib/catalogue.ts).
 // Pure and client-safe; the database lives in src/db/products.ts.
-import type { BatCustomization, Product, ProductAvailability, ProductImage } from "@/db/schema";
+import type { BatCustomization, Offer, Product, ProductAvailability, ProductImage } from "@/db/schema";
 import {
   BAT_HANDLES,
   BAT_IMAGE,
@@ -17,6 +17,7 @@ import {
   type GearCategorySlug,
   type GearProduct,
 } from "@/lib/catalogue";
+import { bestOffer, offerPrice, type OfferTerms } from "@/lib/offers/model";
 
 // ---------------------------------------------------------------------------
 // Categories
@@ -216,7 +217,22 @@ export function productHref(product: { kind: string; category: string; slug: str
 // The storefront catalogue
 
 /** A bat as the storefront shows it: the Bat fields plus stock, photos and build options. */
-export interface StoreBat extends Bat {
+/** The offer taking money off a product on the store now (one that needs no code). */
+export interface StoreOffer {
+  name: string;
+  percentOff: number;
+  /** ISO time of the offer's end. */
+  endsAt: string;
+}
+
+/** Offer fields shared by bats and gear on the store. `price` is what the customer pays now. */
+interface OfferPricing {
+  /** The price before any offer, in rupees. */
+  regularPrice: number;
+  offer: StoreOffer | null;
+}
+
+export interface StoreBat extends Bat, OfferPricing {
   id: string;
   subcategory: BatSubcategory;
   stockStatus: Exclude<StockStatus, "hidden">;
@@ -228,7 +244,7 @@ export interface StoreBat extends Bat {
 }
 
 /** A gear product as the storefront shows it. */
-export interface StoreGear extends GearProduct {
+export interface StoreGear extends GearProduct, OfferPricing {
   id: string;
   stockStatus: Exclude<StockStatus, "hidden">;
   soldOut: boolean;
@@ -240,6 +256,27 @@ export interface StoreGear extends GearProduct {
 export interface StoreCatalogue {
   bats: StoreBat[];
   gear: StoreGear[];
+  /** Charged per order; 0 while delivery is free (see Settings). */
+  deliveryFeePaise: number;
+}
+
+/** What else shapes the catalogue: offers that need no code, delivery, and the time now. */
+export interface CatalogueContext {
+  offers?: (OfferTerms & Pick<Offer, "endsAt">)[];
+  deliveryFeePaise?: number;
+  now?: Date;
+}
+
+/** The regular price and the best running offer for a product row. */
+function pricing(row: ProductWithImages, context: CatalogueContext): OfferPricing & { price: number } {
+  const regularPrice = rupees(row.pricePaise);
+  const offer = bestOffer(context.offers ?? [], { id: row.id, category: row.category }, context.now);
+  if (!offer) return { regularPrice, price: regularPrice, offer: null };
+  return {
+    regularPrice,
+    price: offerPrice(regularPrice, offer.percentOff),
+    offer: { name: offer.name, percentOff: offer.percentOff, endsAt: offer.endsAt.toISOString() },
+  };
 }
 
 export type ProductWithImages = Product & { images: Pick<ProductImage, "url" | "position">[] };
@@ -255,11 +292,12 @@ const GEAR_LAYOUT: Record<GearCategorySlug, Pick<GearProduct, "image" | "imageWi
 
 const rupees = (paise: number) => Math.round(paise / 100);
 
-function toStoreBat(row: ProductWithImages): StoreBat {
+function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat {
   const seeded = BATS.find((bat) => bat.slug === row.slug);
   const status = stockStatus(row) as Exclude<StockStatus, "hidden">;
-  const price = rupees(row.pricePaise);
-  const mrp = row.mrpPaise ? rupees(row.mrpPaise) : price;
+  const { regularPrice, price, offer } = pricing(row, context);
+  // With no MRP, an offer is shown against the regular price.
+  const mrp = row.mrpPaise ? rupees(row.mrpPaise) : regularPrice;
   const images = [...row.images].sort((a, b) => a.position - b.position).map((image) => image.url);
   const grade = row.grade ?? subcategoryName(row.subcategory) ?? "";
   return {
@@ -269,6 +307,8 @@ function toStoreBat(row: ProductWithImages): StoreBat {
     tagline: row.tagline ?? undefined,
     grade,
     price,
+    regularPrice,
+    offer,
     mrp,
     off: percentOff(price, mrp),
     badges: row.badges.length ? row.badges : undefined,
@@ -286,13 +326,14 @@ function toStoreBat(row: ProductWithImages): StoreBat {
   };
 }
 
-function toStoreGear(row: ProductWithImages): StoreGear {
+function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGear {
   const category = row.category as GearCategorySlug;
   const seeded = GEAR.find((item) => item.slug === row.slug);
   const layout = seeded ?? GEAR_LAYOUT[category];
   const status = stockStatus(row) as Exclude<StockStatus, "hidden">;
   const images = [...row.images].sort((a, b) => a.position - b.position).map((image) => image.url);
-  const price = rupees(row.pricePaise);
+  const { regularPrice, price, offer } = pricing(row, context);
+  const mrp = row.mrpPaise ? rupees(row.mrpPaise) : regularPrice;
   return {
     id: row.id,
     slug: row.slug,
@@ -302,7 +343,10 @@ function toStoreGear(row: ProductWithImages): StoreGear {
     name: row.name,
     note: row.note ?? undefined,
     price,
-    mrp: row.mrpPaise && rupees(row.mrpPaise) > price ? rupees(row.mrpPaise) : undefined,
+    regularPrice,
+    offer,
+    // Struck through beside the price: the MRP, or the regular price during an offer.
+    mrp: mrp > price ? mrp : undefined,
     badge: row.badges[0],
     href: `/shop/${category}/${row.slug}`,
     image: images[0] ?? layout.image,
@@ -317,8 +361,12 @@ function toStoreGear(row: ProductWithImages): StoreGear {
   };
 }
 
-/** The public catalogue from database rows: hidden products are left out; bats first, then gear by category. */
-export function toStoreCatalogue(rows: ProductWithImages[]): StoreCatalogue {
+/**
+ * The public catalogue from database rows: hidden products are left out;
+ * bats first, then gear by category. Prices include the best running offer
+ * that needs no code.
+ */
+export function toStoreCatalogue(rows: ProductWithImages[], context: CatalogueContext = {}): StoreCatalogue {
   const visible = rows
     .filter((row) => stockStatus(row) !== "hidden")
     .sort(
@@ -328,8 +376,9 @@ export function toStoreCatalogue(rows: ProductWithImages[]): StoreCatalogue {
         a.name.localeCompare(b.name)
     );
   return {
-    bats: visible.filter((row) => row.kind === "bat").map(toStoreBat),
-    gear: visible.filter((row) => row.kind === "gear" && row.category !== "bats").map(toStoreGear),
+    bats: visible.filter((row) => row.kind === "bat").map((row) => toStoreBat(row, context)),
+    gear: visible.filter((row) => row.kind === "gear" && row.category !== "bats").map((row) => toStoreGear(row, context)),
+    deliveryFeePaise: context.deliveryFeePaise ?? 0,
   };
 }
 

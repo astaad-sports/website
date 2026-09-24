@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -107,6 +109,10 @@ export const orders = pgTable(
      * paying for the last one at once): the owner restocks or refunds.
      */
     stockShortfall: jsonb("stock_shortfall").$type<OrderStockShortfall[]>(),
+    /** The coupon code the customer entered, when it took money off. */
+    couponCode: text("coupon_code"),
+    /** How much offers and coupons took off the regular prices, in paise (already out of the line totals). */
+    discountPaise: integer("discount_paise").notNull().default(0),
     ...timestamps,
   },
   (table) => [
@@ -121,6 +127,16 @@ export type Order = typeof orders.$inferSelect;
 export interface OrderItemOption {
   label: string;
   value: string;
+}
+
+/** The offer that set a line's price, as it was at checkout. */
+export interface OrderItemOffer {
+  name: string;
+  percentOff: number;
+  /** The coupon code, for an offer that needs one. */
+  code: string | null;
+  /** The price before the offer, in paise. */
+  regularPricePaise: number;
 }
 
 /** A line of an order, with the product and price as they were at checkout. */
@@ -138,6 +154,7 @@ export const orderItems = pgTable(
     unitPricePaise: integer("unit_price_paise").notNull(),
     quantity: integer("quantity").notNull(),
     lineTotalPaise: integer("line_total_paise").notNull(),
+    offer: jsonb("offer").$type<OrderItemOffer>(),
   },
   (table) => [index("order_items_order_id_idx").on(table.orderId)]
 );
@@ -241,3 +258,72 @@ export const productImages = pgTable(
 );
 
 export type ProductImage = typeof productImages.$inferSelect;
+
+/** What an offer covers: every product, some categories, or chosen products. */
+export const offerScope = pgEnum("offer_scope", ["store", "categories", "products"]);
+
+export type OfferScope = (typeof offerScope.enumValues)[number];
+
+/**
+ * A percentage off, between two dates. Without a code it applies by itself
+ * and the store shows the lower price; with one, only when the customer enters
+ * it in the cart. Offers don't add up: a product gets its best one.
+ */
+export const offers = pgTable(
+  "offers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    percentOff: integer("percent_off").notNull(),
+    /** The start of the first day, India time. */
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    /** The end of the last day, India time. */
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    scope: offerScope("scope").notNull().default("store"),
+    /** Category slugs, when `scope` is "categories". */
+    categories: jsonb("categories").$type<string[]>().notNull().default([]),
+    /** Product ids, when `scope` is "products". */
+    productIds: jsonb("product_ids").$type<string[]>().notNull().default([]),
+    /** Upper case. Unique, so one code never means two offers. */
+    code: text("code").unique(),
+    ...timestamps,
+  },
+  (table) => [
+    index("offers_ends_at_idx").on(table.endsAt),
+    check("offers_percent_off_range", sql`${table.percentOff} between 1 and 90`),
+    check("offers_dates_in_order", sql`${table.endsAt} > ${table.startsAt}`),
+  ]
+);
+
+export type Offer = typeof offers.$inferSelect;
+export type NewOffer = typeof offers.$inferInsert;
+
+/**
+ * The store's settings: one row (id 1). Store details for the footer,
+ * delivery for the cart, the courier the tracking form starts on, and the
+ * dispatch line on product pages.
+ */
+export const storeSettings = pgTable(
+  "store_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    storeName: text("store_name").notNull().default("Astaad Sports"),
+    supportEmail: text("support_email"),
+    supportPhone: text("support_phone"),
+    gstin: text("gstin"),
+    freeDelivery: boolean("free_delivery").notNull().default(true),
+    /** Charged per order when delivery is not free. */
+    deliveryFeePaise: integer("delivery_fee_paise").notNull().default(0),
+    /** A CARRIERS key from src/lib/shipping.ts. */
+    defaultCarrier: text("default_carrier").notNull().default("trackon"),
+    /** e.g. "Ships in 2–3 days". */
+    dispatchTime: text("dispatch_time"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [check("store_settings_single_row", sql`${table.id} = 1`)]
+);
+
+export type StoreSettings = typeof storeSettings.$inferSelect;

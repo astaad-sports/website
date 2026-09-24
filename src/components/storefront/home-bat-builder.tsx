@@ -17,6 +17,7 @@ import { formatPrice } from "@/lib/format";
 import { countInWords, listInWords, startingBatConfig, type StoreBat } from "@/lib/products/model";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
+import { OfferNote } from "./offer-note";
 import { SectionHeading } from "./section-heading";
 
 /** "Six choices. No extra cost for engraving or knocking.", counting only what this bat offers. */
@@ -28,8 +29,9 @@ function choicesNote({ engraving, matchReady, scuffSheet }: StoreBat["customizat
 }
 
 /**
- * "Build your bat": a live preview of `bat` beside its customisation choices,
- * showing only the options the bat offers.
+ * "Build your bat": a live preview of `bat` (with its price and any running
+ * offer) beside its customisation choices, showing only the options the bat
+ * offers.
  */
 export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
   const custom = bat.customization;
@@ -73,13 +75,16 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 <span className="text-xl leading-[26px] font-bold">{bat.name}</span>
                 <span className="text-[13px] leading-[18px] text-on-dark-subtle">{bat.grade}</span>
               </div>
-              <div className="flex flex-col items-end gap-0.5">
+              <div className="flex flex-col items-end gap-0.5 text-right">
                 <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
                 {bat.mrp > bat.price && (
                   <span className="text-xs leading-4 text-ink-subtle line-through">
-                    MRP {formatPrice(bat.mrp)}
+                    {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
+                    {bat.mrp > bat.regularPrice && "MRP "}
+                    {formatPrice(bat.mrp)}
                   </span>
                 )}
+                {bat.offer && <OfferNote offer={bat.offer} tone="dark" className="mt-1" />}
               </div>
             </div>
             {/* The standard cut-out, which the engraving is drawn onto */}

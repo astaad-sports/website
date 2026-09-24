@@ -7,15 +7,18 @@ import {
 import { type GearCategoryContent } from "@/lib/catalogue";
 import { gearLine, type StoreGear } from "@/lib/products/model";
 
+import { deliveryPromise } from "./delivery";
 import { Eyebrow } from "./eyebrow";
 
-/** Product details, sizing, care and delivery as an accordion, one row open at a time. */
+/** Product details, sizing, care and delivery (as Settings have it) as an accordion, one row open at a time. */
 export function GearDetails({
   product,
   content,
+  deliveryFeePaise,
 }: {
   product: StoreGear;
   content: GearCategoryContent;
+  deliveryFeePaise: number;
 }) {
   const rows = [
     {
@@ -28,7 +31,7 @@ export function GearDetails({
     {
       id: "delivery",
       title: "Delivery and returns",
-      body: "Free delivery across India. Easy returns within 7 days on unused items in their original packaging. 100% genuine Astaad product.",
+      body: `${deliveryPromise(deliveryFeePaise)}. Easy returns within 7 days on unused items in their original packaging. 100% genuine Astaad product.`,
     },
   ].filter((row): row is { id: string; title: string; body: string } => row !== null);
 

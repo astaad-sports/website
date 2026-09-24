@@ -80,6 +80,8 @@ export const placeOrderSchema = z.object({
   address: addressSchema,
   /** The total the customer was shown; if prices changed since, the order is not placed. */
   expectedTotalPaise: z.number().int().nonnegative().optional(),
+  /** The coupon code in the cart, checked again here. */
+  couponCode: z.string().max(40).optional(),
 });
 
 export const paymentResponseSchema = z.object({

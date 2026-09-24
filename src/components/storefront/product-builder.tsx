@@ -31,7 +31,9 @@ import {
   YesNo,
 } from "./bat-options";
 import { BatSilhouette } from "./bat-silhouette";
+import { deliveryShort } from "./delivery";
 import { Eyebrow } from "./eyebrow";
+import { OfferNote } from "./offer-note";
 import { SectionHeading } from "./section-heading";
 import { SizeGuideDialog } from "./size-guide-dialog";
 
@@ -42,11 +44,14 @@ const SILHOUETTE_HEIGHTS = [
   "h-[246px] lg:h-[360px]",
 ];
 
-const TRUST = [
-  { icon: Truck, label: "Free delivery" },
-  { icon: Lock, label: "Secure payment" },
-  { icon: RotateCcw, label: "Easy returns" },
-];
+/** The row under the summary's Add to cart, with delivery as Settings have it. */
+function trustRow(deliveryFeePaise: number) {
+  return [
+    { icon: Truck, label: deliveryShort(deliveryFeePaise) },
+    { icon: Lock, label: "Secure payment" },
+    { icon: RotateCcw, label: "Easy returns" },
+  ];
+}
 
 function shortRange(age: string, height: string) {
   return `${age.replace(" years", " yrs")} · ${height.replace(/ /g, "")}`;
@@ -147,20 +152,23 @@ function SizeSection({
   );
 }
 
-/** Price and Add to cart for a bat sold only in its standard build, under the size picker. */
+/** Price (with any running offer) and Add to cart for a bat sold only in its standard build, under the size picker. */
 function StandardBuy({ bat, item }: { bat: StoreBat; item: CartItem }) {
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-5">
-      <div className="flex flex-wrap items-baseline gap-2.5">
-        <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">{formatPrice(bat.price)}</span>
-        {bat.mrp > bat.price && (
-          <>
-            <span className="text-sm leading-5 text-ink-subtle line-through">{formatPrice(bat.mrp)}</span>
-            <span className="h-[22px] self-center rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold text-on-yellow">
-              {bat.off}% OFF
-            </span>
-          </>
-        )}
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-baseline gap-2.5">
+          <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">{formatPrice(bat.price)}</span>
+          {bat.mrp > bat.price && (
+            <>
+              <span className="text-sm leading-5 text-ink-subtle line-through">{formatPrice(bat.mrp)}</span>
+              <span className="h-[22px] self-center rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold text-on-yellow">
+                {bat.off}% OFF
+              </span>
+            </>
+          )}
+        </div>
+        {bat.offer && <OfferNote offer={bat.offer} />}
       </div>
       <AddToCartButton
         item={item}
@@ -183,7 +191,7 @@ function StandardBuy({ bat, item }: { bat: StoreBat; item: CartItem }) {
  * gets just the size picker, with its price and Add to cart. One state drives
  * both sections.
  */
-export function ProductBuilder({ bat }: { bat: StoreBat }) {
+export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliveryFeePaise: number }) {
   const custom = bat.customization;
   const { config, update } = useBatConfig(startingBatConfig(custom));
   const item = batCartItem(bat.slug, config, 1, custom);
@@ -400,6 +408,7 @@ export function ProductBuilder({ bat }: { bat: StoreBat }) {
                     </>
                   )}
                 </div>
+                {bat.offer && <OfferNote offer={bat.offer} tone="dark" className="py-0.5" />}
                 <span className="text-xs leading-4 text-on-dark-subtle">
                   Customization included. No extra cost.
                 </span>
@@ -415,7 +424,7 @@ export function ProductBuilder({ bat }: { bat: StoreBat }) {
                 <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
               </AddToCartButton>
               <ul className="flex flex-wrap justify-between gap-2 text-[11px] leading-[14px] font-medium text-on-dark-subtle">
-                {TRUST.map((entry) => (
+                {trustRow(deliveryFeePaise).map((entry) => (
                   <li key={entry.label} className="inline-flex items-center gap-1.5">
                     <entry.icon className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
                     {entry.label}

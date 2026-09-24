@@ -44,6 +44,8 @@ export async function createOrder(input: {
         subtotalPaise: cart.subtotalPaise,
         shippingPaise: cart.shippingPaise,
         totalPaise: cart.totalPaise,
+        discountPaise: cart.discountPaise,
+        couponCode: cart.coupon?.applied ? cart.coupon.code : null,
         shipName: address.name,
         shipPhone: address.phone,
         shipLine1: address.line1,
@@ -64,6 +66,7 @@ export async function createOrder(input: {
         unitPricePaise: line.unitPricePaise,
         quantity: line.item.quantity,
         lineTotalPaise: line.lineTotalPaise,
+        offer: line.offer ? { ...line.offer, regularPricePaise: line.regularUnitPricePaise } : null,
       }))
     );
 

@@ -26,6 +26,22 @@ function requireKeys(): RazorpayKeys {
   return found;
 }
 
+export interface RazorpayStatus {
+  /** Both keys are set, so customers can pay. */
+  connected: boolean;
+  /** From the key id: rzp_live_… takes real money, rzp_test_… does not. */
+  mode: "live" | "test" | null;
+  /** RAZORPAY_WEBHOOK_SECRET is set, so payments are confirmed even if the customer closes the page. */
+  webhook: boolean;
+}
+
+/** For the admin's Settings page. Never exposes the keys themselves. */
+export function razorpayStatus(): RazorpayStatus {
+  const found = keys();
+  const mode = found?.keyId.startsWith("rzp_live_") ? "live" : found?.keyId.startsWith("rzp_test_") ? "test" : null;
+  return { connected: found !== null, mode, webhook: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET) };
+}
+
 /** The public key id, which Razorpay Checkout needs in the browser. */
 export function razorpayKeyId(): string {
   return requireKeys().keyId;

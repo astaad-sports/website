@@ -6,9 +6,10 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 
-import { useFreshCatalogue } from "@/components/cart/catalogue-provider";
-import { OrderSummary } from "@/components/cart/order-summary";
 import { EmptyCart } from "@/components/cart/cart-view";
+import { CouponStatus, useCouponRecheck } from "@/components/cart/coupon-box";
+import { lineOfferText, RegularPrice } from "@/components/cart/line-offer";
+import { OrderSummary } from "@/components/cart/order-summary";
 import { useCart } from "@/components/cart/use-cart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,25 +62,31 @@ const FIELDS: {
 /**
  * The checkout page body: the delivery address beside the order and the Pay
  * button. Paying places the order on the server, opens Razorpay Checkout,
- * then confirms the payment and opens the order.
+ * then confirms the payment and opens the order. The page hands down a
+ * catalogue read fresh from the database and the coupon is checked again, so
+ * the total shown is the total placeOrder charges.
  */
 export function CheckoutView({
   email,
   defaults,
   paymentsReady,
+  storeName,
 }: {
   email: string | null;
   defaults: Partial<ShippingAddress>;
   paymentsReady: boolean;
+  /** Settings' store name, shown in the Razorpay window. */
+  storeName: string;
 }) {
   const id = useId();
   const router = useRouter();
-  const { items, priced, clear } = useCart();
-  useFreshCatalogue();
+  const { items, priced, coupon, setCoupon, clear } = useCart();
+  const payRef = useRef<HTMLButtonElement>(null);
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<AddressField, string>>>({});
   const [pending, startTransition] = useTransition();
+  const recheckCoupon = useCouponRecheck(setError);
   // A placed order is reused while the cart, address and total are unchanged
   // (say the payment window failed to load). Closing the window forgets it,
   // so paying later places the order again against current stock and prices.
@@ -109,7 +116,7 @@ export function CheckoutView({
       order_id: payment.razorpayOrderId,
       amount: payment.amountPaise,
       currency: "INR",
-      name: "Astaad Sports",
+      name: storeName,
       description: `Order ${formatOrderNumber(payment.orderNumber)}`,
       image: `${window.location.origin}/brand/astaad-crest.png`,
       prefill: payment.prefill,
@@ -157,15 +164,18 @@ export function CheckoutView({
     setFieldErrors({});
 
     startTransition(async () => {
-      const fingerprint = JSON.stringify({ items, address, shownTotal });
+      const couponCode = coupon?.code;
+      const fingerprint = JSON.stringify({ items, address, shownTotal, couponCode });
       let payment = placed.current?.fingerprint === fingerprint ? placed.current.payment : null;
       if (!payment) {
-        const result = await placeOrder({ items, address, expectedTotalPaise: shownTotal });
+        const result = await placeOrder({ items, address, expectedTotalPaise: shownTotal, couponCode });
         if (!result.ok) {
           setError(result.error);
           setFieldErrors(result.fieldErrors ?? {});
-          // Stock or prices may have changed: load the current catalogue so the cart shows what to fix.
+          // Stock, prices or the coupon's offer may have changed: load the
+          // current catalogue and coupon so the order shows what to fix.
           router.refresh();
+          if (!result.fieldErrors) void recheckCoupon();
           return;
         }
         payment = result.payment;
@@ -173,6 +183,12 @@ export function CheckoutView({
       }
       openRazorpay(payment);
     });
+  }
+
+  // The Pay button now shows the new total, so focus moves there.
+  function removeCoupon() {
+    setCoupon(null);
+    payRef.current?.focus();
   }
 
   const errorId = (name: AddressField) => `${id}-${name}-error`;
@@ -276,12 +292,18 @@ export function CheckoutView({
                     <span className="text-sm leading-5 font-semibold">{line.name}</span>
                     {line.summary && <span className="type-body-sm text-ink-muted">{line.summary}</span>}
                     <span className="type-body-sm text-ink-muted">Qty {line.item.quantity}</span>
+                    {line.offer && <span className="type-body-sm font-semibold">{lineOfferText(line.offer)}</span>}
                     {line.problem && (
                       <span className="type-body-sm font-semibold text-danger">{lineProblemText(line)}</span>
                     )}
                   </span>
-                  <span className="text-sm leading-5 font-semibold tabular-nums">
-                    {formatPaise(line.lineTotalPaise)}
+                  <span className="flex shrink-0 flex-col items-end">
+                    <span className="text-sm leading-5 font-semibold tabular-nums">
+                      {formatPaise(line.lineTotalPaise)}
+                    </span>
+                    {line.unitPricePaise < line.regularUnitPricePaise && (
+                      <RegularPrice paise={line.regularUnitPricePaise * line.item.quantity} />
+                    )}
                   </span>
                 </li>
               ))}
@@ -291,9 +313,20 @@ export function CheckoutView({
           <OrderSummary
             count={priced.count}
             subtotalPaise={priced.subtotalPaise}
+            discountPaise={priced.discountPaise}
             shippingPaise={priced.shippingPaise}
             totalPaise={priced.totalPaise}
           >
+            {coupon && (
+              <div className="border-t border-border pt-5">
+                <CouponStatus
+                  coupon={coupon}
+                  applied={priced.coupon?.applied ?? false}
+                  covered={priced.coupon?.covered ?? false}
+                  onRemove={removeCoupon}
+                />
+              </div>
+            )}
             {!paymentsReady && (
               <p className="type-body-sm text-ink-muted">
                 Online payment is not set up yet, so orders cannot be placed.
@@ -314,6 +347,7 @@ export function CheckoutView({
               </p>
             )}
             <Button
+              ref={payRef}
               type="submit"
               size="lg"
               className="w-full"

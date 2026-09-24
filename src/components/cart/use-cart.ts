@@ -1,17 +1,37 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { z } from "zod";
 
 import { addToItems, cartItemSchema, lineKey, MAX_QUANTITY, priceCart, type CartItem } from "@/lib/cart";
+import type { AppliedCoupon } from "@/lib/offers/model";
 
 import { useCatalogue } from "./catalogue-provider";
 
 // The cart lives in this browser's localStorage. It holds choices only; the
 // server prices the order at checkout.
 const STORAGE_KEY = "astaad-cart";
+/** The coupon the server accepted; checked again when the order is placed. */
+const COUPON_KEY = "astaad-coupon";
+
+const couponSchema: z.ZodType<AppliedCoupon> = z.object({
+  code: z.string().max(20),
+  name: z.string().max(60),
+  percentOff: z.number().int().min(1).max(90),
+  scope: z.enum(["store", "categories", "products"]),
+  categories: z.array(z.string().max(40)).max(10),
+  productIds: z.array(z.string().max(40)).max(500),
+  startsAt: z.iso.datetime(),
+  endsAt: z.iso.datetime(),
+});
+
+interface CartState {
+  items: CartItem[];
+  coupon: AppliedCoupon | null;
+}
 
 const listeners = new Set<() => void>();
-let snapshot: { items: CartItem[] } | null = null;
+let snapshot: CartState | null = null;
 let listeningToStorage = false;
 
 /**
@@ -32,18 +52,35 @@ function readStorage(): CartItem[] {
   }
 }
 
-function setSnapshot(items: CartItem[]) {
-  snapshot = { items };
+function readCoupon(): AppliedCoupon | null {
+  try {
+    const parsed = couponSchema.safeParse(JSON.parse(window.localStorage.getItem(COUPON_KEY) ?? "null"));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function setSnapshot(state: CartState) {
+  snapshot = state;
+}
+
+function readState(): CartState {
+  return { items: readStorage(), coupon: readCoupon() };
 }
 
 function emit() {
   for (const listener of listeners) listener();
 }
 
-function write(items: CartItem[]) {
-  setSnapshot(items);
+function write(next: Partial<CartState>) {
+  setSnapshot({ ...getSnapshot(), ...next });
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    if (next.items) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next.items));
+    if (next.coupon !== undefined) {
+      if (next.coupon) window.localStorage.setItem(COUPON_KEY, JSON.stringify(next.coupon));
+      else window.localStorage.removeItem(COUPON_KEY);
+    }
   } catch {
     // Private mode or a full quota: the cart still works for this page view.
   }
@@ -56,8 +93,8 @@ function subscribe(listener: () => void) {
   if (!listeningToStorage) {
     listeningToStorage = true;
     window.addEventListener("storage", (event) => {
-      if (event.key !== STORAGE_KEY && event.key !== null) return;
-      setSnapshot(readStorage());
+      if (event.key !== STORAGE_KEY && event.key !== COUPON_KEY && event.key !== null) return;
+      setSnapshot(readState());
       emit();
     });
   }
@@ -67,7 +104,7 @@ function subscribe(listener: () => void) {
 }
 
 function getSnapshot() {
-  if (!snapshot) setSnapshot(readStorage());
+  if (!snapshot) setSnapshot(readState());
   return snapshot!;
 }
 
@@ -78,33 +115,43 @@ function getServerSnapshot() {
 
 const actions = {
   add(item: CartItem) {
-    write(addToItems(getSnapshot().items, item));
+    write({ items: addToItems(getSnapshot().items, item) });
   },
   setQuantity(key: string, quantity: number) {
     const next = Math.min(MAX_QUANTITY, Math.max(1, Math.round(quantity)));
-    write(getSnapshot().items.map((item) => (lineKey(item) === key ? { ...item, quantity: next } : item)));
+    write({ items: getSnapshot().items.map((item) => (lineKey(item) === key ? { ...item, quantity: next } : item)) });
   },
   remove(key: string) {
-    write(getSnapshot().items.filter((item) => lineKey(item) !== key));
+    write({ items: getSnapshot().items.filter((item) => lineKey(item) !== key) });
   },
+  /** A coupon checked with checkCoupon; null removes it. */
+  setCoupon(coupon: AppliedCoupon | null) {
+    write({ coupon });
+  },
+  /** After an order is placed: the cart and its coupon are done with. */
   clear() {
-    write([]);
+    write({ items: [], coupon: null });
   },
 };
 
 /**
- * The shopping cart, priced against the current catalogue. `items` (the lines
+ * The shopping cart, priced against the current catalogue and the customer's coupon. `items` (the lines
  * that can be shown) and `priced` are null during server rendering and the
  * first client render, then the stored cart.
  */
 export function useCart() {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const catalogue = useCatalogue();
-  const priced = useMemo(() => (state ? priceCart(state.items, catalogue) : null), [state, catalogue]);
+  const priced = useMemo(
+    () => (state ? priceCart(state.items, catalogue, state.coupon) : null),
+    [state, catalogue]
+  );
   const items = useMemo(() => priced?.lines.map((line) => line.item) ?? null, [priced]);
   return {
     items,
     priced,
+    /** The coupon as the customer entered it, even if it takes nothing off this cart. */
+    coupon: state?.coupon ?? null,
     count: priced?.count ?? 0,
     ...actions,
   };

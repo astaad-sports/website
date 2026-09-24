@@ -8,7 +8,11 @@ import { cn } from "@/lib/utils";
 
 import { PhotoThumbnails } from "./stage-thumbnails";
 
-/** The dark product stage for gear: the photo under the floodlight glow, with thumbnails when there are several. */
+/**
+ * The dark product stage for gear: the photo under the floodlight glow, with
+ * thumbnails when there are several. From xl it stretches to the hero's
+ * height, which grows past 760px when the details beside it need more room.
+ */
 export function GearGallery({ product }: { product: StoreGear }) {
   const [active, setActive] = useState(0);
   const count = product.images.length;
@@ -16,7 +20,7 @@ export function GearGallery({ product }: { product: StoreGear }) {
   const height = product.imageHeight * 2;
   const caption = [product.category, product.line].filter(Boolean).join(" · ");
   return (
-    <div className="relative flex h-[480px] items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#161616_0%,#0e0e0e_70%)] text-on-dark md:h-[760px]">
+    <div className="relative flex h-[480px] items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#161616_0%,#0e0e0e_70%)] text-on-dark md:h-[760px] xl:h-auto">
       <div
         aria-hidden="true"
         className="absolute top-1/2 left-1/2 size-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.22)_0%,rgba(254,197,2,0)_66%)]"

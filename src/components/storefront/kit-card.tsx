@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import type { KitTile } from "./kit-tiles";
+import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
 
 export type KitCardProps = KitTile & {
@@ -19,8 +20,9 @@ export type KitCardProps = KitTile & {
 const CHIP = "h-6 rounded-xs bg-surface-dark px-2.5 text-xs leading-6 font-bold tracking-[0.04em] text-on-dark";
 
 /**
- * A grey product tile with the cut-out floating above the name, a note, the
- * price and a round yellow add-to-cart button (greyed out when out of stock).
+ * A grey product tile with the cut-out floating above the name, a note (or
+ * the running offer), the price and a round yellow add-to-cart button (greyed
+ * out when out of stock).
  */
 export function KitCard({
   name,
@@ -36,6 +38,7 @@ export function KitCard({
   imageTop,
   cartItem,
   soldOut,
+  offer,
   height = 400,
   className,
 }: KitCardProps) {
@@ -71,7 +74,12 @@ export function KitCard({
           <span className="text-lg leading-6 font-bold">
             <Link href={href}>{name}</Link>
           </span>
-          {note && <span className="text-[13px] leading-[18px] text-ink-muted">{note}</span>}
+          {/* The tile's height is fixed, so a running offer takes the note's line. */}
+          {offer ? (
+            <OfferNote offer={offer} truncate />
+          ) : (
+            note && <span className="text-[13px] leading-[18px] text-ink-muted">{note}</span>
+          )}
           <span className="mt-1 text-base leading-[22px] font-bold">
             {formatPrice(price)}
             {mrp && (

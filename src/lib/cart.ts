@@ -17,7 +17,15 @@ import {
   type GearProduct,
   type Hand,
 } from "./catalogue";
-import { FULL_CUSTOMIZATION, MAX_SLUG_LENGTH, type StoreCatalogue } from "./products/model";
+import {
+  couponTerms,
+  offerApplies,
+  offerPrice,
+  offerStatus,
+  type AppliedCoupon,
+  type OfferTarget,
+} from "./offers/model";
+import { FULL_CUSTOMIZATION, MAX_SLUG_LENGTH, type StoreBat, type StoreCatalogue, type StoreGear } from "./products/model";
 
 export const MAX_QUANTITY = 10;
 export const MAX_LINES = 20;
@@ -77,7 +85,12 @@ export interface PricedLine {
   options: CartLineOption[];
   /** The choices in one short line for the cart, e.g. "SH / Full Size · 1150–1180 g · Knocked in". */
   summary: string;
+  /** What one costs now, after the best offer or coupon. */
   unitPricePaise: number;
+  /** What one costs without any offer. */
+  regularUnitPricePaise: number;
+  /** The offer or coupon that set `unitPricePaise`, if any. */
+  offer: LineOffer | null;
   lineTotalPaise: number;
   /**
    * Why this line cannot be bought right now: the product is out of stock, or
@@ -88,6 +101,13 @@ export interface PricedLine {
   stockLeft: number | null;
 }
 
+/** The offer behind a line's price: one that applies by itself, or the customer's coupon (`code`). */
+export interface LineOffer {
+  name: string;
+  percentOff: number;
+  code: string | null;
+}
+
 export interface PricedCart {
   lines: PricedLine[];
   /** Items that no longer match the catalogue (a removed or hidden model, or an option it no longer offers). */
@@ -95,10 +115,18 @@ export interface PricedCart {
   /** Lines that match but cannot be bought now (see PricedLine.problem). */
   unavailable: number;
   count: number;
+  /** The lines' totals, after offers. */
   subtotalPaise: number;
-  /** Delivery is free across India. */
+  /** What offers and coupons took off the regular prices (already out of the subtotal). */
+  discountPaise: number;
+  /** Free, or the charge set in Settings. */
   shippingPaise: number;
   totalPaise: number;
+  /**
+   * The coupon the customer entered: whether it covers anything in the cart
+   * right now, and whether it took anything off (a better offer may already apply).
+   */
+  coupon: { code: string; name: string; covered: boolean; applied: boolean } | null;
 }
 
 const rupeesToPaise = (rupees: number) => Math.round(rupees * 100);
@@ -178,7 +206,11 @@ export function gearCartItem(
   };
 }
 
-type PricedFields = Omit<PricedLine, "key" | "item" | "lineTotalPaise" | "problem"> & { soldOut: boolean };
+type PricedFields = Omit<PricedLine, "key" | "item" | "lineTotalPaise" | "problem" | "unitPricePaise" | "regularUnitPricePaise" | "offer"> & {
+  soldOut: boolean;
+  product: Pick<StoreBat | StoreGear, "price" | "regularPrice" | "offer">;
+  target: OfferTarget;
+};
 
 /** Whether the chosen build is one this bat offers. */
 function batOptionsValid(options: BatCartItem["options"], customization: BatCustomization): boolean {
@@ -231,7 +263,8 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
       .filter(Boolean)
       .join(" \u00b7 "),
     // Customisation is included in the price.
-    unitPricePaise: rupeesToPaise(bat.price),
+    product: bat,
+    target: { id: bat.id, category: "bats" },
     soldOut: bat.soldOut,
     stockLeft: bat.stockLeft,
   };
@@ -257,40 +290,103 @@ function priceGear(item: GearCartItem, catalogue: StoreCatalogue): PricedFields 
       ...(hand ? [{ label: "Hand", value: hand }] : []),
     ],
     summary: [size, hand].filter(Boolean).join(" \u00b7 "),
-    unitPricePaise: rupeesToPaise(product.price),
+    product,
+    target: { id: product.id, category: product.categorySlug },
     soldOut: product.soldOut,
     stockLeft: product.stockLeft,
   };
 }
 
 /**
+ * The price of one: the product's price on the store (which includes its best
+ * offer that needs no code), or the coupon's, whichever is lower. Offers never
+ * add up.
+ */
+function unitPrice(
+  fields: Pick<PricedFields, "product" | "target">,
+  coupon: AppliedCoupon | null,
+  now: Date
+): Pick<PricedLine, "unitPricePaise" | "regularUnitPricePaise" | "offer"> {
+  const { product, target } = fields;
+  const regularUnitPricePaise = rupeesToPaise(product.regularPrice);
+  let unitPricePaise = rupeesToPaise(product.price);
+  let offer: LineOffer | null = product.offer
+    ? { name: product.offer.name, percentOff: product.offer.percentOff, code: null }
+    : null;
+  if (coupon) {
+    const terms = couponTerms(coupon);
+    if (offerStatus(terms, now) === "active" && offerApplies(terms, target)) {
+      const couponPaise = rupeesToPaise(offerPrice(product.regularPrice, coupon.percentOff));
+      if (couponPaise < unitPricePaise) {
+        unitPricePaise = couponPaise;
+        offer = { name: coupon.name, percentOff: coupon.percentOff, code: coupon.code };
+      }
+    }
+  }
+  return { unitPricePaise, regularUnitPricePaise, offer };
+}
+
+/**
  * Resolve one item against the catalogue, or null if it no longer matches.
  * Stock is judged for this line alone; priceCart also adds up lines of the same product.
  */
-export function priceCartItem(item: CartItem, catalogue: StoreCatalogue): PricedLine | null {
+export function priceCartItem(
+  item: CartItem,
+  catalogue: StoreCatalogue,
+  coupon: AppliedCoupon | null = null,
+  now: Date = new Date()
+): PricedLine | null {
   const priced = item.kind === "bat" ? priceBat(item, catalogue) : priceGear(item, catalogue);
   if (!priced) return null;
-  const { soldOut, ...fields } = priced;
+  const { soldOut, product, target, ...fields } = priced;
+  const price = unitPrice({ product, target }, coupon, now);
   const tooMany = fields.stockLeft !== null && item.quantity > fields.stockLeft;
   return {
     ...fields,
+    ...price,
     key: lineKey(item),
     item,
-    lineTotalPaise: priced.unitPricePaise * item.quantity,
+    lineTotalPaise: price.unitPricePaise * item.quantity,
     problem: soldOut ? "sold_out" : tooMany ? "not_enough" : null,
   };
 }
 
+/** The product behind a cart item, as offers see it. */
+function lineTarget(item: CartItem, catalogue: StoreCatalogue): OfferTarget | undefined {
+  if (item.kind === "bat") {
+    const bat = catalogue.bats.find((entry) => entry.slug === item.slug);
+    return bat && { id: bat.id, category: "bats" };
+  }
+  const product = catalogue.gear.find((entry) => entry.slug === item.slug);
+  return product && { id: product.id, category: product.categorySlug };
+}
+
+/** Whether a running coupon covers any product in these lines. */
+function couponCovers(coupon: AppliedCoupon, lines: PricedLine[], catalogue: StoreCatalogue, now: Date): boolean {
+  const terms = couponTerms(coupon);
+  if (offerStatus(terms, now) !== "active") return false;
+  return lines.some((line) => {
+    const target = lineTarget(line.item, catalogue);
+    return target !== undefined && offerApplies(terms, target);
+  });
+}
+
 /**
- * Price a whole cart. Lines that no longer match the catalogue are dropped
- * and counted; lines that match but cannot be bought now (sold out, or more
- * than are left across all lines of that product) are kept and flagged.
+ * Price a whole cart, with the customer's coupon if they entered one. Lines
+ * that no longer match the catalogue are dropped and counted; lines that
+ * match but cannot be bought now (sold out, or more than are left across all
+ * lines of that product) are kept and flagged.
  */
-export function priceCart(items: CartItem[], catalogue: StoreCatalogue): PricedCart {
+export function priceCart(
+  items: CartItem[],
+  catalogue: StoreCatalogue,
+  coupon: AppliedCoupon | null = null,
+  now: Date = new Date()
+): PricedCart {
   const lines: PricedLine[] = [];
   let invalid = 0;
   for (const item of items) {
-    const line = priceCartItem(item, catalogue);
+    const line = priceCartItem(item, catalogue, coupon, now);
     if (line) lines.push(line);
     else invalid += 1;
   }
@@ -305,15 +401,28 @@ export function priceCart(items: CartItem[], catalogue: StoreCatalogue): PricedC
   }
 
   const subtotalPaise = lines.reduce((sum, line) => sum + line.lineTotalPaise, 0);
-  const shippingPaise = 0;
+  const discountPaise = lines.reduce(
+    (sum, line) => sum + (line.regularUnitPricePaise - line.unitPricePaise) * line.item.quantity,
+    0
+  );
+  const shippingPaise = lines.length ? catalogue.deliveryFeePaise : 0;
   return {
     lines,
     invalid,
     unavailable: lines.filter((line) => line.problem).length,
     count: lines.reduce((sum, line) => sum + line.item.quantity, 0),
     subtotalPaise,
+    discountPaise,
     shippingPaise,
     totalPaise: subtotalPaise + shippingPaise,
+    coupon: coupon
+      ? {
+          code: coupon.code,
+          name: coupon.name,
+          covered: couponCovers(coupon, lines, catalogue, now),
+          applied: lines.some((line) => line.offer?.code === coupon.code),
+        }
+      : null,
   };
 }
 

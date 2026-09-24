@@ -12,6 +12,8 @@ import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { GEAR_CATEGORY_SLUGS, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { gearInCategory } from "@/lib/products/model";
+import { deliveryFeePaise } from "@/lib/settings/model";
+import { getStoreSettings } from "@/lib/settings/store";
 
 export function generateStaticParams() {
   return GEAR_CATEGORY_SLUGS.map((category) => ({ category }));
@@ -34,7 +36,7 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
   const category = getCategory(slug);
   if (!category || category.kind !== "gear") notFound();
 
-  const catalogue = await getStoreCatalogue();
+  const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
   const products = gearInCategory(catalogue, slug);
   const from = products.length
     ? Math.min(...products.map((product) => product.price))
@@ -44,7 +46,12 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
     <>
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
-        <CategoryHero category={category} count={products.length} from={from} />
+        <CategoryHero
+          category={category}
+          count={products.length}
+          from={from}
+          deliveryFeePaise={deliveryFeePaise(settings)}
+        />
         <CategoryGrid products={products} categoryName={category.name} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
         <CompleteYourKit

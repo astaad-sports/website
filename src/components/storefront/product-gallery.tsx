@@ -67,10 +67,14 @@ function buildViews(grade: string): View[] {
   ];
 }
 
-/** The dark stage: floodlight glow, a floor shadow, the caption and the script line. */
+/**
+ * The dark stage: floodlight glow, a floor shadow, the caption and the script
+ * line. From xl it stretches to the hero's height, which grows past 760px
+ * when the details beside it need more room.
+ */
 function Stage({ caption, children }: { caption: string; children: ReactNode }) {
   return (
-    <div className="relative h-[560px] overflow-hidden bg-[linear-gradient(180deg,#161616_0%,#0e0e0e_70%)] text-on-dark md:h-[760px]">
+    <div className="relative h-[560px] overflow-hidden bg-[linear-gradient(180deg,#161616_0%,#0e0e0e_70%)] text-on-dark md:h-[760px] xl:h-auto">
       <div
         aria-hidden="true"
         className="absolute top-[130px] left-1/2 size-[520px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.22)_0%,rgba(254,197,2,0)_66%)]"

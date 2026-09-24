@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CompleteYourKit } from "@/components/storefront/complete-your-kit";
+import { deliveryTerms } from "@/components/storefront/delivery";
 import { FinalCta } from "@/components/storefront/final-cta";
 import { GearDetails } from "@/components/storefront/gear-details";
 import { GearHero } from "@/components/storefront/gear-hero";
@@ -12,6 +13,7 @@ import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { GEAR_CATEGORY_CONTENT, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { findStoreGear, gearLine } from "@/lib/products/model";
+import { getStoreSettings } from "@/lib/settings/store";
 
 // Products added after the build still render on first visit (dynamicParams is on by default).
 export async function generateStaticParams() {
@@ -34,19 +36,20 @@ export async function generateMetadata({
 
 export default async function GearPage({ params }: PageProps<"/shop/[category]/[slug]">) {
   const { category: categorySlug, slug } = await params;
-  const catalogue = await getStoreCatalogue();
+  const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
   const product = findStoreGear(catalogue, categorySlug, slug);
   const category = getCategory(categorySlug);
   if (!product || !category) notFound();
 
   const content = GEAR_CATEGORY_CONTENT[product.categorySlug];
+  const delivery = deliveryTerms(settings);
 
   return (
     <>
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
-        <GearHero product={product} category={category} content={content} />
-        <GearDetails product={product} content={content} />
+        <GearHero product={product} category={category} content={content} delivery={delivery} />
+        <GearDetails product={product} content={content} deliveryFeePaise={delivery.feePaise} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
         <CompleteYourKit
           eyebrow={`Pairs with the ${product.name}`}

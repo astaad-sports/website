@@ -39,19 +39,22 @@ export function formatOrderDate(date: Date): string {
   return orderDate.format(date);
 }
 
-const shortDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
-const shortDateWithYear = new Intl.DateTimeFormat("en-IN", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "Asia/Kolkata",
-});
-const yearInIndia = new Intl.DateTimeFormat("en-IN", { year: "numeric", timeZone: "Asia/Kolkata" });
+// Short dates are spelled out rather than Intl: engines disagree on some
+// months ("Sep" or "Sept"), and a date rendered on the server must read the
+// same in the browser.
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const INDIA_OFFSET_MS = (5 * 60 + 30) * 60_000;
+
+function indiaDate(date: Date): { year: number; month: number; day: number } {
+  const shifted = new Date(date.getTime() + INDIA_OFFSET_MS);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth(), day: shifted.getUTCDate() };
+}
 
 /** "22 Oct" this year, "22 Oct 2025" otherwise; dates are Indian time. */
 export function formatShortDate(date: Date, now: Date = new Date()): string {
-  const sameYear = yearInIndia.format(date) === yearInIndia.format(now);
-  return (sameYear ? shortDate : shortDateWithYear).format(date);
+  const { year, month, day } = indiaDate(date);
+  const label = `${day} ${MONTHS[month]}`;
+  return year === indiaDate(now).year ? label : `${label} ${year}`;
 }
 
 /** A 10-digit Indian mobile as "+91 98765 43210"; anything else is shown as given. */

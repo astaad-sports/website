@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { CatalogueProvider } from "@/components/cart/catalogue-provider";
 import { CheckoutView } from "@/components/checkout/checkout-view";
 import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
@@ -8,6 +9,8 @@ import { getLastShippingAddress } from "@/db/orders";
 import { requireUser } from "@/lib/auth/session";
 import type { ShippingAddress } from "@/lib/checkout";
 import { razorpayConfigured } from "@/lib/payments/razorpay";
+import { getFreshStoreCatalogue } from "@/lib/products/catalogue";
+import { getStoreSettings } from "@/lib/settings/store";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -16,8 +19,13 @@ export const metadata: Metadata = {
 
 export default async function CheckoutPage() {
   const user = await requireUser("/checkout");
+  const [lastAddress, catalogue, settings] = await Promise.all([
+    getLastShippingAddress(user.id),
+    getFreshStoreCatalogue(),
+    getStoreSettings(),
+  ]);
   // Prefill from the last order, or at least the name and phone on the account.
-  const defaults: Partial<ShippingAddress> = (await getLastShippingAddress(user.id)) ?? {
+  const defaults: Partial<ShippingAddress> = lastAddress ?? {
     name: user.name ?? undefined,
     phone: user.phone ?? undefined,
   };
@@ -31,7 +39,16 @@ export default async function CheckoutPage() {
             <Eyebrow bar>Secure checkout</Eyebrow>
             <h1 className="type-heading-xl">Checkout</h1>
           </div>
-          <CheckoutView email={user.email} defaults={defaults} paymentsReady={razorpayConfigured()} />
+          {/* Priced from the database, as placeOrder prices it, rather than
+              the root layout's cached catalogue; the nearest provider wins. */}
+          <CatalogueProvider catalogue={catalogue}>
+            <CheckoutView
+              email={user.email}
+              defaults={defaults}
+              paymentsReady={razorpayConfigured()}
+              storeName={settings.storeName}
+            />
+          </CatalogueProvider>
         </div>
       </main>
       <SiteFooter />
