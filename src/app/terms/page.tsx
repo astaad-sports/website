@@ -89,8 +89,8 @@ export default async function TermsPage() {
       body: (
         <>
           <p>
-            Some bats can be built to your choice of weight, profile and handle, with free name engraving and
-            free knocking in.
+            Some bats can be built to your choice of weight, profile, toe shape and handle, with free name
+            engraving and free knocking in.
           </p>
           <ul>
             <li>

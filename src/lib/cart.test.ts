@@ -12,10 +12,18 @@ import {
   lineProblemText,
   priceCart as priceCartIn,
   priceCartItem as priceCartItemIn,
+  withResolvedToe,
   type CartItem,
 } from "./cart";
 import { DEFAULT_BAT_CONFIG, getBat, getGear } from "./catalogue";
-import { NO_CUSTOMIZATION, seedProductRows, toStoreCatalogue, type ProductWithImages, type StoreCatalogue } from "./products/model";
+import {
+  FULL_CUSTOMIZATION,
+  NO_CUSTOMIZATION,
+  seedProductRows,
+  toStoreCatalogue,
+  type ProductWithImages,
+  type StoreCatalogue,
+} from "./products/model";
 
 const runMachine = getBat("run-machine")!;
 const eliteGloves = getGear("elite-batting-gloves")!;
@@ -187,5 +195,50 @@ describe("a bat sells only the build options it offers", () => {
     const item = batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat" }, 1, bat.customization);
     expect(item.options.engraving).toBe("");
     expect(priceCartItem(item, noEngraving)).not.toBeNull();
+  });
+});
+
+describe("toe shapes", () => {
+  test("the chosen toe is recorded on the line, semi-round by default", () => {
+    const standard = priceCartItem(batCartItem("run-machine"))!;
+    expect(standard.item.options).toMatchObject({ toe: "Semi Round" });
+    expect(standard.options).toContainEqual({ label: "Toe", value: "Semi Round" });
+
+    const flat = priceCartItem(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 }))!;
+    expect(flat.options).toContainEqual({ label: "Toe", value: "Flat" });
+    expect(flat.summary).toContain("Flat toe");
+  });
+
+  test("a cart saved before toe shapes existed still prices, with the usual toe", () => {
+    const options = { ...batCartItem("run-machine").options };
+    delete options.toe;
+    const line = priceCartItem({ kind: "bat", slug: "run-machine", options, quantity: 1 })!;
+    expect(line).not.toBeNull();
+    expect(line.options).toContainEqual({ label: "Toe", value: "Semi Round" });
+  });
+
+  test("a saved bat without a toe merges with the same build added now", () => {
+    const options = { ...batCartItem("run-machine").options };
+    delete options.toe;
+    const saved: CartItem = { kind: "bat", slug: "run-machine", options, quantity: 1 };
+    const resolved = withResolvedToe(saved, seeded);
+    expect(resolved.kind === "bat" && resolved.options.toe).toBe("Semi Round");
+    const items = addToItems([resolved], batCartItem("run-machine"));
+    expect(items).toHaveLength(1);
+    expect(items[0].quantity).toBe(2);
+    expect(withResolvedToe(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 }), seeded)).toEqual(
+      batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 })
+    );
+  });
+
+  test("a toe the bat does not offer is refused, and a bat with none has no toe", () => {
+    const roundOnly = catalogueWith({ "run-machine": { customization: { ...FULL_CUSTOMIZATION, toes: ["Round"] } } });
+    expect(priceCartItem(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 }), roundOnly)).toBeNull();
+
+    const noToes = catalogueWith({ "run-machine": { customization: { ...FULL_CUSTOMIZATION, toes: [] } } });
+    const bat = noToes.bats.find((entry) => entry.slug === "run-machine")!;
+    const item = batCartItem("run-machine", DEFAULT_BAT_CONFIG, 1, bat.customization);
+    expect(item.options.toe).toBeUndefined();
+    expect(priceCartItem(item, noToes)!.options.map((option) => option.label)).not.toContain("Toe");
   });
 });

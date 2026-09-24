@@ -178,12 +178,17 @@ export type ProductAvailability = (typeof productAvailability.enumValues)[number
 
 /**
  * Which build options an English willow bat offers. Labels come from
- * BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES in src/lib/catalogue.ts.
+ * BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES in src/lib/catalogue.ts.
  */
 export interface BatCustomization {
   enabled: boolean;
   weights: string[];
   profiles: string[];
+  /**
+   * Toe shapes. Optional in stored rows: those saved before toe shapes
+   * existed have none and offer every toe (see normaliseCustomization).
+   */
+  toes: string[];
   handles: string[];
   /** Free name engraving, up to 15 letters. */
   engraving: boolean;

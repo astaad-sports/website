@@ -1,9 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { siteImage } from "@/lib/site-images";
+
 import { Eyebrow } from "./eyebrow";
 
-/** "More than equipment." — the brand story beside the floodlit kit photograph. */
+const PHOTO = siteImage("home/bats-in-the-workshop");
+
+/** "More than equipment." — the brand story beside Astaad bats standing among willow clefts. */
 export function BrandStory() {
   return (
     <section
@@ -42,11 +46,11 @@ export function BrandStory() {
             className="absolute inset-0 translate-x-6 translate-y-6 border border-brand-yellow/50"
           />
           <Image
-            src="/images/stadium-kit.png"
-            alt="Astaad gloves, bat, helmet and ball under stadium lights"
+            src={PHOTO.src}
+            alt="Astaad bats standing among willow clefts in the workshop"
             fill
             sizes="(min-width: 1024px) 600px, 100vw"
-            className="object-cover object-[50%_80%] contrast-[1.05] saturate-[1.05]"
+            className="object-cover object-[50%_45%]"
           />
           <span
             aria-hidden="true"

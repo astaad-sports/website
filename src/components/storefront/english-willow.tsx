@@ -20,7 +20,7 @@ export function EnglishWillow({ bats }: { bats: StoreBat[] }) {
           <div className="flex flex-wrap items-center gap-3 text-[13px] leading-[18px] text-ink-muted">
             <span className="inline-flex items-center gap-2">
               <span aria-hidden="true" className="block size-2 rounded-full bg-brand-yellow" />
-              Customizable weight, profile and handle
+              Customizable weight, profile, toe and handle
             </span>
             <span aria-hidden="true" className="block h-4 w-px bg-border" />
             <span>Free name engraving</span>

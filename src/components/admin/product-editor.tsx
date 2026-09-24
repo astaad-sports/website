@@ -326,7 +326,7 @@ export function ProductEditor({
 
   const saveLabel = saved ? "Save changes" : "Save product";
   const title = saved ? values.name.trim() || saved.name : "Add product";
-  const storeHref = product && product.availability !== "hidden" ? productHref(product) : null;
+  const storeHref = product && product.availability !== "hidden" && product.pricePaise > 0 ? productHref(product) : null;
 
   // One toast for the page: whichever message is newest.
   const toast = [flash, state.saved && state.at ? { message: state.saved, at: state.at } : null, photoToast]

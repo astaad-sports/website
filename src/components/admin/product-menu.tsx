@@ -18,12 +18,14 @@ import { BUTTON_SECONDARY } from "./styles";
 /** Only the actions that would change something for this product. */
 export function menuChoices(item: ProductListItem) {
   const status = stockStatus(item);
+  // A draft with no price stays off the store until it is priced in the editor.
+  const priced = item.pricePaise > 0;
   return {
     stockLabel: isRestockable(item) ? "Restock" : "Update stock",
-    markOut: status === "in" || status === "low",
+    markOut: priced && (status === "in" || status === "low"),
     hide: item.availability !== "hidden",
     // A counted product with no stock can't go on sale; restocking it does that.
-    makeAvailable: item.availability !== "available" && (item.stock === null || item.stock > 0),
+    makeAvailable: priced && item.availability !== "available" && (item.stock === null || item.stock > 0),
   };
 }
 

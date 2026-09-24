@@ -8,6 +8,7 @@ import {
   BAT_HANDLES,
   BAT_PROFILES,
   BAT_SIZES,
+  BAT_TOES,
   BAT_WEIGHTS,
   DEFAULT_BAT_CONFIG,
   ENGRAVING_MAX,
@@ -25,7 +26,14 @@ import {
   type AppliedCoupon,
   type OfferTarget,
 } from "./offers/model";
-import { FULL_CUSTOMIZATION, MAX_SLUG_LENGTH, type StoreBat, type StoreCatalogue, type StoreGear } from "./products/model";
+import {
+  FULL_CUSTOMIZATION,
+  MAX_SLUG_LENGTH,
+  startingBatConfig,
+  type StoreBat,
+  type StoreCatalogue,
+  type StoreGear,
+} from "./products/model";
 
 export const MAX_QUANTITY = 10;
 export const MAX_LINES = 20;
@@ -45,6 +53,11 @@ const batItemSchema = z.object({
     /** BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES labels. */
     weight: z.string().max(40),
     profile: z.string().max(40),
+    /**
+     * A BAT_TOES label. Absent for a bat with no toe choice, and in carts
+     * saved before toe shapes existed; those get the bat's usual toe.
+     */
+    toe: z.string().max(40).optional(),
     handle: z.string().max(40),
     engraving: z.string().max(ENGRAVING_MAX),
     knocking: z.boolean(),
@@ -179,6 +192,7 @@ export function batCartItem(
       size: BAT_SIZES[config.size]?.code ?? "",
       weight: on ? pick(BAT_WEIGHTS.map((entry) => entry.label), customization.weights, config.weight) : "",
       profile: on ? pick(BAT_PROFILES.map((entry) => entry.label), customization.profiles, config.profile) : "",
+      toe: on && customization.toes.length ? pick(BAT_TOES.map((entry) => entry.label), customization.toes, config.toe) : undefined,
       handle: on ? pick(BAT_HANDLES.map((entry) => entry.label), customization.handles, config.handle) : "",
       engraving: on && customization.engraving ? normaliseEngraving(config.name) : "",
       knocking: on && customization.matchReady ? config.knock : false,
@@ -218,11 +232,20 @@ function batOptionsValid(options: BatCartItem["options"], customization: BatCust
     return false;
   }
   if (!customization.enabled) {
-    return !options.weight && !options.profile && !options.handle && !options.engraving && !options.knocking && !options.scuffSheet;
+    return (
+      !options.weight &&
+      !options.profile &&
+      !options.toe &&
+      !options.handle &&
+      !options.engraving &&
+      !options.knocking &&
+      !options.scuffSheet
+    );
   }
   return (
     customization.weights.includes(options.weight) &&
     customization.profiles.includes(options.profile) &&
+    (options.toe === undefined || customization.toes.includes(options.toe)) &&
     customization.handles.includes(options.handle) &&
     (customization.engraving || !options.engraving) &&
     (customization.matchReady || !options.knocking) &&
@@ -236,6 +259,12 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
   const size = BAT_SIZES.find((entry) => entry.code === options.size);
   if (!bat || !size || !batOptionsValid(options, bat.customization)) return null;
   const custom = bat.customization.enabled;
+  // A cart saved before toe shapes existed gets the toe the builder starts on.
+  const toe =
+    options.toe ??
+    (custom && bat.customization.toes.length
+      ? BAT_TOES[startingBatConfig(bat.customization).toe].label
+      : undefined);
 
   return {
     name: `Astaad ${bat.name}`,
@@ -246,6 +275,7 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
       { label: "Size", value: size.label },
       ...(options.weight ? [{ label: "Weight", value: options.weight }] : []),
       ...(options.profile ? [{ label: "Profile", value: options.profile }] : []),
+      ...(toe ? [{ label: "Toe", value: toe }] : []),
       ...(options.handle ? [{ label: "Handle", value: options.handle }] : []),
       ...(options.engraving ? [{ label: "Engraving", value: options.engraving }] : []),
       ...(custom && bat.customization.matchReady ? [{ label: "Knocking", value: options.knocking ? "Yes" : "No" }] : []),
@@ -255,6 +285,7 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
       size.label,
       options.weight,
       options.profile,
+      toe ? `${toe} toe` : null,
       options.handle ? `${options.handle} handle` : null,
       options.engraving ? `Engraved \u201c${options.engraving}\u201d` : null,
       options.knocking ? "Knocked in" : null,
@@ -446,6 +477,19 @@ export function lineProblemText(line: Pick<PricedLine, "problem" | "stockLeft" |
     return `Only ${line.stockLeft} left in total. Remove one to check out.`;
   }
   return `Only ${line.stockLeft} left. Lower the quantity to check out.`;
+}
+
+/**
+ * A bat saved in a cart before toe shapes existed, given the toe it is sold
+ * with (the one the builder starts on), so it merges with the same build added
+ * now. Anything else comes back unchanged.
+ */
+export function withResolvedToe(item: CartItem, catalogue: StoreCatalogue): CartItem {
+  if (item.kind !== "bat" || item.options.toe !== undefined) return item;
+  const bat = catalogue.bats.find((entry) => entry.slug === item.slug);
+  if (!bat?.customization.enabled || !bat.customization.toes.length) return item;
+  const toe = BAT_TOES[startingBatConfig(bat.customization).toe].label;
+  return { ...item, options: { ...item.options, toe } };
 }
 
 /** Add an item to a list of items, merging it into a matching line. */

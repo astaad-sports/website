@@ -5,7 +5,7 @@ import { KitCard } from "./kit-card";
 import type { KitTile } from "./kit-tiles";
 import { SectionHeading } from "./section-heading";
 
-/** "Complete your kit" — four tiles that pair with what the player is looking at. */
+/** "Complete your kit" — four tiles that pair with what the player is looking at; nothing while there are none. */
 export function CompleteYourKit({
   eyebrow,
   items,
@@ -15,6 +15,7 @@ export function CompleteYourKit({
   items: KitTile[];
   href?: string;
 }) {
+  if (items.length === 0) return null;
   return (
     <section
       aria-labelledby="kit-title"

@@ -7,6 +7,7 @@ import {
   BAT_HANDLES,
   BAT_IMAGE,
   BAT_PROFILES,
+  BAT_TOES,
   BAT_WEIGHTS,
   BATS,
   DEFAULT_BAT_CONFIG,
@@ -139,6 +140,7 @@ export function percentOff(price: number, mrp: number | null | undefined): numbe
 
 export const WEIGHT_OPTIONS = BAT_WEIGHTS.map((option) => option.label);
 export const PROFILE_OPTIONS = BAT_PROFILES.map((option) => option.label);
+export const TOE_OPTIONS = BAT_TOES.map((option) => option.label);
 export const HANDLE_OPTIONS = BAT_HANDLES.map((option) => option.label);
 
 /** Every option on: what the English willow bats offered before the admin existed. */
@@ -146,6 +148,7 @@ export const FULL_CUSTOMIZATION: BatCustomization = {
   enabled: true,
   weights: [...WEIGHT_OPTIONS],
   profiles: [...PROFILE_OPTIONS],
+  toes: [...TOE_OPTIONS],
   handles: [...HANDLE_OPTIONS],
   engraving: true,
   matchReady: true,
@@ -156,6 +159,7 @@ export const NO_CUSTOMIZATION: BatCustomization = {
   enabled: false,
   weights: [],
   profiles: [],
+  toes: [],
   handles: [],
   engraving: false,
   matchReady: false,
@@ -164,7 +168,9 @@ export const NO_CUSTOMIZATION: BatCustomization = {
 
 /**
  * Only known labels, in their usual order. An enabled build needs at least one
- * weight, profile and handle; otherwise it is treated as not customisable.
+ * weight, profile and handle; otherwise it is treated as not customisable. The
+ * toe is optional: with none offered, the bat has no toe choice. A build saved
+ * before toe shapes existed has no `toes` at all, and offers every one.
  */
 export function normaliseCustomization(input: Partial<BatCustomization> | null | undefined): BatCustomization {
   if (!input?.enabled) return NO_CUSTOMIZATION;
@@ -178,6 +184,7 @@ export function normaliseCustomization(input: Partial<BatCustomization> | null |
     enabled: true,
     weights,
     profiles,
+    toes: input.toes === undefined ? [...TOE_OPTIONS] : pick(TOE_OPTIONS, input.toes),
     handles,
     engraving: Boolean(input.engraving),
     matchReady: Boolean(input.matchReady),
@@ -293,14 +300,22 @@ function pricing(row: ProductWithImages, context: CatalogueContext): OfferPricin
 
 export type ProductWithImages = Product & { images: Pick<ProductImage, "url" | "position">[] };
 
-/** How each gear category's cut-out sits in a card, for products added later. */
-const GEAR_LAYOUT: Record<GearCategorySlug, Pick<GearProduct, "image" | "imageWidth" | "imageHeight" | "imageTop">> =
-  Object.fromEntries(
-    (Object.keys(GEAR_CARD_CATEGORY) as GearCategorySlug[]).map((slug) => {
-      const sample = GEAR.find((item) => item.categorySlug === slug)!;
-      return [slug, { image: sample.image, imageWidth: sample.imageWidth, imageHeight: sample.imageHeight, imageTop: sample.imageTop }];
-    })
-  ) as Record<GearCategorySlug, Pick<GearProduct, "image" | "imageWidth" | "imageHeight" | "imageTop">>;
+/** The built-in cut-out for a gear category, standing in for a product with no photos. */
+function sampleImage(category: GearCategorySlug): string {
+  return GEAR.find((item) => item.categorySlug === category)!.image;
+}
+
+/**
+ * The box a gear product's photo fits in on a card, for products added in the
+ * admin: a pair of gloves or pads from the front, a helmet three-quarter on,
+ * an upright wheelie kitbag.
+ */
+const GEAR_LAYOUT: Record<GearCategorySlug, Pick<GearProduct, "image" | "imageWidth" | "imageHeight" | "imageTop">> = {
+  "batting-gloves": { image: sampleImage("batting-gloves"), imageWidth: 192, imageHeight: 178, imageTop: 56 },
+  "batting-pads": { image: sampleImage("batting-pads"), imageWidth: 168, imageHeight: 212, imageTop: 36 },
+  helmets: { image: sampleImage("helmets"), imageWidth: 176, imageHeight: 172, imageTop: 60 },
+  "cricket-kitbags": { image: sampleImage("cricket-kitbags"), imageWidth: 124, imageHeight: 236, imageTop: 24 },
+};
 
 const rupees = (paise: number) => Math.round(paise / 100);
 
@@ -376,13 +391,14 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
 }
 
 /**
- * The public catalogue from database rows: hidden products are left out;
- * bats first, then gear by category. Prices include the best running offer
- * that needs no code.
+ * The public catalogue from database rows: hidden products are left out, and
+ * so are drafts with no price yet, whatever their availability says; bats
+ * first, then gear by category. Prices include the best running offer that
+ * needs no code.
  */
 export function toStoreCatalogue(rows: ProductWithImages[], context: CatalogueContext = {}): StoreCatalogue {
   const visible = rows
-    .filter((row) => stockStatus(row) !== "hidden")
+    .filter((row) => stockStatus(row) !== "hidden" && row.pricePaise > 0)
     .sort(
       (a, b) =>
         CATEGORY_SLUGS.indexOf(a.category as CategorySlug) - CATEGORY_SLUGS.indexOf(b.category as CategorySlug) ||
@@ -486,6 +502,22 @@ export function batsInSubcategory(catalogue: StoreCatalogue, subcategory: BatSub
   return catalogue.bats.filter((bat) => bat.subcategory === subcategory);
 }
 
+/** A home page category tile's count and starting price; `from` is null while nothing is on sale. */
+export interface CategoryStats {
+  models: number;
+  from: number | null;
+}
+
+/** Each category's models on sale and its lowest price, offers included, for the home page tiles. */
+export function categoryStats(catalogue: StoreCatalogue): Record<CategorySlug, CategoryStats> {
+  return Object.fromEntries(
+    CATEGORY_SLUGS.map((slug) => {
+      const prices = (slug === "bats" ? catalogue.bats : gearInCategory(catalogue, slug)).map((product) => product.price);
+      return [slug, { models: prices.length, from: prices.length ? Math.min(...prices) : null }];
+    })
+  ) as Record<CategorySlug, CategoryStats>;
+}
+
 /** How many bats the public can see in each subcategory, for the home page collection tiles. */
 export function batCounts(catalogue: StoreCatalogue): Record<BatSubcategory, number> {
   const counts = Object.fromEntries(BAT_SUBCATEGORIES.map(({ slug }) => [slug, 0])) as Record<BatSubcategory, number>;
@@ -533,8 +565,8 @@ export function builderBat(catalogue: StoreCatalogue): StoreBat | undefined {
 /**
  * A builder's first choices for a bat: the usual build wherever the bat
  * offers it, otherwise the first option it does offer. Indexes still refer to
- * the full BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES lists; extras the bat
- * does not offer start switched off.
+ * the full BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES lists; extras
+ * the bat does not offer start switched off.
  */
 export function startingBatConfig(customization: BatCustomization, base: BatConfig = DEFAULT_BAT_CONFIG): BatConfig {
   const start = (labels: string[], offered: string[], index: number) => {
@@ -547,6 +579,7 @@ export function startingBatConfig(customization: BatCustomization, base: BatConf
     ...base,
     weight: start(WEIGHT_OPTIONS, customization.weights, base.weight),
     profile: start(PROFILE_OPTIONS, customization.profiles, base.profile),
+    toe: start(TOE_OPTIONS, customization.toes, base.toe),
     handle: start(HANDLE_OPTIONS, customization.handles, base.handle),
     name: on && customization.engraving ? base.name : "",
     knock: on && customization.matchReady && base.knock,

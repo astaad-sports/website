@@ -1,0 +1,267 @@
+{
+  "bats/scoop-master-front": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bats/scoop-master-front-d1d4d7a638.webp",
+    "width": 246,
+    "height": 1800
+  },
+  "bats/scoop-master-diagonal": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bats/scoop-master-diagonal-c41a025a02.webp",
+    "width": 1000,
+    "height": 765
+  },
+  "bats/kashmir-diagonal": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bats/kashmir-diagonal-da5b85dfe8.webp",
+    "width": 1000,
+    "height": 727
+  },
+  "categories/batting-gloves": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/categories/batting-gloves-0428a284cb.webp",
+    "width": 1000,
+    "height": 918
+  },
+  "categories/batting-pads": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/categories/batting-pads-05e06a421d.webp",
+    "width": 727,
+    "height": 1000
+  },
+  "categories/helmets": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/categories/helmets-c77f888e73.webp",
+    "width": 1000,
+    "height": 965
+  },
+  "categories/cricket-kitbags": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/categories/cricket-kitbags-6e594f889a.webp",
+    "width": 485,
+    "height": 1000
+  },
+  "home/hero-bats-by-the-logs": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/home/hero-bats-by-the-logs-ebac690777.webp",
+    "width": 1500,
+    "height": 1000
+  },
+  "home/goat-bats-on-clefts": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/home/goat-bats-on-clefts-115190aad9.webp",
+    "width": 1070,
+    "height": 1338
+  },
+  "home/bats-in-the-workshop": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/home/bats-in-the-workshop-eff2bd6b7a.webp",
+    "width": 1721,
+    "height": 1364
+  },
+  "craft/bat-on-the-workbench": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/craft/bat-on-the-workbench-966dceeb3c.webp",
+    "width": 1440,
+    "height": 1800
+  },
+  "home/bats-against-the-trees": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/home/bats-against-the-trees-e735292315.webp",
+    "width": 1162,
+    "height": 1280
+  },
+  "craft/clefts": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/craft/clefts-55c1ef64f8.webp",
+    "width": 1024,
+    "height": 716
+  },
+  "craft/cane-handles": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/craft/cane-handles-dabbe5c020.webp",
+    "width": 800,
+    "height": 480
+  },
+  "craft/handle-splice": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/craft/handle-splice-bb7b1dd4ca.webp",
+    "width": 750,
+    "height": 750
+  },
+  "craft/drawknife": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/craft/drawknife-cfe30150d1.webp",
+    "width": 1024,
+    "height": 679
+  },
+  "craft/planing": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/craft/planing-3ac2137209.webp",
+    "width": 1200,
+    "height": 675
+  },
+  "craft/lathe": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/craft/lathe-76ee626e8f.webp",
+    "width": 1600,
+    "height": 800
+  },
+  "home/bats-on-the-rock": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/home/bats-on-the-rock-598914522f.webp",
+    "width": 1536,
+    "height": 1536
+  },
+  "reviews/01": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/01-7a0bbbe742.webp",
+    "width": 1054,
+    "height": 1400
+  },
+  "reviews/02": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/02-eca012c094.webp",
+    "width": 1120,
+    "height": 1400
+  },
+  "reviews/03": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/03-1d394068c2.webp",
+    "width": 788,
+    "height": 1400
+  },
+  "reviews/04": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/04-68803cc0fd.webp",
+    "width": 1120,
+    "height": 1400
+  },
+  "reviews/05": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/05-37c9cb4582.webp",
+    "width": 1120,
+    "height": 1400
+  },
+  "reviews/06": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/06-39ea006ab2.webp",
+    "width": 945,
+    "height": 1400
+  },
+  "reviews/07": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/07-c18f34513a.webp",
+    "width": 933,
+    "height": 1400
+  },
+  "reviews/08": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/08-411c80d1cf.webp",
+    "width": 887,
+    "height": 1280
+  },
+  "reviews/09": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/09-498626048d.webp",
+    "width": 1263,
+    "height": 1400
+  },
+  "reviews/10": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/10-e68e746c04.webp",
+    "width": 1050,
+    "height": 1400
+  },
+  "reviews/11": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/11-b184b5db5d.webp",
+    "width": 1050,
+    "height": 1400
+  },
+  "reviews/12": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/12-a62e33ba5f.webp",
+    "width": 934,
+    "height": 1400
+  },
+  "reviews/13": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/13-57e0f46db9.webp",
+    "width": 1050,
+    "height": 1400
+  },
+  "reviews/14": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/14-9c1d9f4923.webp",
+    "width": 852,
+    "height": 1280
+  },
+  "reviews/15": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/15-11901c0bc5.webp",
+    "width": 1400,
+    "height": 1050
+  },
+  "reviews/16": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/16-e8a4f75199.webp",
+    "width": 1400,
+    "height": 933
+  },
+  "reviews/17": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/17-8c47b71fbf.webp",
+    "width": 930,
+    "height": 1170
+  },
+  "reviews/18": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/18-4352404142.webp",
+    "width": 927,
+    "height": 1400
+  },
+  "reviews/19": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/19-7139657247.webp",
+    "width": 940,
+    "height": 960
+  },
+  "reviews/20": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/20-90b4563b9c.webp",
+    "width": 1050,
+    "height": 1400
+  },
+  "reviews/21": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/21-0dbe65798b.webp",
+    "width": 951,
+    "height": 1160
+  },
+  "reviews/22": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/22-69596f8062.webp",
+    "width": 768,
+    "height": 1024
+  },
+  "reviews/23": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/23-82d63562eb.webp",
+    "width": 768,
+    "height": 1024
+  },
+  "reviews/24": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/24-27d636c92d.webp",
+    "width": 1050,
+    "height": 1400
+  },
+  "reviews/25": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/25-e6f6b5c476.webp",
+    "width": 1050,
+    "height": 1400
+  },
+  "reviews/26": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/26-c1f59e875c.webp",
+    "width": 1050,
+    "height": 1400
+  },
+  "reviews/player-series-kitbag": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/player-series-kitbag-a0ec50f24a.mp4",
+    "width": 720,
+    "height": 1280
+  },
+  "reviews/player-series-kitbag-poster": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/player-series-kitbag-poster-920ea3c671.webp",
+    "width": 720,
+    "height": 1280
+  },
+  "bat-options/profile-duckbill": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bat-options/profile-duckbill-274f606c7c.webp",
+    "width": 232,
+    "height": 720
+  },
+  "bat-options/profile-mid-to-low": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bat-options/profile-mid-to-low-a3186ff63e.webp",
+    "width": 235,
+    "height": 720
+  },
+  "bat-options/profile-full": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bat-options/profile-full-49e4a7508f.webp",
+    "width": 236,
+    "height": 720
+  },
+  "bat-options/toe-round": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bat-options/toe-round-ceb5c08a1f.webp",
+    "width": 400,
+    "height": 442
+  },
+  "bat-options/toe-semi-round": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bat-options/toe-semi-round-1154b82666.webp",
+    "width": 400,
+    "height": 442
+  },
+  "bat-options/toe-flat": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bat-options/toe-flat-970e8dd94c.webp",
+    "width": 400,
+    "height": 442
+  }
+}

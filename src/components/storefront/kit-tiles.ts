@@ -1,10 +1,11 @@
 // The product tiles in "What players are buying" and "Complete your kit",
 // built from the catalogue on the server and handed to KitCard.
 import { batCartItem, gearCartItem, type CartItem } from "@/lib/cart";
-import { DEFAULT_BAT_CONFIG, gearHref, type KitItem } from "@/lib/catalogue";
+import { DEFAULT_BAT_CONFIG, gearHref, type GearCategorySlug, type KitItem } from "@/lib/catalogue";
 import {
   entryBat,
   findStoreBat,
+  gearInCategory,
   kitGear,
   type StoreBat,
   type StoreCatalogue,
@@ -33,7 +34,8 @@ export function batTile(bat: StoreBat): KitTile {
     href: `/bats/${bat.slug}`,
     image: bat.images[0],
     imageWidth: 104,
-    imageHeight: 264,
+    // A bat photo runs toe to handle, so it stops above the name.
+    imageHeight: 232,
     imageTop: 40,
     cartItem: batCartItem(bat.slug, DEFAULT_BAT_CONFIG, 1, bat.customization),
     soldOut: bat.soldOut,
@@ -73,22 +75,25 @@ export function kitTilesForGear(catalogue: StoreCatalogue, category: string): Ki
   return [...kitGear(catalogue, category).map(gearTile), ...(bat ? [batTile(bat)] : [])];
 }
 
-// The admin has no bestseller setting, so the picks live here. This row's
-// tiles are taller, so the gear cut-outs sit lower (placements from the design).
-const BESTSELLER_PICKS: { slug: string; kind: "bat" | "gear"; imageTop: number; badge?: string }[] = [
-  { slug: "goat", kind: "bat", imageTop: 40, badge: "No. 1" },
-  { slug: "elite-batting-gloves", kind: "gear", imageTop: 70 },
-  { slug: "club-cricket-helmet", kind: "gear", imageTop: 74 },
-  { slug: "pro-cricket-kitbag", kind: "gear", imageTop: 96 },
+// The admin has no bestseller setting, so the picks live here: the G.O.A.T,
+// then each of these categories' featured product (or its first). The gear
+// cut-outs sit a little lower in this row than in their own card (placements
+// from the design), whatever box the product's photo has.
+const BESTSELLER_BAT = { slug: "goat", imageTop: 40, badge: "No. 1" };
+const BESTSELLER_CATEGORIES: { category: GearCategorySlug; lower: number }[] = [
+  { category: "batting-gloves", lower: 14 },
+  { category: "helmets", lower: 14 },
+  { category: "cricket-kitbags", lower: 4 },
 ];
 
-/** The home page's "What players are buying", in the order above; a hidden pick is skipped. */
+/** The home page's "What players are buying", in the order above; a pick with nothing to show is skipped. */
 export function bestsellerTiles(catalogue: StoreCatalogue): KitTile[] {
-  return BESTSELLER_PICKS.flatMap((pick) => {
-    const bat = pick.kind === "bat" ? findStoreBat(catalogue, pick.slug) : undefined;
-    const gear = pick.kind === "gear" ? catalogue.gear.find((product) => product.slug === pick.slug) : undefined;
-    const tile = bat ? batTile(bat) : gear ? gearTile(gear) : null;
-    if (!tile) return [];
-    return [{ ...tile, imageTop: pick.imageTop, badge: pick.badge ?? tile.badge }];
+  const bat = findStoreBat(catalogue, BESTSELLER_BAT.slug);
+  const batTiles = bat ? [{ ...batTile(bat), imageTop: BESTSELLER_BAT.imageTop, badge: BESTSELLER_BAT.badge }] : [];
+  const gearTiles = BESTSELLER_CATEGORIES.flatMap(({ category, lower }) => {
+    const products = gearInCategory(catalogue, category);
+    const pick = products.find((product) => product.featured) ?? products[0];
+    return pick ? [{ ...gearTile(pick), imageTop: pick.imageTop + lower }] : [];
   });
+  return [...batTiles, ...gearTiles];
 }

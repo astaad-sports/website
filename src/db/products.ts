@@ -132,15 +132,17 @@ export async function updateProduct(
 
 export type AvailabilityResult =
   | { ok: true; product: Product }
-  | { ok: false; reason: "not_found" | "no_stock" };
+  | { ok: false; reason: "not_found" | "no_stock" | "no_price" };
 
 /**
  * Available, out of stock or hidden. A counted product with no stock cannot be
- * made available: restock it instead.
+ * made available: restock it instead. A draft with no price cannot be shown at
+ * all (the store leaves it out): price it in the editor first.
  */
 export async function setProductAvailability(id: string, availability: ProductAvailability): Promise<AvailabilityResult> {
   const [current] = await getDb().select().from(products).where(eq(products.id, id)).limit(1);
   if (!current) return { ok: false, reason: "not_found" };
+  if (availability !== "hidden" && current.pricePaise <= 0) return { ok: false, reason: "no_price" };
   if (availability === "available" && current.stock !== null && current.stock <= 0) return { ok: false, reason: "no_stock" };
   const [product] = await getDb().update(products).set({ availability }).where(eq(products.id, id)).returning();
   return { ok: true, product };

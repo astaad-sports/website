@@ -1,10 +1,13 @@
 import Image from "next/image";
 
 import { type Bat } from "@/lib/catalogue";
+import { siteImage } from "@/lib/site-images";
 
 import { Eyebrow } from "./eyebrow";
 
-/** "Built for bigger innings." — the blade close-up beside four numbered points. */
+const PHOTO = siteImage("home/bats-against-the-trees");
+
+/** "Built for bigger innings." — Astaad bats against the trees beside four numbered points. */
 export function ProductStory({ bat }: { bat: Bat }) {
   const points: [string, string, string][] = [
     ["01 · Willow", bat.grade, "Naturally air-dried and pressed for a lively face that only gets better."],
@@ -21,11 +24,11 @@ export function ProductStory({ bat }: { bat: Bat }) {
       <div className="grid lg:grid-cols-[minmax(0,680px)_1fr] xl:h-[720px]">
         <div className="relative h-[360px] lg:h-full">
           <Image
-            src="/images/stadium-kit.png"
-            alt={`Close-up of the ${bat.name} blade and lion crest under studio light`}
+            src={PHOTO.src}
+            alt="Astaad bats standing against tree trunks"
             fill
             sizes="(min-width: 1024px) 680px, 100vw"
-            className="object-cover object-[40%_30%] contrast-[1.05]"
+            className="object-cover object-[50%_40%]"
           />
           <span
             aria-hidden="true"
