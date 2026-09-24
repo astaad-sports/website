@@ -15,9 +15,11 @@ export function BrandStory() {
           <Eyebrow bar className="text-on-dark-muted">
             Our story
           </Eyebrow>
+          {/* "Equipment." is about 6.4em wide, so under 405px the size follows
+              the screen (less the 32px of side padding) instead of clipping */}
           <h2
             id="story-title"
-            className="type-display text-[56px] leading-[0.88] tracking-[-0.03em] md:text-[88px]"
+            className="type-display text-[length:min(56px,(100vw_-_32px)/6.65)] leading-[0.88] tracking-[-0.03em] md:text-[88px]"
           >
             More than
             <br />

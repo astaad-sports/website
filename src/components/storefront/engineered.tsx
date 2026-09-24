@@ -53,9 +53,11 @@ export function Engineered() {
           <Eyebrow bar className="text-on-dark-muted">
             Premium collection
           </Eyebrow>
+          {/* "Engineered" is about 6.8em wide, so under 368px the size follows
+              the screen (less the 32px of side padding) instead of clipping */}
           <h2
             id="eng-title"
-            className="type-display text-[48px] leading-[0.9] tracking-[-0.02em] md:text-[72px]"
+            className="type-display text-[length:min(48px,(100vw_-_32px)/7)] leading-[0.9] tracking-[-0.02em] md:text-[72px]"
           >
             Engineered
             <br />

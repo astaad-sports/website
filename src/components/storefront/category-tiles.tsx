@@ -22,7 +22,7 @@ function CategoryTile({ category }: { category: StoreCategory }) {
       </span>
       <span
         aria-hidden="true"
-        className="absolute left-1/2 -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(14,14,14,0.22)_0%,rgba(14,14,14,0)_70%)]"
+        className="absolute left-1/2 max-w-full -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(14,14,14,0.22)_0%,rgba(14,14,14,0)_70%)]"
         style={{ top: tile.shadowTop, width: tile.shadowWidth, height: 50 }}
       />
       <Image
