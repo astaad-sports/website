@@ -55,8 +55,11 @@ export function HomeHero() {
         className="absolute top-[78px] right-[340px] hidden h-[624px] w-[246px] -rotate-12 object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.75)] lg:block"
       />
 
-      <div className="site-shell relative flex min-h-[640px] flex-col justify-between gap-16 pt-14 pb-12 lg:h-[760px] lg:pt-32 lg:pb-14">
-        <div className="flex max-w-[720px] flex-col gap-6">
+      {/* From lg the featured bat sits beside the headline column, bottom-aligned with the
+          promises, as in the design. min-h rather than h, so a taller column grows the hero
+          instead of clipping the bottom row. */}
+      <div className="site-shell relative flex min-h-[640px] flex-col justify-between gap-16 pt-14 pb-12 lg:grid lg:min-h-[760px] lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[1fr_auto] lg:gap-x-16 lg:gap-y-8 lg:pt-32 lg:pb-14">
+        <div className="flex max-w-[720px] flex-col gap-6 lg:col-start-1 lg:row-start-1">
           <Eyebrow bar className="text-on-dark-muted">
             Astaad Sports · Cricket equipment
           </Eyebrow>
@@ -90,8 +93,8 @@ export function HomeHero() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-          <ul className="flex flex-col gap-2 text-xs leading-4 font-semibold tracking-[0.22em] text-on-dark-muted uppercase sm:flex-row sm:flex-wrap sm:items-center sm:gap-0">
+        <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between lg:contents">
+          <ul className="flex flex-col gap-2 text-xs leading-4 font-semibold tracking-[0.22em] text-on-dark-muted uppercase sm:flex-row sm:flex-wrap sm:items-center sm:gap-0 lg:col-start-1 lg:row-start-2">
             {PROMISES.map((promise, index) => (
               <li
                 key={promise}
@@ -101,7 +104,7 @@ export function HomeHero() {
               </li>
             ))}
           </ul>
-          <div className="flex flex-col gap-1.5 md:items-end md:text-right">
+          <div className="flex flex-col gap-1.5 md:items-end md:text-right lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-end">
             <span className="text-xs leading-4 font-medium tracking-[0.22em] text-on-dark-subtle uppercase">
               Featured
             </span>
