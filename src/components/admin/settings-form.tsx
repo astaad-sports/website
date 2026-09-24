@@ -30,6 +30,7 @@ interface Values {
   storeName: string;
   supportEmail: string;
   supportPhone: string;
+  storeAddress: string;
   gstin: string;
   freeDelivery: boolean;
   /** Whole rupees. */
@@ -44,6 +45,7 @@ function valuesFor(settings: Settings, adminName: string): Values {
     storeName: settings.storeName,
     supportEmail: settings.supportEmail ?? "",
     supportPhone: settings.supportPhone ?? "",
+    storeAddress: settings.storeAddress ?? "",
     gstin: settings.gstin ?? "",
     freeDelivery: settings.freeDelivery,
     deliveryFee: settings.deliveryFeePaise > 0 ? String(settings.deliveryFeePaise / 100) : "",
@@ -275,6 +277,18 @@ export function SettingsForm({
                 error={errorFor("supportPhone")}
               />
             </div>
+            <TextField
+              id="field-storeAddress"
+              name="storeAddress"
+              label="Store address"
+              optional
+              autoComplete="off"
+              maxLength={SETTINGS_LIMITS.storeAddress}
+              value={values.storeAddress}
+              onValueChange={(value) => set("storeAddress", value)}
+              help="Shown in the footer so customers can visit the shop"
+              error={errorFor("storeAddress")}
+            />
             {/* No maxLength: a GSTIN pasted with spaces would be cut short before they are taken out. */}
             <TextField
               id="field-gstin"

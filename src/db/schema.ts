@@ -310,6 +310,8 @@ export const storeSettings = pgTable(
     storeName: text("store_name").notNull().default("Astaad Sports"),
     supportEmail: text("support_email"),
     supportPhone: text("support_phone"),
+    /** The shop's postal address, on one line. */
+    storeAddress: text("store_address"),
     gstin: text("gstin"),
     freeDelivery: boolean("free_delivery").notNull().default(true),
     /** Charged per order when delivery is not free. */

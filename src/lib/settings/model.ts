@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   storeName: "Astaad Sports",
   supportEmail: null,
   supportPhone: null,
+  storeAddress: null,
   gstin: null,
   freeDelivery: true,
   deliveryFeePaise: 0,
@@ -30,6 +31,7 @@ export function defaultCarrier(settings: Pick<Settings, "defaultCarrier">): Carr
 export const SETTINGS_LIMITS = {
   storeName: 60,
   supportEmail: 120,
+  storeAddress: 200,
   dispatchTime: 60,
   maxDeliveryFeeRupees: 5000,
 } as const;
@@ -38,6 +40,7 @@ export type SettingsField =
   | "storeName"
   | "supportEmail"
   | "supportPhone"
+  | "storeAddress"
   | "gstin"
   | "deliveryFee"
   | "defaultCarrier"
@@ -67,7 +70,7 @@ const GSTIN_PATTERN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
 /**
  * Check the Settings form. Field names: storeName, supportEmail, supportPhone,
- * gstin, freeDelivery ("on" when checked), deliveryFee (rupees),
+ * storeAddress, gstin, freeDelivery ("on" when checked), deliveryFee (rupees),
  * defaultCarrier, dispatchTime, adminName.
  */
 export function parseSettingsForm(form: FormData): ParsedSettingsForm {
@@ -84,6 +87,9 @@ export function parseSettingsForm(form: FormData): ParsedSettingsForm {
 
   const supportPhone = phoneOrNull(text(form, "supportPhone"));
   if (supportPhone === "invalid") errors.supportPhone = "Enter a 10-digit number, for example 98765 43210.";
+
+  const storeAddress = text(form, "storeAddress");
+  if (storeAddress.length > SETTINGS_LIMITS.storeAddress) errors.storeAddress = `Keep the address under ${SETTINGS_LIMITS.storeAddress} characters.`;
 
   const gstin = text(form, "gstin").toUpperCase().replace(/\s/g, "");
   if (gstin && !GSTIN_PATTERN.test(gstin)) errors.gstin = "A GSTIN has 15 characters, like 03ABCDE1234F1Z5.";
@@ -117,6 +123,7 @@ export function parseSettingsForm(form: FormData): ParsedSettingsForm {
       storeName,
       supportEmail: supportEmail || null,
       supportPhone: supportPhone === "invalid" ? null : supportPhone,
+      storeAddress: storeAddress || null,
       gstin: gstin || null,
       freeDelivery,
       deliveryFeePaise,

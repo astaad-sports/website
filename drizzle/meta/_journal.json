@@ -57,6 +57,13 @@
       "when": 1790239445774,
       "tag": "0007_offers_and_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790242896178,
+      "tag": "0008_store_address",
+      "breakpoints": true
     }
   ]
 }

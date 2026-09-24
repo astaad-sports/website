@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, Phone } from "lucide-react";
+import { Mail, MapPin, Phone } from "lucide-react";
 
 import { Crest } from "@/components/astaad";
 import { STORE_CATEGORIES } from "@/lib/catalogue";
@@ -36,9 +36,17 @@ function FooterNav({
   );
 }
 
-/** The support email and phone from Settings, under the Support links. Nothing when neither is set. */
-function FooterContact({ email, phone }: { email: string | null; phone: string | null }) {
-  if (!email && !phone) return null;
+/** The support email, phone and shop address from Settings, under the Support links. Nothing when none is set. */
+function FooterContact({
+  email,
+  phone,
+  address,
+}: {
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+}) {
+  if (!email && !phone && !address) return null;
   return (
     <address className="flex flex-col gap-3 not-italic">
       {email && (
@@ -52,6 +60,12 @@ function FooterContact({ email, phone }: { email: string | null; phone: string |
           <Phone className="size-4 shrink-0 text-on-dark-subtle" strokeWidth={1.5} aria-hidden="true" />
           {phone}
         </a>
+      )}
+      {address && (
+        <span className="flex max-w-[280px] items-start gap-2 text-[15px] leading-[22px] text-on-dark">
+          <MapPin className="mt-[3px] size-4 shrink-0 text-on-dark-subtle" strokeWidth={1.5} aria-hidden="true" />
+          {address}
+        </span>
       )}
     </address>
   );
@@ -86,7 +100,11 @@ export async function SiteFooter() {
           />
           <div className="flex flex-col gap-5">
             <FooterNav label="Support" links={SUPPORT_LINKS} />
-            <FooterContact email={settings.supportEmail} phone={settings.supportPhone} />
+            <FooterContact
+              email={settings.supportEmail}
+              phone={settings.supportPhone}
+              address={settings.storeAddress}
+            />
           </div>
         </div>
         <div className="flex flex-col gap-3 border-t border-border-dark pt-6 text-[13px] leading-[18px] text-on-dark-subtle sm:flex-row sm:items-center sm:justify-between">
