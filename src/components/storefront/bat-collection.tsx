@@ -75,9 +75,12 @@ export function BatCollection({ englishWillow }: { englishWillow: number }) {
           aside={<p className="text-lg leading-[26px] text-on-dark-subtle">Choose your willow. Build your game.</p>}
         />
         <div className="grid gap-5 md:grid-cols-[2fr_1fr] md:grid-rows-2 xl:h-[400px]">
+          {/* Below md the tile is a column that grows with its copy (the count
+              and button wrap onto two lines there); from md up every piece is
+              pinned absolutely inside the fixed-height tile. */}
           <Link
             href="/#english-willow"
-            className="group relative block min-h-[400px] overflow-hidden rounded-xs bg-surface-dark-sunken text-on-dark transition-transform duration-200 hover:-translate-y-1 md:row-span-2"
+            className="group relative flex min-h-[400px] flex-col overflow-hidden rounded-xs bg-surface-dark-sunken px-10 py-9 text-on-dark transition-transform duration-200 hover:-translate-y-1 md:row-span-2 md:block md:p-0"
           >
             <div className="absolute inset-y-0 right-0 hidden w-[320px] sm:block">
               <Image
@@ -93,10 +96,10 @@ export function BatCollection({ englishWillow }: { englishWillow: number }) {
               className="absolute inset-y-0 right-[200px] hidden w-[200px] bg-[linear-gradient(90deg,#161616_0%,rgba(22,22,22,0)_100%)] sm:block"
             />
             <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-brand-yellow" />
-            <span className="absolute top-9 left-10 h-[22px] rounded-full bg-brand-yellow px-2.5 text-[11px] leading-[22px] font-bold tracking-[0.08em] text-on-yellow uppercase">
+            <span className="h-[22px] self-start rounded-full bg-brand-yellow px-2.5 text-[11px] leading-[22px] font-bold tracking-[0.08em] text-on-yellow uppercase md:absolute md:top-9 md:left-10">
               Premium · Customizable
             </span>
-            <span className="absolute top-24 left-10 flex w-[calc(100%-80px)] max-w-[460px] flex-col gap-3">
+            <span className="mt-[38px] flex max-w-[460px] flex-col gap-3 md:absolute md:top-24 md:left-10 md:mt-0 md:w-[calc(100%-80px)]">
               <span className="type-display text-[48px] leading-[0.92] tracking-[-0.02em] md:text-[64px]">
                 English
                 <br />
@@ -108,7 +111,7 @@ export function BatCollection({ englishWillow }: { englishWillow: number }) {
                 and handle, with free name engraving.
               </span>
             </span>
-            <span className="absolute bottom-9 left-10 flex flex-wrap items-center gap-6">
+            <span className="mt-auto flex flex-wrap items-center gap-6 pt-8 md:absolute md:bottom-9 md:left-10 md:pt-0">
               <span className="text-[40px] leading-[44px] font-bold tracking-[-0.03em]">
                 {englishWillow}{" "}
                 <span className="text-[13px] leading-[18px] font-medium tracking-[0.2em] text-on-dark-subtle uppercase">
