@@ -1,12 +1,14 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button, type ButtonProps } from "@/components/ui/button";
-import type { CartItem } from "@/lib/cart";
+import { priceCartItem, type CartItem } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
+import { useCatalogue } from "./catalogue-provider";
 import { useCart } from "./use-cart";
 
 /**
@@ -34,6 +36,8 @@ export type AddToCartButtonProps = Omit<ButtonProps, "onClick" | "children"> & {
  */
 export function AddToCartButton({ item, productName, soldOut = false, children, ...props }: AddToCartButtonProps) {
   const { add } = useCart();
+  const catalogue = useCatalogue();
+  const router = useRouter();
   const [added, setAdded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const iconOnly = typeof props.size === "string" && props.size.startsWith("icon");
@@ -56,6 +60,8 @@ export function AddToCartButton({ item, productName, soldOut = false, children, 
 
   function handleClick() {
     add(item);
+    // A product added since this tab loaded the catalogue: fetch it, or the cart would leave the item out.
+    if (!priceCartItem(item, catalogue)) router.refresh();
     setAdded(true);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setAdded(false), 2500);

@@ -78,6 +78,8 @@ export type AddressField = keyof ShippingAddress;
 export const placeOrderSchema = z.object({
   items: z.array(cartItemSchema).min(1).max(MAX_LINES),
   address: addressSchema,
+  /** The total the customer was shown; if prices changed since, the order is not placed. */
+  expectedTotalPaise: z.number().int().nonnegative().optional(),
 });
 
 export const paymentResponseSchema = z.object({

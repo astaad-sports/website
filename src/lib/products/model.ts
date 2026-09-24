@@ -109,17 +109,19 @@ export function availabilityForStock(
 }
 
 /**
- * The availability the editor saves. A choice the admin just made wins,
- * except that a counted product with no stock cannot be available. An
- * unchanged choice follows the stock rules above.
+ * The availability the editor saves. A choice the admin made wins (`chosen`
+ * differs from what is saved, or `explicit` says they picked it even though it
+ * is the same), except that a counted product with no stock cannot be
+ * available. An untouched choice follows the stock rules above.
  */
 export function availabilityForSave(
   chosen: ProductAvailability,
   saved: ProductAvailability | null,
   previousStock: number | null,
-  nextStock: number | null
+  nextStock: number | null,
+  explicit = false
 ): ProductAvailability {
-  if (saved === null || chosen !== saved) {
+  if (saved === null || chosen !== saved || explicit) {
     return chosen === "available" && nextStock !== null && nextStock <= 0 ? "out_of_stock" : chosen;
   }
   return availabilityForStock(chosen, previousStock, nextStock);
@@ -190,6 +192,9 @@ export function customizationFor(kind: string, subcategory: string | null, store
 
 // ---------------------------------------------------------------------------
 // URLs and names
+
+/** The longest slug the cart accepts (see cartItemSchema). */
+export const MAX_SLUG_LENGTH = 64;
 
 /** "Run Machine" → "run-machine"; "G.O.A.T" → "goat". */
 export function slugify(name: string): string {

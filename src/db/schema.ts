@@ -55,6 +55,14 @@ export const orderStatus = pgEnum("order_status", [
 
 export type OrderStatus = (typeof orderStatus.enumValues)[number];
 
+/** A paid order asked for more than the counted stock of one product. */
+export interface OrderStockShortfall {
+  slug: string;
+  name: string;
+  /** How many more were paid for than were in stock. */
+  missing: number;
+}
+
 /**
  * One checkout. Money is integer paise, as Razorpay expects. The shipping
  * address is copied onto the order so later edits never rewrite history.
@@ -94,6 +102,11 @@ export const orders = pgTable(
     trackingNumber: text("tracking_number").unique(),
     shippedAt: timestamp("shipped_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /**
+     * Set when the payment arrived for more than was in stock (two customers
+     * paying for the last one at once): the owner restocks or refunds.
+     */
+    stockShortfall: jsonb("stock_shortfall").$type<OrderStockShortfall[]>(),
     ...timestamps,
   },
   (table) => [

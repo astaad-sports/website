@@ -50,7 +50,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
       : { ok: false, error: "Your cart could not be read. Refresh the page and try again." };
   }
 
-  const { items, address } = parsed.data;
+  const { items, address, expectedTotalPaise } = parsed.data;
   // Priced against the database, not the cached storefront, so stock is current.
   const cart = priceCart(items, await getFreshStoreCatalogue());
   if (cart.invalid > 0 || cart.lines.length === 0) {
@@ -62,6 +62,10 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   const blocked = cart.lines.find((line) => line.problem);
   if (blocked) {
     return { ok: false, error: `${blocked.name}: ${lineProblemText(blocked)}` };
+  }
+  // The customer pays what the Pay button said, or is asked to look again.
+  if (expectedTotalPaise !== undefined && expectedTotalPaise !== cart.totalPaise) {
+    return { ok: false, error: "Prices changed since you opened this page. Check your order, then pay again." };
   }
 
   if (!razorpayConfigured()) {

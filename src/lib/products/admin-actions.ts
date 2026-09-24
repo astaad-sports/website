@@ -14,7 +14,6 @@ import {
   reorderProductImages,
   replaceProductImage,
   setProductAvailability,
-  setProductStock,
   setProductStocks,
   updateProduct,
   type ProductWriteResult,
@@ -86,7 +85,9 @@ export async function saveProduct(_previous: ProductActionState, form: FormData)
     // A product keeps its kind: a bat stays a bat, gear stays gear.
     if (current.kind !== values.kind) return { fieldErrors: { category: "A bat can't be moved to a gear category, or gear to Bats." }, at: Date.now() };
 
-    const result = await updateProduct(id, columns, new Date(seen));
+    const result = await updateProduct(id, columns, new Date(seen), {
+      availabilityChosen: form.get("availabilityChosen") === "1",
+    });
     if (!result.ok) return writeFailure(result, values.sku);
     productsChanged();
     return done("Product saved");
@@ -123,27 +124,36 @@ function stockValue(value: FormDataEntryValue | null): number | null | "invalid"
 }
 
 const STOCK_ERROR = `Enter a whole number from 0 to ${PRODUCT_LIMITS.maxStock}.`;
+const STOCK_CHANGED = "Stock changed since you opened this page, maybe an order was paid. Reload to see it, then save again.";
 
-/** Restock or correct one product's count, from the Restock sheet or a row. */
+function stockFailure(reason: "not_found" | "changed"): ProductActionState {
+  return failed(reason === "changed" ? STOCK_CHANGED : "This product no longer exists.");
+}
+
+/**
+ * Restock or correct one product's count, from the Restock sheet or a row.
+ * Posts `productId`, `stock` and `from` (the count shown when the admin
+ * started, empty when not counted).
+ */
 export async function saveStock(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
   if (!(await signedInAdmin())) return NOT_ADMIN;
   const id = z.uuid().safeParse(form.get("productId"));
   if (!id.success) return failed(SOMETHING_WRONG);
   const stock = stockValue(form.get("stock"));
   if (stock === "invalid") return { fieldErrors: { stock: STOCK_ERROR }, at: Date.now() };
+  const from = stockValue(form.get("from"));
+  if (from === "invalid") return failed(SOMETHING_WRONG);
 
-  const product = await setProductStock(id.data, stock);
-  if (!product) return failed("This product no longer exists.");
+  const result = await setProductStocks([{ id: id.data, stock, from }]);
+  if (!result.ok) return stockFailure(result.reason);
   productsChanged();
   return done("Stock updated");
 }
 
-const stocksSchema = z
-  .array(z.object({ id: z.uuid(), stock: z.number().int().min(0).max(PRODUCT_LIMITS.maxStock).nullable() }))
-  .min(1)
-  .max(500);
+const countOrNull = z.number().int().min(0).max(PRODUCT_LIMITS.maxStock).nullable();
+const stocksSchema = z.array(z.object({ id: z.uuid(), stock: countOrNull, from: countOrNull })).min(1).max(500);
 
-/** Save the Inventory page's changed counts at once. Posts `stocks` as JSON: [{ id, stock }]. */
+/** Save the Inventory page's changed counts at once. Posts `stocks` as JSON: [{ id, stock, from }]. */
 export async function saveStocks(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
   if (!(await signedInAdmin())) return NOT_ADMIN;
   let raw: unknown;
@@ -155,7 +165,8 @@ export async function saveStocks(_previous: ProductActionState, form: FormData):
   const parsed = stocksSchema.safeParse(raw);
   if (!parsed.success) return failed(SOMETHING_WRONG);
 
-  await setProductStocks(parsed.data);
+  const result = await setProductStocks(parsed.data);
+  if (!result.ok) return stockFailure(result.reason);
   productsChanged();
   return done("Stock updated");
 }

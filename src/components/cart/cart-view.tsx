@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { lineProblemText, MAX_QUANTITY } from "@/lib/cart";
 import { formatPaise } from "@/lib/format";
 
+import { useFreshCatalogue } from "./catalogue-provider";
 import { OrderSummary } from "./order-summary";
 import { useCart } from "./use-cart";
 
@@ -45,6 +46,7 @@ export function EmptyCart() {
 /** The cart page body: line items with quantity and remove, beside the order summary. */
 export function CartView() {
   const { priced, setQuantity, remove } = useCart();
+  useFreshCatalogue();
 
   if (!priced) return <CartPlaceholder />;
   if (priced.lines.length === 0) return <EmptyCart />;

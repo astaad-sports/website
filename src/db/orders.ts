@@ -101,7 +101,15 @@ export async function markOrderPaid(input: {
       .where(and(eq(orders.razorpayOrderId, input.razorpayOrderId), eq(orders.status, "pending_payment")))
       .returning();
     if (!updated) return undefined;
-    return { order: updated, stockChanged: await takeOrderFromStock(tx, updated.id) };
+    const { changed, shortfall } = await takeOrderFromStock(tx, updated.id);
+    if (shortfall.length === 0) return { order: updated, stockChanged: changed };
+    // Sold more than there were: keep a note on the order for the admin.
+    const [flagged] = await tx
+      .update(orders)
+      .set({ stockShortfall: shortfall })
+      .where(eq(orders.id, updated.id))
+      .returning();
+    return { order: flagged, stockChanged: changed };
   });
   if (paid) return paid;
 

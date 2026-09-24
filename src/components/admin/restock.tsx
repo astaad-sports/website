@@ -20,9 +20,12 @@ import { stockStatus } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { ErrorLine, isRestockable, ProductThumb, type ProductListItem } from "./product-row";
+import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
 import { countValue, StockStepper } from "./stock-stepper";
 import { BUTTON_PRIMARY, FIELD_LABEL } from "./styles";
+
+const safeSaveStock = safeAction(saveStock);
 
 /** A stock count that was saved, for the page's toast. */
 export interface StockSaved {
@@ -87,7 +90,7 @@ export function RestockForm({
   // The value last sent, so its error goes away once the admin changes it.
   const [sent, setSent] = useState<string | null>(null);
   const [state, action, pending] = useActionState(async (previous: ProductActionState, form: FormData) => {
-    const result = await saveStock(previous, form);
+    const result = await safeSaveStock(previous, form);
     const { saved, at } = result;
     if (saved) startTransition(() => onSaved({ message: saved, at: at ?? Date.now() }));
     return result;
@@ -154,6 +157,7 @@ export function RestockForm({
     return (
       <form onSubmit={submit} onKeyDown={closeOnEscape} className="flex flex-col gap-2 rounded-sm bg-surface-sunken px-5 py-4">
         <input type="hidden" name="productId" value={item.id} />
+        <input type="hidden" name="from" value={item.stock ?? ""} />
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           <div className="flex min-w-42 flex-col">
             <h2 className="text-[15px] leading-[22px] font-semibold">{stockFormTitle(item)}</h2>
@@ -182,6 +186,7 @@ export function RestockForm({
   return (
     <form onSubmit={submit} className="flex flex-col">
       <input type="hidden" name="productId" value={item.id} />
+      <input type="hidden" name="from" value={item.stock ?? ""} />
       <div className="flex min-h-12 items-center justify-between gap-3 border-y border-border">
         <span className="text-[15px] leading-[22px] font-semibold tabular-nums">{currentText(item)}</span>
         <StockLabel status={stockStatus(item)} />

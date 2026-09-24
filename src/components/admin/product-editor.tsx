@@ -2,11 +2,11 @@
 
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { unstable_rethrow, usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft, CircleAlert, Copy, ExternalLink, LoaderCircle } from "lucide-react";
 
 import type { BatCustomization, Product, ProductAvailability } from "@/db/schema";
-import { duplicate, saveProduct, type ProductActionState } from "@/lib/products/admin-actions";
+import { duplicate, saveProduct } from "@/lib/products/admin-actions";
 import { parseCount, parseRupees, PRODUCT_LIMITS, type ProductField } from "@/lib/products/editor";
 import {
   availabilityForSave,
@@ -26,6 +26,7 @@ import { AvailabilityChoice, availabilityNote } from "./availability-choice";
 import { ProductCustomization } from "./product-customization";
 import { EditorSection, FieldHelp, SelectField, StockField, TextAreaField, TextField } from "./product-editor-fields";
 import { ProductPhotos, type EditorPhoto } from "./product-photos";
+import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, PAGE } from "./styles";
 import { Toast } from "./toast";
@@ -64,28 +65,8 @@ const NOTICE: Record<EditorNotice, string> = {
 
 const FORM_ID = "product-form";
 
-type EditorAction = (previous: ProductActionState, form: FormData) => Promise<ProductActionState>;
-
-/**
- * An editor action as the page runs it. Each result is stamped with this
- * device's clock, so it compares with the photo messages when picking the
- * newest toast or error. A failure to run (no signal, a server error) becomes
- * the page's error message instead of an error screen that loses what the
- * admin typed; the redirect to a new product still goes through.
- */
-function editorAction(action: EditorAction): EditorAction {
-  return async (previous, form) => {
-    try {
-      return { ...(await action(previous, form)), at: Date.now() };
-    } catch (error) {
-      unstable_rethrow(error);
-      return { error: "Something went wrong. Try again.", at: Date.now() };
-    }
-  };
-}
-
-const saveOrReport = editorAction(saveProduct);
-const duplicateOrReport = editorAction(duplicate);
+const saveOrReport = safeAction(saveProduct);
+const duplicateOrReport = safeAction(duplicate);
 
 interface ToastEntry {
   message: string;
@@ -322,7 +303,15 @@ export function ProductEditor({
 
   const kind = values.category === "bats" ? "bat" : values.category ? "gear" : null;
   const nextStock = countOrNull(values.stock);
-  const shownAvailability = availabilityForSave(values.availability, saved?.availability ?? null, saved?.stock ?? null, nextStock);
+  // Picking an option, even the saved one, is a choice the restock rule must not undo.
+  const availabilityChosen = edited.has("availability");
+  const shownAvailability = availabilityForSave(
+    values.availability,
+    saved?.availability ?? null,
+    saved?.stock ?? null,
+    nextStock,
+    availabilityChosen
+  );
   const liveStatus = stockStatus({
     availability: shownAvailability,
     stock: nextStock,
@@ -522,6 +511,7 @@ export function ProductEditor({
           </EditorSection>
 
           <EditorSection id="availability-title" title="Availability">
+            {availabilityChosen && <input type="hidden" name="availabilityChosen" value="1" />}
             <AvailabilityChoice
               labelledBy="availability-title"
               value={shownAvailability}

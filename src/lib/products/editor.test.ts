@@ -151,7 +151,9 @@ describe("stock and availability", () => {
     expect(availabilityForSave("available", "out_of_stock", 0, 0)).toBe("out_of_stock");
     expect(availabilityForSave("available", null, null, 0)).toBe("out_of_stock");
     expect(availabilityForSave("out_of_stock", null, null, 5)).toBe("out_of_stock");
-    // An unchanged choice follows the stock rules.
+    // An untouched choice follows the stock rules; one the admin picked again stays.
     expect(availabilityForSave("out_of_stock", "out_of_stock", 0, 4)).toBe("available");
+    expect(availabilityForSave("out_of_stock", "out_of_stock", 0, 4, true)).toBe("out_of_stock");
+    expect(availabilityForSave("available", "available", 3, 0, true)).toBe("out_of_stock");
   });
 });

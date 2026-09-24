@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CircleCheck, Layers, Plus, Truck, type LucideIcon } from "lucide-react";
+import { ArrowRight, CircleAlert, CircleCheck, Layers, Plus, Truck, type LucideIcon } from "lucide-react";
 
 import { HomeAttention, type StockAttention } from "@/components/admin/home-attention";
 import { OrderRow } from "@/components/admin/order-rows";
@@ -161,7 +161,14 @@ export default async function AdminHomePage() {
       action: "Update",
       icon: Truck,
     }));
-  const first = orderRows(unshipped, (order) => `${order.trackingNumber ? "Ready to ship" : "Needs tracking ID"} · ${order.shipName}`);
+  const first = orderRows(unshipped, (order) => `${order.trackingNumber ? "Ready to ship" : "Needs tracking ID"} · ${order.shipName}`).map(
+    (row, index) => {
+      // Paid for more than was in stock: the owner restocks or refunds before anything else.
+      const short = unshipped[index].stockShortfall;
+      if (!short?.length) return row;
+      return { ...row, detail: `Paid while out of stock: ${short.map((line) => line.name).join(", ")}`, action: "Check", icon: CircleAlert };
+    }
+  );
   const later: AttentionItem[] = [];
   if (moreStock > 0) {
     later.push({

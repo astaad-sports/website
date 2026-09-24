@@ -17,7 +17,7 @@ import {
   type GearProduct,
   type Hand,
 } from "./catalogue";
-import { FULL_CUSTOMIZATION, type StoreCatalogue } from "./products/model";
+import { FULL_CUSTOMIZATION, MAX_SLUG_LENGTH, type StoreCatalogue } from "./products/model";
 
 export const MAX_QUANTITY = 10;
 export const MAX_LINES = 20;
@@ -30,7 +30,7 @@ const quantity = z.number().int().min(1).max(MAX_QUANTITY);
 
 const batItemSchema = z.object({
   kind: z.literal("bat"),
-  slug: z.string().max(64),
+  slug: z.string().max(MAX_SLUG_LENGTH),
   options: z.object({
     /** A BAT_SIZES code, e.g. "SH". */
     size: z.string().max(8),
@@ -47,7 +47,7 @@ const batItemSchema = z.object({
 
 const gearItemSchema = z.object({
   kind: z.literal("gear"),
-  slug: z.string().max(64),
+  slug: z.string().max(MAX_SLUG_LENGTH),
   options: z.object({
     size: z.string().max(40).optional(),
     hand: z.enum(HANDS).optional(),
@@ -318,12 +318,14 @@ export function priceCart(items: CartItem[], catalogue: StoreCatalogue): PricedC
 }
 
 /** What the cart says under a line that cannot be bought, or null. */
-export function lineProblemText(line: Pick<PricedLine, "problem" | "stockLeft">): string | null {
+export function lineProblemText(line: Pick<PricedLine, "problem" | "stockLeft" | "item">): string | null {
   if (line.problem === "sold_out") return "Out of stock. Remove it to check out.";
-  if (line.problem === "not_enough") {
-    return `Only ${line.stockLeft} left. Lower the quantity to check out.`;
+  if (line.problem !== "not_enough") return null;
+  // This line fits on its own; only together with another line of the same product does it not.
+  if (line.stockLeft !== null && line.item.quantity <= line.stockLeft) {
+    return `Only ${line.stockLeft} left in total. Remove one to check out.`;
   }
-  return null;
+  return `Only ${line.stockLeft} left. Lower the quantity to check out.`;
 }
 
 /** Add an item to a list of items, merging it into a matching line. */

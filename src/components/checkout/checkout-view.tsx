@@ -6,6 +6,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 
+import { useFreshCatalogue } from "@/components/cart/catalogue-provider";
 import { OrderSummary } from "@/components/cart/order-summary";
 import { EmptyCart } from "@/components/cart/cart-view";
 import { useCart } from "@/components/cart/use-cart";
@@ -74,12 +75,14 @@ export function CheckoutView({
   const id = useId();
   const router = useRouter();
   const { items, priced, clear } = useCart();
+  useFreshCatalogue();
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<AddressField, string>>>({});
   const [pending, startTransition] = useTransition();
-  // A placed order stays payable while the cart and address are unchanged,
-  // so closing the Razorpay window and paying again reuses it.
+  // A placed order is reused while the cart, address and total are unchanged
+  // (say the payment window failed to load). Closing the window forgets it,
+  // so paying later places the order again against current stock and prices.
   const placed = useRef<{ fingerprint: string; payment: CheckoutPayment } | null>(null);
 
   if (stage !== "form") {
@@ -112,6 +115,12 @@ export function CheckoutView({
       prefill: payment.prefill,
       notes: { order_number: String(payment.orderNumber) },
       theme: { color: "#fec502" },
+      modal: {
+        // Closed without paying: the next Pay places the order again, checking current stock and prices.
+        ondismiss: () => {
+          placed.current = null;
+        },
+      },
       handler: (response: RazorpaySuccess) => {
         setStage("confirming");
         startTransition(async () => {
@@ -138,7 +147,8 @@ export function CheckoutView({
 
   function pay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!items) return;
+    if (!items || !priced) return;
+    const shownTotal = priced.totalPaise;
     const form = new FormData(event.currentTarget);
     const address = Object.fromEntries(
       [...FIELDS.map((field) => field.name), "state"].map((name) => [name, String(form.get(name) ?? "")])
@@ -147,13 +157,15 @@ export function CheckoutView({
     setFieldErrors({});
 
     startTransition(async () => {
-      const fingerprint = JSON.stringify({ items, address });
+      const fingerprint = JSON.stringify({ items, address, shownTotal });
       let payment = placed.current?.fingerprint === fingerprint ? placed.current.payment : null;
       if (!payment) {
-        const result = await placeOrder({ items, address });
+        const result = await placeOrder({ items, address, expectedTotalPaise: shownTotal });
         if (!result.ok) {
           setError(result.error);
           setFieldErrors(result.fieldErrors ?? {});
+          // Stock or prices may have changed: load the current catalogue so the cart shows what to fix.
+          router.refresh();
           return;
         }
         payment = result.payment;

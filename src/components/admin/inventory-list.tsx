@@ -8,10 +8,14 @@ import { availabilityForStock, stockStatus, type StockStatus } from "@/lib/produ
 import { cn } from "@/lib/utils";
 
 import { editorHref, ErrorLine, ProductThumb, type ProductListItem } from "./product-row";
+import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
 import { countValue, StockStepper } from "./stock-stepper";
 import { BUTTON_PRIMARY } from "./styles";
 import { Toast } from "./toast";
+
+const safeSaveStock = safeAction(saveStock);
+const safeSaveStocks = safeAction(saveStocks);
 
 /** A count being edited, and the saved count it started from. */
 interface Draft {
@@ -156,9 +160,9 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
   const [sending, setSending] = useState<string | null>(null);
   const [rowState, saveRow, rowPending] = useActionState(async (previous: RowSaveState, form: FormData): Promise<RowSaveState> => {
     const productId = String(form.get("productId") ?? "");
-    return { ...(await saveStock(previous, form)), productId };
+    return { ...(await safeSaveStock(previous, form)), productId };
   }, {});
-  const [allState, saveAll, allPending] = useActionState(saveStocks, {});
+  const [allState, saveAll, allPending] = useActionState(safeSaveStocks, {});
   const savedTogether = useRef<string[]>([]);
 
   // A saved row loses its Save button, so focus goes to its stepper field.
@@ -178,6 +182,7 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
     const form = new FormData();
     form.set("productId", item.id);
     form.set("stock", valueOf(item));
+    form.set("from", item.stock?.toString() ?? "");
     setSending(item.id);
     startTransition(() => saveRow(form));
   }
@@ -193,7 +198,10 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
     if (allPending) return;
     savedTogether.current = changed.map((item) => item.id);
     const form = new FormData();
-    form.set("stocks", JSON.stringify(changed.map((item) => ({ id: item.id, stock: countValue(valueOf(item)) }))));
+    form.set(
+      "stocks",
+      JSON.stringify(changed.map((item) => ({ id: item.id, stock: countValue(valueOf(item)), from: item.stock })))
+    );
     startTransition(() => saveAll(form));
   }
 

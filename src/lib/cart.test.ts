@@ -144,7 +144,11 @@ describe("stock", () => {
       catalogue
     );
     expect(cart.lines.map((line) => line.problem)).toEqual(["not_enough", "not_enough"]);
-    expect(lineProblemText(cart.lines[0])).toBe("Only 2 left. Lower the quantity to check out.");
+    expect(lineProblemText(cart.lines[0])).toBe("Only 2 left in total. Remove one to check out.");
+    expect(lineProblemText(cart.lines[1])).toBe("Only 2 left in total. Remove one to check out.");
+
+    const tooMany = priceCart([batCartItem("run-machine", DEFAULT_BAT_CONFIG, 3)], catalogue);
+    expect(lineProblemText(tooMany.lines[0])).toBe("Only 2 left. Lower the quantity to check out.");
 
     const fits = priceCart([batCartItem("run-machine"), batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, size: 3 })], catalogue);
     expect(fits.unavailable).toBe(0);

@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Mail, Phone } from "lucide-react";
+import { ChevronLeft, CircleAlert, Mail, Phone } from "lucide-react";
 
 import { NextStepButton, StatusStepper } from "@/components/admin/fulfilment-controls";
 import { StatusLabel } from "@/components/admin/status-label";
 import { PAGE, SECTION_LABEL } from "@/components/admin/styles";
 import { TrackingForm } from "@/components/admin/tracking-form";
 import { getOrderForAdmin } from "@/db/orders";
+import { primaryImagesBySlug } from "@/db/products";
 import { requireAdmin } from "@/lib/auth/session";
 import {
   formatMobile,
@@ -56,6 +57,8 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   if (!number) notFound();
   const order = await getOrderForAdmin(number);
   if (!order) notFound();
+  // The product's current primary photo; the built-in cut-out for a product since removed.
+  const photos = await primaryImagesBySlug(order.items.map((item) => item.productSlug));
 
   const status = order.status;
   const inFulfilment = isFulfilmentStatus(status);
@@ -78,6 +81,18 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
           <p className="text-[13px] leading-[18px] text-ink-muted">Placed {placedAt.format(order.createdAt)}</p>
           <StatusLabel status={status} />
         </div>
+        {order.stockShortfall && order.stockShortfall.length > 0 && (
+          <p className="mt-2 flex items-start gap-2 text-[15px] leading-[22px] font-semibold text-danger">
+            <CircleAlert className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+            <span>
+              Paid while out of stock:{" "}
+              {order.stockShortfall
+                .map((line) => `${line.name} (${line.missing} more than you had)`)
+                .join(", ")}
+              . Restock before shipping, or contact the customer about a refund.
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
@@ -141,7 +156,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
           <Section id="product-title" title={order.items.length === 1 ? "Product" : "Products"}>
             <ul className="flex flex-col gap-4">
               {order.items.map((item) => {
-                const image = productImage(item.productKind, item.productSlug);
+                const image = photos.get(item.productSlug) ?? productImage(item.productKind, item.productSlug);
                 return (
                   <li key={item.id} className="flex flex-col gap-2">
                     <div className="flex items-start gap-3">

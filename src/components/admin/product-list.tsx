@@ -22,9 +22,13 @@ import {
   type ProductListItem,
 } from "./product-row";
 import { RestockForm, type StockSaved } from "./restock";
+import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
 import { BUTTON_PRIMARY, BUTTON_SECONDARY } from "./styles";
 import { Toast } from "./toast";
+
+const safeDuplicate = safeAction(duplicate);
+const safeChangeAvailability = safeAction(changeAvailability);
 
 /** A row action's result, and which product it was for. */
 interface RowActionState extends ProductActionState {
@@ -273,10 +277,10 @@ export function ProductList({ items, label, empty }: { items: ProductListItem[];
 
   const [rowState, runRowAction] = useActionState(async (previous: RowActionState, form: FormData): Promise<RowActionState> => {
     const productId = String(form.get("productId") ?? "");
-    if (form.get("intent") === "duplicate") return { ...(await duplicate(previous, form)), productId };
+    if (form.get("intent") === "duplicate") return { ...(await safeDuplicate(previous, form)), productId };
     const availability = form.get("availability");
     if (isAvailability(availability)) showAvailability({ id: productId, availability });
-    return { ...(await changeAvailability(previous, form)), productId };
+    return { ...(await safeChangeAvailability(previous, form)), productId };
   }, {});
 
   const [stockSaved, setStockSaved] = useState<StockSaved | null>(null);
