@@ -190,6 +190,45 @@ export const GEAR_CATEGORY_SLUGS = STORE_CATEGORIES.filter(
   (category) => category.kind === "gear"
 ).map((category) => category.slug as GearCategorySlug);
 
+/**
+ * The bat ranges with their own page at /shop/[slug]; English willow is listed
+ * on the home page instead. Each page lists the catalogue's bats in the
+ * subcategory of the same slug.
+ */
+export interface BatRange {
+  slug: "kashmir-willow" | "tennis-bats";
+  name: string;
+  /** The range mid-sentence: "No Kashmir willow bats yet." */
+  noun: string;
+  href: string;
+  /** One sentence, on the home page tile and the range hero. */
+  tagline: string;
+  /** Tennis bats show the bat cut-out partly desaturated. */
+  grayscale?: boolean;
+}
+
+export const BAT_RANGES: BatRange[] = [
+  {
+    slug: "kashmir-willow",
+    name: "Kashmir Willow",
+    noun: "Kashmir willow bats",
+    href: "/shop/kashmir-willow",
+    tagline: "Durable, value-driven. Ready to play.",
+  },
+  {
+    slug: "tennis-bats",
+    name: "Tennis Bats",
+    noun: "tennis bats",
+    href: "/shop/tennis-bats",
+    tagline: "Light, fast and made for the gully.",
+    grayscale: true,
+  },
+];
+
+export function getBatRange(slug: string): BatRange | undefined {
+  return BAT_RANGES.find((range) => range.slug === slug);
+}
+
 export interface KitItem {
   slug: string;
   category: string;

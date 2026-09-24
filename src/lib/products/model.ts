@@ -423,6 +423,13 @@ export function batsInSubcategory(catalogue: StoreCatalogue, subcategory: BatSub
   return catalogue.bats.filter((bat) => bat.subcategory === subcategory);
 }
 
+/** How many bats the public can see in each subcategory, for the home page collection tiles. */
+export function batCounts(catalogue: StoreCatalogue): Record<BatSubcategory, number> {
+  const counts = Object.fromEntries(BAT_SUBCATEGORIES.map(({ slug }) => [slug, 0])) as Record<BatSubcategory, number>;
+  for (const bat of catalogue.bats) counts[bat.subcategory] += 1;
+  return counts;
+}
+
 /** The order "Complete your kit" shows the gear categories in: gloves first, as designed. */
 const KIT_ORDER: GearCategorySlug[] = ["batting-gloves", "batting-pads", "helmets", "cricket-kitbags"];
 

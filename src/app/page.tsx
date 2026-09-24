@@ -13,7 +13,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { SizeGuideSection } from "@/components/storefront/size-guide-section";
 import { HOME_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
-import { batsInSubcategory, builderBat } from "@/lib/products/model";
+import { batCounts, batsInSubcategory, builderBat } from "@/lib/products/model";
 
 export default async function Home() {
   const catalogue = await getStoreCatalogue();
@@ -27,7 +27,7 @@ export default async function Home() {
       <main className="flex-1">
         <HomeHero />
         <CategoryTiles />
-        <BatCollection englishWillow={englishWillow.length} />
+        <BatCollection models={batCounts(catalogue)} />
         {englishWillow.length > 0 && <EnglishWillow bats={englishWillow} />}
         <Engineered />
         {builder && <HomeBatBuilder bat={builder} />}

@@ -3,27 +3,17 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
-import { countInWords } from "@/lib/products/model";
+import { BAT_RANGES, type BatRange } from "@/lib/catalogue";
+import { countInWords, type BatSubcategory } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { SectionHeading } from "./section-heading";
 
-function SmallTile({
-  href,
-  title,
-  note,
-  models,
-  grayscale,
-}: {
-  href: string;
-  title: [string, string];
-  note: string;
-  models: number;
-  grayscale?: boolean;
-}) {
+/** A bat range's tile: its name on two lines, tagline and model count. With no models yet, it says so. */
+function SmallTile({ range, models }: { range: BatRange; models: number }) {
   return (
     <Link
-      href={href}
+      href={range.href}
       className="group @container relative flex min-h-[190px] flex-col overflow-hidden rounded-xs bg-surface-dark-sunken px-8 pt-8 pb-7 text-on-dark transition-transform duration-200 hover:-translate-y-1"
     >
       {/* The bat runs diagonally, so on a narrower tile it shrinks into the
@@ -37,23 +27,26 @@ function SmallTile({
         height={134}
         className={cn(
           "absolute right-4 bottom-[22px] aspect-[190/134] h-auto w-[min(190px,89%_-_185px)] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)] @max-[236px]:hidden",
-          grayscale && "grayscale-[0.4]"
+          range.grayscale && "grayscale-[0.4]"
         )}
       />
       {/* In flow so a note that wraps on a narrow tile (768-956) pushes the
           count down and grows the tile, instead of running into it. `relative`
           keeps the text painted above the bat. */}
       <span className="relative flex flex-col gap-1.5">
-        <span className="type-display text-[28px] leading-none tracking-[-0.01em]">
-          {title[0]}
-          <br />
-          {title[1]}
-        </span>
-        <span className="text-[13px] leading-[18px] text-on-dark-subtle">{note}</span>
+        <span className="type-display w-min text-[28px] leading-none tracking-[-0.01em]">{range.name}</span>
+        <span className="text-[13px] leading-[18px] text-on-dark-subtle">{range.tagline}</span>
       </span>
-      <span className="relative mt-auto flex items-center gap-3 pt-3 text-[13px] leading-[18px] font-semibold tracking-[0.16em] uppercase">
-        <span className="text-[28px] leading-8 font-bold tracking-[-0.02em]">{models}</span>
-        Models
+      {/* min-h-11 holds the row at the count's height, so "Coming soon" sits on the same line. */}
+      <span className="relative mt-auto flex min-h-11 items-center gap-3 pt-3 text-[13px] leading-[18px] font-semibold tracking-[0.16em] uppercase">
+        {models > 0 ? (
+          <>
+            <span className="text-[28px] leading-8 font-bold tracking-[-0.02em]">{models}</span>
+            {models === 1 ? "Model" : "Models"}
+          </>
+        ) : (
+          "Coming soon"
+        )}
         <ArrowRight className="size-4" strokeWidth={2} aria-hidden="true" />
       </span>
     </Link>
@@ -62,9 +55,10 @@ function SmallTile({
 
 /**
  * "The Astaad bat collection": English Willow, Kashmir Willow and Tennis bats.
- * `englishWillow` is how many English willow models are on the store.
+ * `models` is how many bats of each kind are on the store.
  */
-export function BatCollection({ englishWillow }: { englishWillow: number }) {
+export function BatCollection({ models }: { models: Record<BatSubcategory, number> }) {
+  const englishWillow = models["english-willow"];
   return (
     <section
       id="collection"
@@ -136,19 +130,9 @@ export function BatCollection({ englishWillow }: { englishWillow: number }) {
               </span>
             </span>
           </Link>
-          <SmallTile
-            href="/shop/kashmir-willow"
-            title={["Kashmir", "Willow"]}
-            note="Durable, value-driven. Ready to play."
-            models={2}
-          />
-          <SmallTile
-            href="/shop/tennis-bats"
-            title={["Tennis", "Bats"]}
-            note="Light, fast and made for the gully."
-            models={2}
-            grayscale
-          />
+          {BAT_RANGES.map((range) => (
+            <SmallTile key={range.slug} range={range} models={models[range.slug]} />
+          ))}
         </div>
       </div>
     </section>
