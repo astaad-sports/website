@@ -11,7 +11,7 @@ import { PhotoThumbnails } from "./stage-thumbnails";
 
 /**
  * The dark product stage for gear: the photo under the floodlight glow, with
- * thumbnails when there are several (and, on a touch screen, a swipe left or
+ * thumbnails when there are several (and a swipe, or a mouse drag, left or
  * right between them). From xl it stretches to the hero's height, which grows
  * past 760px when the details beside it need more room.
  */

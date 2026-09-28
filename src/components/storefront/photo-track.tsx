@@ -8,7 +8,7 @@ import { useSwipe } from "./use-swipe";
 
 /**
  * A product's photos side by side across the stage, sliding to the one
- * showing; on a touch screen, swipe left or right to move between them.
+ * showing; swipe (or drag with a mouse) left or right to move between them.
  * `children` lays out one photo in its slide. `near` is true for the photo
  * showing and the ones either side, which load straight away so a swipe never
  * lands on a blank slide.
@@ -26,7 +26,13 @@ export function PhotoTrack({
 }) {
   const swipe = useSwipe({ count, active, onChange });
   return (
-    <div className="absolute inset-0 touch-pan-y touch-pinch-zoom" {...swipe.handlers}>
+    <div
+      className={cn(
+        "absolute inset-0 touch-pan-y touch-pinch-zoom select-none",
+        count > 1 && "cursor-grab active:cursor-grabbing"
+      )}
+      {...swipe.handlers}
+    >
       <div
         className={cn(
           "flex size-full",

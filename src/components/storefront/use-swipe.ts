@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type PointerEvent } from "react";
+import { useRef, useState, type DragEvent, type PointerEvent } from "react";
 
 /** A swipe this share of the stage's width moves on, however slow. */
 const FAR = 0.2;
@@ -20,12 +20,12 @@ interface Start {
 }
 
 /**
- * Swipe left or right on a touch screen to step through a product's views.
- * The view follows the finger, with resistance past the first and last, and
- * moves on when the swipe goes far or fast enough. Spread `handlers` on the
- * swiped element and give it `touch-pan-y touch-pinch-zoom`, so up and down
- * still scrolls the page and two fingers still zoom. A mouse is left to the
- * thumbnails.
+ * Swipe left or right on a touch screen, or drag with a mouse, to step
+ * through a product's views. The view follows the pointer, with resistance
+ * past the first and last, and moves on when the swipe goes far or fast
+ * enough. Spread `handlers` on the swiped element and give it
+ * `touch-pan-y touch-pinch-zoom select-none`, so up and down still scrolls
+ * the page, two fingers still zoom and a mouse drag selects no text.
  */
 export function useSwipe({
   count,
@@ -60,9 +60,11 @@ export function useSwipe({
 
   const handlers = {
     onPointerDown(event: PointerEvent<HTMLElement>) {
-      if (event.pointerType === "mouse" || count < 2) return;
+      if (count < 2 || event.button !== 0) return;
       // A second finger is a pinch, not a swipe.
       if (start.current) return reset();
+      // Keep the moves coming when a mouse leaves the stage mid-drag.
+      event.currentTarget.setPointerCapture(event.pointerId);
       start.current = {
         id: event.pointerId,
         x: event.clientX,
@@ -77,7 +79,7 @@ export function useSwipe({
       if (!from || event.pointerId !== from.id) return;
       const dx = event.clientX - from.x;
       if (!from.sideways) {
-        // Mostly up or down: the page is scrolling, so let it.
+        // Mostly up or down: on a touch screen the page is scrolling, so let it.
         if (Math.abs(event.clientY - from.y) > Math.abs(dx)) {
           if (Math.abs(event.clientY - from.y) > SLOP) reset();
           return;
@@ -91,6 +93,10 @@ export function useSwipe({
     },
     onPointerUp: end,
     onPointerCancel: reset,
+    // A mouse drag would otherwise pick up the photo itself.
+    onDragStart(event: DragEvent<HTMLElement>) {
+      event.preventDefault();
+    },
   };
 
   return { offset, dragging, handlers };

@@ -101,7 +101,7 @@ function Stage({ caption, children }: { caption: string; children: ReactNode }) 
   );
 }
 
-/** The standard cut-out, shown from six angles; swipe on a touch screen to turn it. */
+/** The standard cut-out, shown from six angles; swipe or drag to turn it. */
 function StudioViews({ bat }: { bat: StoreBat }) {
   const views = buildViews(bat.grade);
   const [active, setActive] = useState(0);
@@ -111,7 +111,7 @@ function StudioViews({ bat }: { bat: StoreBat }) {
   return (
     <Stage caption={view.label}>
       <div
-        className="absolute inset-x-0 top-10 bottom-16 flex touch-pan-y touch-pinch-zoom items-center justify-center overflow-hidden md:bottom-10"
+        className="absolute inset-x-0 top-10 bottom-16 flex cursor-grab touch-pan-y touch-pinch-zoom items-center justify-center overflow-hidden select-none active:cursor-grabbing md:bottom-10"
         {...swipe.handlers}
       >
         <Image
@@ -141,7 +141,7 @@ function StudioViews({ bat }: { bat: StoreBat }) {
 
 /**
  * The bat's own photos, primary first, with thumbnails when there is more than
- * one. On a touch screen, swipe left or right between them.
+ * one. Swipe (or drag with a mouse) left or right between them.
  */
 function Photos({ bat }: { bat: StoreBat }) {
   const [active, setActive] = useState(0);
