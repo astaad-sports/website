@@ -153,6 +153,7 @@ export function GearHero({
             variants: product.variants,
             usualSize: product.usualSize,
             soldOut: product.soldOut,
+            regularPrice: product.regularPrice,
             lowStockThreshold: product.lowStockThreshold,
           }}
           categoryName={category.name}

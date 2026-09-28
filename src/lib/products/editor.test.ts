@@ -61,6 +61,48 @@ describe("the product editor's fields", () => {
     expect(!none.ok && none.fieldErrors.sizes).toBe("Pick at least one size.");
   });
 
+  test("a bat size can have a price and MRP of its own", () => {
+    const parsed = parseProductForm(
+      form({ ...BAT, "sizePrice:6": "6,999", "sizeMrp:6": "₹ 10,999", "sizePrice:H": "8499", "sizePrice:XL": "1" })
+    );
+    expect(parsed.ok && parsed.values.sizePrices).toEqual({
+      "6": { pricePaise: 699_900, mrpPaise: 1_099_900 },
+      H: { pricePaise: 849_900, mrpPaise: null },
+    });
+  });
+
+  test("the bat's own price and MRP on a size is no price of its own, and one size needs none", () => {
+    const same = parseProductForm(form({ ...BAT, "sizePrice:LH": "7699", "sizeMrp:LH": "10999" }));
+    expect(same.ok && same.values.sizePrices).toEqual({});
+    const one = parseProductForm(form({ ...BAT, sizes: ["SH"], "sizePrice:SH": "5000" }));
+    expect(one.ok && one.values.sizePrices).toEqual({});
+  });
+
+  test("a size's price is checked like the bat's", () => {
+    const errorFor = (fields: Record<string, string>) => {
+      const parsed = parseProductForm(form({ ...BAT, ...fields }));
+      return parsed.ok ? null : parsed.fieldErrors.sizePrices;
+    };
+    expect(errorFor({ "sizeMrp:6": "10999" })).toBe("Size 6: enter its price, or clear its MRP.");
+    expect(errorFor({ "sizePrice:6": "69.99" })).toBe("Size 6: enter the price in whole rupees, for example 6999.");
+    expect(errorFor({ "sizePrice:H": "8499", "sizeMrp:H": "8000" })).toBe("H / Harrow: the MRP can't be lower than the price.");
+  });
+
+  test("gear has one price", () => {
+    const parsed = parseProductForm(
+      form({
+        name: "Legacy Pro Helmet",
+        category: "helmets",
+        price: "2499",
+        lowStockThreshold: "3",
+        availability: "available",
+        sizes: ["Medium", "Large"],
+        "sizePrice:Medium": "1999",
+      })
+    );
+    expect(parsed.ok && parsed.values.sizePrices).toEqual({});
+  });
+
   test("with every count empty the product is not counted; a bad one is reported", () => {
     const uncounted = parseProductForm(form({ ...BAT, "stock:SH": "", "stock:LH": " " }));
     expect(uncounted.ok && uncounted.values).toMatchObject({ stock: null, variantStock: {} });

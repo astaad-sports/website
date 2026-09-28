@@ -18,7 +18,14 @@ import {
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { standardBatConfig, type StoreBat } from "@/lib/products/model";
-import { findVariant, startingVariant, variantNote, variantSoldOut, type StoreVariant } from "@/lib/products/variants";
+import {
+  findVariant,
+  otherPrices,
+  startingVariant,
+  variantNote,
+  variantSoldOut,
+  type StoreVariant,
+} from "@/lib/products/variants";
 import { cn } from "@/lib/utils";
 
 import { ChoiceButtons, FreeChip, HandleGlyph, OptionGroup, useBatConfig, YesNo } from "./bat-options";
@@ -97,6 +104,8 @@ function SizeSection({
 }) {
   const one = bat.sizes.length === 1;
   const note = variantNote(bat, selected);
+  // When a size has a price of its own, every size shows what it costs.
+  const priced = otherPrices(bat).length > 0;
   return (
     <section
       id={id}
@@ -116,7 +125,10 @@ function SizeSection({
           <span className="text-[11px] leading-[14px] font-semibold tracking-[0.2em] text-ink-muted uppercase">
             {one ? "Size" : "Selected"}
           </span>
-          <span className="text-xl leading-[26px] font-bold">{selected.sizeLabel}</span>
+          <span className="text-xl leading-[26px] font-bold">
+            {selected.sizeLabel}
+            {priced && <span className="font-semibold text-ink-muted"> · {formatPrice(selected.price)}</span>}
+          </span>
           {note && !bat.soldOut && <span className="text-[13px] leading-[18px] font-semibold">{note}</span>}
         </div>
         {/* The guide is for willow sizes; tennis bats go by length. */}
@@ -143,8 +155,9 @@ function SizeSection({
       >
         {bat.sizes.map((item) => {
           const chosen = item.code === selected.size;
+          const variant = findVariant(bat, item.code);
           // A bat with nothing left says so on its button; its sizes stay readable.
-          const out = !bat.soldOut && variantSoldOut(bat, findVariant(bat, item.code));
+          const out = !bat.soldOut && variantSoldOut(bat, variant);
           return (
             <RadioPrimitive.Root
               key={item.code}
@@ -167,6 +180,11 @@ function SizeSection({
                 <span className={cn("text-xs leading-4", out ? "font-semibold text-danger" : "opacity-70")}>
                   {out ? "Out of stock" : item.hint}
                 </span>
+                {priced && variant && (
+                  <span className={cn("mt-1 text-sm leading-5 font-bold", out && "text-ink-muted")}>
+                    {formatPrice(variant.price)}
+                  </span>
+                )}
               </span>
             </RadioPrimitive.Root>
           );
@@ -178,19 +196,20 @@ function SizeSection({
 
 /**
  * Price (with any running offer) and Add to cart for a bat sold only in its
- * standard build, under the size picker. `soldOut` is for the size chosen.
+ * standard build, under the size picker. The price and `soldOut` are for the
+ * size chosen.
  */
-function StandardBuy({ bat, item, soldOut }: { bat: StoreBat; item: CartItem; soldOut: boolean }) {
+function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreVariant; item: CartItem; soldOut: boolean }) {
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-5">
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-baseline gap-2.5">
-          <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">{formatPrice(bat.price)}</span>
-          {bat.mrp > bat.price && (
+          <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">{formatPrice(size.price)}</span>
+          {size.mrp > size.price && (
             <>
-              <span className="text-sm leading-5 text-ink-subtle line-through">{formatPrice(bat.mrp)}</span>
+              <span className="text-sm leading-5 text-ink-subtle line-through">{formatPrice(size.mrp)}</span>
               <span className="h-[22px] self-center rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold text-on-yellow">
-                {bat.off}% OFF
+                {size.off}% OFF
               </span>
             </>
           )}
@@ -235,7 +254,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
         bat={bat}
         selected={size}
         onChange={onSizeChange}
-        buy={<StandardBuy bat={bat} item={item} soldOut={soldOut} />}
+        buy={<StandardBuy bat={bat} size={size} item={item} soldOut={soldOut} />}
       />
     );
   }
@@ -428,16 +447,17 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
               </dl>
               <div className="flex flex-col gap-0.5">
                 <div className="flex flex-wrap items-baseline gap-2.5">
+                  {/* The price of the size chosen in step 2. */}
                   <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">
-                    {formatPrice(bat.price)}
+                    {formatPrice(size.price)}
                   </span>
-                  {bat.mrp > bat.price && (
+                  {size.mrp > size.price && (
                     <>
                       <span className="text-sm leading-5 text-ink-subtle line-through">
-                        {formatPrice(bat.mrp)}
+                        {formatPrice(size.mrp)}
                       </span>
                       <span className="h-[22px] rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold text-on-yellow">
-                        {bat.off}% OFF
+                        {size.off}% OFF
                       </span>
                     </>
                   )}

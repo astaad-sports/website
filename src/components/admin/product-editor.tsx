@@ -29,6 +29,7 @@ import {
   offersHands,
   productVariants,
   sizeOptions,
+  sizePricesFor,
   totalStock,
   variantCounts,
 } from "@/lib/products/variants";
@@ -39,6 +40,7 @@ import { ChipGroup, ProductCustomization, Switch } from "./product-customization
 import { DeleteProductSheet } from "./product-delete";
 import { EditorSection, FieldError, FieldHelp, SelectField, StockField, TextAreaField, TextField } from "./product-editor-fields";
 import { ProductPhotos, type EditorPhoto } from "./product-photos";
+import { ProductSizePrices, type SizePriceFields } from "./product-size-prices";
 import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
 import { BUTTON_BASE, BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_LABEL, PAGE } from "./styles";
@@ -62,6 +64,7 @@ export type EditorProduct = Pick<
   | "description"
   | "pricePaise"
   | "mrpPaise"
+  | "sizePrices"
   | "sku"
   | "stock"
   | "sizes"
@@ -97,6 +100,8 @@ interface Values {
   subcategory: string;
   price: string;
   mrp: string;
+  /** Bats: the sizes with a price of their own, by size code. */
+  sizePrices: Record<string, SizePriceFields>;
   /** The sizes it is sold in (codes for bats), and whether it comes left- and right-handed. */
   sizes: string[];
   hands: boolean;
@@ -138,6 +143,7 @@ function valuesFor(product: EditorProduct | null, category: CategorySlug | null)
       subcategory: "english-willow",
       price: "",
       mrp: "",
+      sizePrices: {},
       ...defaultOffered(category ?? "", category === "bats" ? "english-willow" : null),
       counts: {},
       lowStockThreshold: "3",
@@ -159,6 +165,12 @@ function valuesFor(product: EditorProduct | null, category: CategorySlug | null)
     subcategory: product.subcategory ?? "english-willow",
     price: rupees(product.pricePaise),
     mrp: rupees(product.mrpPaise),
+    sizePrices: Object.fromEntries(
+      Object.entries(sizePricesFor(product)).map(([code, own]) => [
+        code,
+        { price: rupees(own.pricePaise), mrp: rupees(own.mrpPaise) },
+      ])
+    ),
     sizes: offeredSizes(product).map((size) => size.code),
     hands: offersHands(product),
     counts: countFields({ variants: productVariants(product), counts: variantCounts(product) }),
@@ -524,6 +536,15 @@ export function ProductEditor({
               </div>
               <PriceHelp price={values.price} mrp={values.mrp} />
             </div>
+            {kind === "bat" && values.sizes.length > 1 && (
+              <ProductSizePrices
+                sizes={sizeChoices.filter((size) => values.sizes.includes(size.code))}
+                values={values.sizePrices}
+                usual={{ price: values.price, mrp: values.mrp }}
+                onChange={(sizePrices) => set("sizePrices", sizePrices)}
+                error={errorFor("sizePrices")}
+              />
+            )}
           </EditorSection>
         </div>
 

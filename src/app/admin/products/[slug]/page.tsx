@@ -33,6 +33,7 @@ function toEditorProduct(product: ProductWithAllImages): EditorProduct {
     description: product.description,
     pricePaise: product.pricePaise,
     mrpPaise: product.mrpPaise,
+    sizePrices: product.sizePrices,
     sku: product.sku,
     stock: product.stock,
     sizes: product.sizes,

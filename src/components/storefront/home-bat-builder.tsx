@@ -17,6 +17,7 @@ import {
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { countInWords, listInWords, standardBatConfig, type StoreBat } from "@/lib/products/model";
+import { findVariant, startingVariant } from "@/lib/products/variants";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
 import { BladeEngraving } from "./blade-engraving";
@@ -91,6 +92,8 @@ function BuildTeaser({ bat }: { bat: StoreBat }) {
 export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
   const custom = bat.customization;
   const { config, update } = useBatConfig(standardBatConfig(bat));
+  // The size the button adds, and so the price it names.
+  const size = findVariant(bat, config.size) ?? startingVariant(bat);
   const engraved = custom.engraving ? config.name.trim() : "";
   const toes = custom.toes.length > 0;
   const chips = [
@@ -227,7 +230,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 className="h-14 rounded-xs px-8 text-[15px] font-bold"
               >
                 <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
-                Add to Cart · {formatPrice(bat.price)}
+                Add to Cart · {formatPrice(size.price)}
               </AddToCartButton>
               <span className="text-[13px] leading-[18px] text-ink-muted">
                 Only English Willow bats are customizable.

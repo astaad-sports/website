@@ -117,6 +117,19 @@ describe("items must match the catalogue", () => {
     expect(build({ size: "LH" }, 1, shOnly).options.size).toBe("SH");
   });
 
+  test("a size with a price of its own is charged that price", () => {
+    const priced = catalogueWith({
+      "run-machine": { sizePrices: { "6": { pricePaise: 399_900, mrpPaise: 599_900 } } },
+    });
+    const six = priceCartItem(build({ size: "6" }, 2, priced), priced)!;
+    expect(six.unitPricePaise).toBe(399_900);
+    expect(six.regularUnitPricePaise).toBe(399_900);
+    expect(six.lineTotalPaise).toBe(799_800);
+    expect(priceCartItem(build({ size: "SH" }, 1, priced), priced)!.unitPricePaise).toBe(runMachine.price * 100);
+    const cart = priceCart([build({ size: "6" }, 1, priced), build({ size: "LH" }, 1, priced)], priced);
+    expect(cart.subtotalPaise).toBe(399_900 + runMachine.price * 100);
+  });
+
   test("a tennis bat comes in two lengths and cannot be customised", () => {
     const tennis = catalogueWith({ "run-machine": { subcategory: "tennis-bats", sizes: ["FS", "SH"] } });
     const bat = batIn(tennis);

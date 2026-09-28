@@ -99,6 +99,13 @@
       "when": 1790593396363,
       "tag": "0013_pads_mens_only",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790593772286,
+      "tag": "0014_size_prices",
+      "breakpoints": true
     }
   ]
 }

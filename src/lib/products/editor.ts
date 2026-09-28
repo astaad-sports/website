@@ -1,7 +1,7 @@
 // The product editor's form: the field names it posts, and how they are
 // checked and turned into a product. Shared by the editor (client) and its
 // Server Action, so both use the same rules and messages.
-import type { BatCustomization, ProductAvailability, VariantStock } from "@/db/schema";
+import type { BatCustomization, ProductAvailability, SizePrice, VariantStock } from "@/db/schema";
 
 import {
   HANDLE_OPTIONS,
@@ -50,6 +50,7 @@ export type ProductField =
   | "grade"
   | "price"
   | "mrp"
+  | "sizePrices"
   | "sizes"
   | "stock"
   | "lowStockThreshold"
@@ -64,6 +65,15 @@ export type ProductFieldErrors = Partial<Record<ProductField, string>>;
 /** The field a size and hand's stock count posts as, for a product sold in more than one: "stock:Men’s|Left hand". */
 export function variantStockField(key: string): string {
   return `stock:${key}`;
+}
+
+/** The fields a bat size's own price and MRP post as: "sizePrice:6" and "sizeMrp:6". */
+export function sizePriceField(code: string): string {
+  return `sizePrice:${code}`;
+}
+
+export function sizeMrpField(code: string): string {
+  return `sizeMrp:${code}`;
 }
 
 /** What the editor saves. Money in paise; `stock` null means not counted. */
@@ -81,6 +91,8 @@ export interface ProductValues {
   description: string | null;
   pricePaise: number;
   mrpPaise: number | null;
+  /** Bats: the sizes sold at their own price, by size code. */
+  sizePrices: Record<string, SizePrice>;
   /** The sizes it is sold in, and whether it comes left- and right-handed. */
   sizes: string[];
   hands: boolean;
@@ -128,6 +140,8 @@ export function normaliseSku(value: string): string {
  *   A product sold in several sizes or hands posts each one's count as
  *   `stock:<variant key>` instead of `stock`; an empty one counts as 0 once
  *   any is filled in, and with all of them empty the product is not counted.
+ * - `sizePrice:<size>` and `sizeMrp:<size>`: a bat size's own price and MRP.
+ *   Left empty, the size sells at `price`, with `mrp` as its MRP.
  * - the customisation group: `customEnabled`, `customWeights`,
  *   `customProfiles`, `customToes`, `customHandles` (each repeated) and
  *   `customEngraving`, `customMatchReady`, `customScuffSheet` (checkboxes).
@@ -183,6 +197,28 @@ export function parseProductForm(form: FormData): ParsedProductForm {
   if (kind === "bat" && sizes.length === 0) errors.sizes = "Pick at least one size.";
   const hands = canHaveHands(category) && form.get("hands") === "on";
   const offered = { category, subcategory, sizes, hands };
+
+  // A bat sold in several sizes can price some of them apart.
+  const sizePrices: Record<string, SizePrice> = {};
+  if (kind === "bat" && sizes.length > 1) {
+    for (const size of sizeOptions(category, subcategory).filter((option) => sizes.includes(option.code))) {
+      const own = parseRupees(text(form, sizePriceField(size.code)));
+      const ownMrp = parseRupees(text(form, sizeMrpField(size.code)));
+      if (own === null && ownMrp === null) continue;
+      if (own === null) {
+        errors.sizePrices ??= `${size.label}: enter its price, or clear its MRP.`;
+      } else if (Number.isNaN(own) || own < 1 || own > PRODUCT_LIMITS.maxPriceRupees) {
+        errors.sizePrices ??= `${size.label}: enter the price in whole rupees, for example 6999.`;
+      } else if (ownMrp !== null && (Number.isNaN(ownMrp) || ownMrp > PRODUCT_LIMITS.maxPriceRupees)) {
+        errors.sizePrices ??= `${size.label}: enter the MRP in whole rupees, for example 10999.`;
+      } else if (ownMrp !== null && ownMrp < own) {
+        errors.sizePrices ??= `${size.label}: the MRP can't be lower than the price.`;
+      } else if (own !== price || ownMrp !== mrp) {
+        // The same as the bat's own price and MRP is no price of its own.
+        sizePrices[size.code] = { pricePaise: own * 100, mrpPaise: ownMrp === null ? null : ownMrp * 100 };
+      }
+    }
+  }
 
   const variants = productVariants(offered);
   const entered = variants.map((variant) =>
@@ -251,6 +287,7 @@ export function parseProductForm(form: FormData): ParsedProductForm {
       description,
       pricePaise: price! * 100,
       mrpPaise: mrp === null ? null : mrp * 100,
+      sizePrices,
       sizes,
       hands,
       stock,

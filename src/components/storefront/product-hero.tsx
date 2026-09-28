@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
+import { otherPrices, startingVariant } from "@/lib/products/variants";
 
 import type { DeliveryTerms } from "./delivery";
 import { Eyebrow } from "./eyebrow";
@@ -27,6 +28,10 @@ export function ProductHero({ bat, delivery }: { bat: StoreBat; delivery: Delive
     { icon: Zap, label: "Game Ready" },
   ];
   const discounted = bat.mrp > bat.price;
+  // Sizes with a price of their own, and the sizes the price above is for.
+  const standard = startingVariant(bat);
+  const others = otherPrices(bat);
+  const atThisPrice = bat.sizes.filter((size) => !others.some((variant) => variant.size === size.code));
 
   return (
     <section aria-labelledby="pdp-title" className="grid grid-cols-1 lg:grid-cols-[54%_1fr] xl:min-h-[760px]">
@@ -81,6 +86,17 @@ export function ProductHero({ bat, delivery }: { bat: StoreBat; delivery: Delive
               ? `You save ${formatPrice(bat.mrp - bat.price)} · inclusive of all taxes`
               : "Inclusive of all taxes"}
           </span>
+          {others.length > 0 && (
+            <span className="text-[13px] leading-[18px] text-ink-muted">
+              {atThisPrice.length > 0 && `Price for ${atThisPrice.map((size) => size.label).join(" and ")}. `}
+              {others.map((variant, index) => (
+                <span key={variant.key}>
+                  {index > 0 && " · "}
+                  {variant.sizeLabel} <span className="font-semibold text-foreground">{formatPrice(variant.price)}</span>
+                </span>
+              ))}
+            </span>
+          )}
         </div>
         <ProductPromises delivery={delivery} />
         <div className="mt-1 flex flex-col gap-2.5">
@@ -103,6 +119,8 @@ export function ProductHero({ bat, delivery }: { bat: StoreBat; delivery: Delive
           >
             <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
             Add to cart · standard build
+            {/* Named when the price above is not this size's. */}
+            {standard.regularPrice !== bat.regularPrice && ` · ${standard.sizeLabel} ${formatPrice(standard.price)}`}
           </AddToCartButton>
         </div>
         <ul aria-label="Highlights" className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3">

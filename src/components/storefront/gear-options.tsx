@@ -58,7 +58,7 @@ function OptionPills({
 
 export type GearOptionsProduct = Pick<
   StoreGear,
-  "slug" | "name" | "sizes" | "hands" | "variants" | "usualSize" | "soldOut" | "lowStockThreshold"
+  "slug" | "name" | "sizes" | "hands" | "variants" | "usualSize" | "soldOut" | "regularPrice" | "lowStockThreshold"
 >;
 
 /**

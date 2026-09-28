@@ -208,6 +208,12 @@ export interface BatCustomization {
 /** The count of each size and hand of a product, by variant key (see src/lib/products/variants.ts). */
 export type VariantStock = Record<string, number>;
 
+/** What a size sold at its own price costs, and the MRP struck through beside it, if it has one. */
+export interface SizePrice {
+  pricePaise: number;
+  mrpPaise: number | null;
+}
+
 /**
  * A product in the store. The five categories are fixed in code; bats also
  * have a subcategory. Money is integer paise, as on orders. `stock` is null
@@ -239,6 +245,12 @@ export const products = pgTable(
     description: text("description"),
     pricePaise: integer("price_paise").notNull(),
     mrpPaise: integer("mrp_paise"),
+    /**
+     * Bats: the sizes sold at their own price and MRP, by size code, e.g.
+     * { "6": { pricePaise: 699900, mrpPaise: 1099900 } }. A size without one
+     * costs `pricePaise`, with `mrpPaise` as its MRP.
+     */
+    sizePrices: jsonb("size_prices").$type<Record<string, SizePrice>>().notNull().default({}),
     sku: text("sku").unique(),
     /** How many are in stock in all. A product sold in several sizes or hands keeps each one's count in `variantStock`. */
     stock: integer("stock"),

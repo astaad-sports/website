@@ -297,8 +297,8 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
     ]
       .filter(Boolean)
       .join(" \u00b7 "),
-    // Customisation is included in the price.
-    product: bat,
+    // Customisation is included in the price, which can differ by size.
+    product: { price: variant.price, regularPrice: variant.regularPrice, offer: bat.offer },
     target: { id: bat.id, category: "bats" },
     soldOut: variantSoldOut(bat, variant),
     stockLeft: variant.left,
@@ -324,7 +324,7 @@ function priceGear(item: GearCartItem, catalogue: StoreCatalogue): PricedFields 
       ...(hand ? [{ label: "Hand", value: hand }] : []),
     ],
     summary: [size, hand].filter(Boolean).join(" \u00b7 "),
-    product,
+    product: { price: variant.price, regularPrice: variant.regularPrice, offer: product.offer },
     target: { id: product.id, category: product.categorySlug },
     soldOut: variantSoldOut(product, variant),
     stockLeft: variant.left,

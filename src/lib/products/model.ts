@@ -25,10 +25,12 @@ import {
   countedStock,
   defaultOffered,
   sizeOptions,
+  sizePrice,
   startingVariant,
   storeOffered,
   type Sellable,
   type StoreOffered,
+  type VariantPricing,
 } from "./variants";
 
 export { countInWords, listInWords } from "@/lib/words";
@@ -302,15 +304,30 @@ export interface CatalogueContext {
   now?: Date;
 }
 
-/** The regular price and the best running offer for a product row. */
-function pricing(row: ProductWithImages, context: CatalogueContext): OfferPricing & { price: number } {
-  const regularPrice = rupees(row.pricePaise);
-  const offer = bestOffer(context.offers ?? [], { id: row.id, category: row.category }, context.now);
-  if (!offer) return { regularPrice, price: regularPrice, offer: null };
-  return {
-    regularPrice,
-    price: offerPrice(regularPrice, offer.percentOff),
-    offer: { name: offer.name, percentOff: offer.percentOff, endsAt: offer.endsAt.toISOString() },
+/**
+ * The regular price and the best running offer for a product row, at the
+ * product's own price or at `amounts`, a size's price and MRP.
+ */
+function pricing(
+  row: ProductWithImages,
+  context: CatalogueContext,
+  amounts: { pricePaise: number; mrpPaise: number | null } = row
+): OfferPricing & VariantPricing & { hasMrp: boolean } {
+  const regularPrice = rupees(amounts.pricePaise);
+  const best = bestOffer(context.offers ?? [], { id: row.id, category: row.category }, context.now);
+  const offer = best && { name: best.name, percentOff: best.percentOff, endsAt: best.endsAt.toISOString() };
+  const price = best ? offerPrice(regularPrice, best.percentOff) : regularPrice;
+  const hasMrp = Boolean(amounts.mrpPaise);
+  // With no MRP, an offer is shown against the regular price.
+  const mrp = amounts.mrpPaise ? rupees(amounts.mrpPaise) : regularPrice;
+  return { regularPrice, price, offer, mrp, off: chipPercent(price, mrp, offer, hasMrp), hasMrp };
+}
+
+/** What each size of a row costs on the store (see storeOffered). */
+function sizePricing(row: ProductWithImages, context: CatalogueContext): (size: string | null) => VariantPricing {
+  return (size) => {
+    const { price, regularPrice, mrp, off } = pricing(row, context, sizePrice(row, size));
+    return { price, regularPrice, mrp, off };
   };
 }
 
@@ -344,9 +361,7 @@ function storeStock(row: ProductWithImages): { status: Exclude<StockStatus, "hid
 function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat {
   const seeded = BATS.find((bat) => bat.slug === row.slug);
   const { status, stockLeft } = storeStock(row);
-  const { regularPrice, price, offer } = pricing(row, context);
-  // With no MRP, an offer is shown against the regular price.
-  const mrp = row.mrpPaise ? rupees(row.mrpPaise) : regularPrice;
+  const { regularPrice, price, offer, mrp, off } = pricing(row, context);
   const images = [...row.images].sort((a, b) => a.position - b.position).map((image) => image.url);
   const grade = row.grade ?? subcategoryName(row.subcategory) ?? "";
   return {
@@ -359,7 +374,7 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     regularPrice,
     offer,
     mrp,
-    off: chipPercent(price, mrp, offer, Boolean(row.mrpPaise)),
+    off,
     badges: row.badges.length ? row.badges : undefined,
     dark: seeded?.dark,
     rating: seeded?.rating,
@@ -372,7 +387,7 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     stockLeft,
     images: images.length ? images : [BAT_IMAGE],
     customization: customizationFor(row.kind, row.subcategory, row.customization),
-    ...storeOffered(row),
+    ...storeOffered(row, sizePricing(row, context)),
   };
 }
 
@@ -382,8 +397,7 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
   const layout = seeded ?? GEAR_LAYOUT[category];
   const { status, stockLeft } = storeStock(row);
   const images = [...row.images].sort((a, b) => a.position - b.position).map((image) => image.url);
-  const { regularPrice, price, offer } = pricing(row, context);
-  const mrp = row.mrpPaise ? rupees(row.mrpPaise) : regularPrice;
+  const { regularPrice, price, offer, mrp, off } = pricing(row, context);
   return {
     id: row.id,
     slug: row.slug,
@@ -398,7 +412,7 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
     // Struck through beside the price: the MRP, or the regular price during an offer.
     mrp: mrp > price ? mrp : undefined,
     // Gear shows a % OFF chip only while an offer runs.
-    off: offer ? chipPercent(price, mrp, offer, Boolean(row.mrpPaise)) : 0,
+    off: offer ? off : 0,
     badge: row.badges[0],
     href: `/shop/${category}/${row.slug}`,
     image: images[0] ?? layout.image,
@@ -410,7 +424,7 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
     soldOut: status === "out",
     stockLeft,
     images: images.length ? images : [layout.image],
-    ...storeOffered(row),
+    ...storeOffered(row, sizePricing(row, context)),
   };
 }
 
@@ -457,6 +471,7 @@ export function seedProductRows(): ProductWithImages[] {
     sizes: [] as string[],
     hands: false,
     variantStock: {},
+    sizePrices: {},
     lowStockThreshold: 3,
     availability: "available" as const,
     customization: null,
@@ -472,7 +487,8 @@ export function seedProductRows(): ProductWithImages[] {
     kind: "bat",
     category: "bats",
     subcategory: "english-willow",
-    ...defaultOffered("bats", "english-willow"),
+    // Every size, as the bats were sold when they were seeded.
+    sizes: sizeOptions("bats", "english-willow").map((size) => size.code),
     name: bat.name,
     tagline: bat.tagline ?? null,
     grade: bat.grade,

@@ -6,9 +6,12 @@ import {
   countsFor,
   defaultOffered,
   hasVariantOut,
+  otherPrices,
   productVariants,
   sameCounts,
   sizeOptions,
+  sizePrice,
+  sizePricesFor,
   sizeSoldOut,
   startingVariant,
   stockColumns,
@@ -37,7 +40,7 @@ describe("what a product is sold in", () => {
   });
 
   test("a new product starts with its kind's usual sizes", () => {
-    expect(defaultOffered("bats", "english-willow")).toEqual({ sizes: ["6", "H", "SH", "LH"], hands: false });
+    expect(defaultOffered("bats", "english-willow")).toEqual({ sizes: ["SH"], hands: false });
     expect(defaultOffered("bats", "kashmir-willow")).toEqual({ sizes: ["SH"], hands: false });
     expect(defaultOffered("bats", "tennis-bats")).toEqual({ sizes: ["FS", "SH"], hands: false });
     expect(defaultOffered("batting-gloves", null)).toEqual({ sizes: ["Men’s"], hands: true });
@@ -120,6 +123,63 @@ describe("stock by size and hand", () => {
   });
 });
 
+describe("prices by size", () => {
+  const SIZE_PRICES = {
+    "6": { pricePaise: 699_900, mrpPaise: 1_099_900 },
+    H: { pricePaise: 849_900, mrpPaise: 1_399_900 },
+  };
+  const blackEdition = row("black-edition", { sizePrices: SIZE_PRICES });
+
+  test("a size with a price of its own costs that; the others cost the bat's price", () => {
+    expect(sizePrice(blackEdition, "6")).toEqual({ pricePaise: 699_900, mrpPaise: 1_099_900 });
+    expect(sizePrice(blackEdition, "SH")).toEqual({ pricePaise: blackEdition.pricePaise, mrpPaise: blackEdition.mrpPaise });
+    expect(sizePrice(blackEdition, "LH")).toEqual({ pricePaise: blackEdition.pricePaise, mrpPaise: blackEdition.mrpPaise });
+  });
+
+  test("only sizes the bat is sold in, with a real price and an MRP no lower, are kept", () => {
+    const messy = row("black-edition", {
+      sizes: ["6", "SH", "LH"],
+      sizePrices: {
+        "6": { pricePaise: 699_900, mrpPaise: 500_000 },
+        H: { pricePaise: 849_900, mrpPaise: null },
+        SH: { pricePaise: 0, mrpPaise: null },
+        LH: { pricePaise: 12.5, mrpPaise: null },
+      },
+    });
+    expect(sizePricesFor(messy)).toEqual({ "6": { pricePaise: 699_900, mrpPaise: null } });
+    expect(sizePricesFor(row("club-cricket-helmet", { sizePrices: { Medium: { pricePaise: 100_000, mrpPaise: null } } }))).toEqual({});
+  });
+
+  test("the store prices each size, and an offer takes its percentage off each", () => {
+    const rows = seedProductRows().map((entry) => (entry.slug === "black-edition" ? blackEdition : entry));
+    const plain = findStoreBat(toStoreCatalogue(rows), "black-edition")!;
+    const prices = (bat: typeof plain) => bat.variants.map((variant) => [variant.size, variant.price, variant.mrp, variant.off]);
+    expect(prices(plain)).toEqual([
+      ["6", 6999, 10999, 36],
+      ["H", 8499, 13999, 39],
+      ["SH", plain.price, plain.mrp, plain.off],
+      ["LH", plain.price, plain.mrp, plain.off],
+    ]);
+    expect(otherPrices(plain).map((variant) => variant.size)).toEqual(["6", "H"]);
+
+    const now = new Date("2026-10-15T06:00:00Z");
+    const offer = {
+      name: "Diwali Sale",
+      percentOff: 10,
+      scope: "store" as const,
+      categories: [],
+      productIds: [],
+      code: null,
+      startsAt: new Date("2026-10-01T00:00:00Z"),
+      endsAt: new Date("2026-10-31T00:00:00Z"),
+    };
+    const onOffer = findStoreBat(toStoreCatalogue(rows, { offers: [offer], now }), "black-edition")!;
+    const six = onOffer.variants.find((variant) => variant.size === "6")!;
+    expect([six.regularPrice, six.price]).toEqual([6999, 6299]);
+    expect(onOffer.regularPrice).toBe(plain.price);
+  });
+});
+
 describe("taking an order out of stock", () => {
   test("it comes out of the size that was bought, never below 0", () => {
     const counts = { Medium: 2, Large: 0, XL: 3 };
@@ -168,6 +228,17 @@ describe("on the store", () => {
     expect(startingVariant(findStoreGear(catalogue, "helmets", "club-cricket-helmet")!).key).toBe("XL");
     // The usual size in the other hand comes before another size.
     expect(startingVariant(findStoreGear(catalogue, "batting-pads", "pro-batting-pads")!).key).toBe("Men’s|Left hand");
+  });
+
+  test("with SH gone, a size at the bat's price comes before one with a price of its own", () => {
+    const catalogue = catalogueWith({
+      goat: {
+        stock: 3,
+        variantStock: { "6": 2, LH: 1 },
+        sizePrices: { "6": { pricePaise: 799_900, mrpPaise: 1_299_900 } },
+      },
+    });
+    expect(startingVariant(findStoreBat(catalogue, "goat")!).key).toBe("LH");
   });
 
   test("a product with nothing left starts on the usual one all the same", () => {

@@ -1,7 +1,7 @@
 // What a product is sold in: its sizes, whether it comes left- and
 // right-handed, and how many of each are in stock. One size and hand is a
 // "variant", with its own count. Pure and client-safe.
-import type { OrderStockShortfall, Product, VariantStock } from "@/db/schema";
+import type { OrderStockShortfall, Product, SizePrice, VariantStock } from "@/db/schema";
 import {
   BAT_SIZES,
   DEFAULT_BAT_SIZE,
@@ -55,11 +55,11 @@ export function canHaveHands(category: string): boolean {
   return Boolean(gearContent(category)?.hands);
 }
 
-/** What a new product is sold in: every English willow size, SH for Kashmir willow, and the category's usual sizes for gear. */
+/** What a new product is sold in: SH for a willow bat, both lengths for a tennis bat, and the category's usual sizes for gear. */
 export function defaultOffered(category: string, subcategory: string | null): { sizes: string[]; hands: boolean } {
   const all = sizeOptions(category, subcategory).map((size) => size.code);
   if (category === "bats") {
-    return { sizes: subcategory === "kashmir-willow" ? [DEFAULT_BAT_SIZE] : all, hands: false };
+    return { sizes: subcategory === "tennis-bats" ? all : [DEFAULT_BAT_SIZE], hands: false };
   }
   return { sizes: gearContent(category)?.newSizes ?? all, hands: canHaveHands(category) };
 }
@@ -119,6 +119,36 @@ export function productVariants(product: OfferedFields): Variant[] {
       label: [sizes.length > 1 || !hand ? size?.label : null, hand].filter(Boolean).join(" · "),
     }))
   );
+}
+
+// ---------------------------------------------------------------------------
+// Prices by size
+
+type PriceFields = OfferedFields & Pick<Product, "kind" | "pricePaise" | "mrpPaise" | "sizePrices">;
+
+const wholePaise = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value > 0;
+
+/**
+ * The sizes of a bat sold at their own price: only sizes it is sold in, each
+ * with a price and, if it has one, an MRP no lower than it. Gear has one price.
+ */
+export function sizePricesFor(product: Omit<PriceFields, "pricePaise" | "mrpPaise">): Record<string, SizePrice> {
+  if (product.kind !== "bat") return {};
+  const saved = product.sizePrices ?? {};
+  const prices: Record<string, SizePrice> = {};
+  for (const size of offeredSizes(product)) {
+    const entry = Object.hasOwn(saved, size.code) ? saved[size.code] : undefined;
+    if (!entry || !wholePaise(entry.pricePaise)) continue;
+    const mrpPaise = wholePaise(entry.mrpPaise) && entry.mrpPaise >= entry.pricePaise ? entry.mrpPaise : null;
+    prices[size.code] = { pricePaise: entry.pricePaise, mrpPaise };
+  }
+  return prices;
+}
+
+/** What one size costs before any offer: its own price and MRP, or the product's. */
+export function sizePrice(product: PriceFields, size: string | null): SizePrice {
+  const own = size === null ? undefined : sizePricesFor(product)[size];
+  return own ?? { pricePaise: product.pricePaise, mrpPaise: product.mrpPaise };
 }
 
 // ---------------------------------------------------------------------------
@@ -211,8 +241,20 @@ export function shortfallName(line: Pick<OrderStockShortfall, "name" | "variant"
 // ---------------------------------------------------------------------------
 // On the store
 
-/** A variant as the store shows it, with what is left of it. */
-export interface StoreVariant extends Omit<Variant, "label"> {
+/** What a size costs on the store, in rupees, as on StoreBat. */
+export interface VariantPricing {
+  /** What the customer pays now, after any running offer. */
+  price: number;
+  /** The price before any offer. */
+  regularPrice: number;
+  /** Struck through beside the price: the size's MRP, or its regular price when it has none. */
+  mrp: number;
+  /** The "% OFF" chip. */
+  off: number;
+}
+
+/** A variant as the store shows it, with what it costs and what is left of it. */
+export interface StoreVariant extends Omit<Variant, "label">, VariantPricing {
   /** Counted stock of this size and hand, or null when the product is not counted. */
   left: number | null;
 }
@@ -231,7 +273,11 @@ export interface StoreOffered {
   lowStockThreshold: number;
 }
 
-export function storeOffered(product: StockFields & Pick<Product, "lowStockThreshold">): StoreOffered {
+/** `priceOf` prices one size (null for a product with no size choice): see toStoreBat and toStoreGear. */
+export function storeOffered(
+  product: StockFields & Pick<Product, "lowStockThreshold">,
+  priceOf: (size: string | null) => VariantPricing
+): StoreOffered {
   const counts = variantCounts(product);
   return {
     sizes: offeredSizes(product),
@@ -242,14 +288,15 @@ export function storeOffered(product: StockFields & Pick<Product, "lowStockThres
       sizeLabel: variant.sizeLabel,
       hand: variant.hand,
       left: counts ? counts[variant.key] : null,
+      ...priceOf(variant.size),
     })),
     usualSize: usualSize(product.category) ?? null,
     lowStockThreshold: product.lowStockThreshold,
   };
 }
 
-/** A store product, as far as choosing a size and hand goes. */
-export type Sellable = Pick<StoreOffered, "variants" | "usualSize"> & { soldOut: boolean };
+/** A store product, as far as choosing a size and hand goes. `regularPrice` is that of its usual sizes. */
+export type Sellable = Pick<StoreOffered, "variants" | "usualSize"> & { soldOut: boolean; regularPrice: number };
 
 export function findVariant(product: Pick<StoreOffered, "variants">, size?: string | null, hand?: string | null): StoreVariant | undefined {
   const key = variantKey(size, hand);
@@ -269,12 +316,24 @@ export function sizeSoldOut(product: Sellable, size: string): boolean {
 /**
  * The size and hand a picker starts on, and a product card's cart button
  * adds: the usual one (SH, Medium, Men's; right hand) if it can be bought,
- * otherwise the first that can, otherwise the usual one.
+ * otherwise the first that can, otherwise the usual one. Sizes at the price
+ * the card shows come before sizes with a price of their own.
  */
 export function startingVariant(product: Sellable): StoreVariant {
   const inUsualSize = product.variants.filter((variant) => variant.size === product.usualSize);
-  const candidates = [...inUsualSize, ...product.variants];
+  const atUsualPrice = product.variants.filter((variant) => variant.regularPrice === product.regularPrice);
+  const candidates = [...inUsualSize, ...atUsualPrice, ...product.variants];
   return candidates.find((variant) => !variantSoldOut(product, variant)) ?? candidates[0];
+}
+
+/** The sizes sold at a price of their own, once each, for a line such as "Size 6 ₹ 6,999". */
+export function otherPrices(product: Sellable): StoreVariant[] {
+  const seen = new Set<string | null>();
+  return product.variants.filter((variant) => {
+    if (variant.regularPrice === product.regularPrice || seen.has(variant.size)) return false;
+    seen.add(variant.size);
+    return true;
+  });
 }
 
 /** "Only 2 left", "Out of stock" or null, for the size and hand chosen on a product page. */
