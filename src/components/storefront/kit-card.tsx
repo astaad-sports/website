@@ -6,6 +6,7 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+import { CardRating } from "./card-rating";
 import type { KitTile } from "./kit-tiles";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
@@ -21,7 +22,8 @@ const CHIP = "h-6 rounded-xs bg-surface-dark px-2.5 text-xs leading-6 font-bold 
 
 /**
  * The phone's 164px product card for a row that scrolls sideways: the cut-out
- * on grey, the name on two lines, the price and a round add-to-cart button.
+ * on grey, the name on two lines, its rating once reviewed, the price and a
+ * round add-to-cart button.
  */
 export function KitMiniCard({
   name,
@@ -35,6 +37,7 @@ export function KitMiniCard({
   cartItem,
   soldOut,
   offer,
+  rating,
 }: KitTile) {
   // The cut-out keeps its shape inside a 136 × 148 box.
   const scale = Math.min(136 / imageWidth, 148 / imageHeight);
@@ -66,6 +69,7 @@ export function KitMiniCard({
       <span className="mt-2.5 line-clamp-2 min-h-10 text-sm leading-5 font-semibold">
         <Link href={href}>{name}</Link>
       </span>
+      <CardRating rating={rating} className="mt-0.5 self-start" />
       {offer && <OfferNote offer={offer} truncate className="mt-0.5 text-xs leading-4" />}
       <div className="mt-1.5 flex items-center justify-between gap-2">
         <span className="flex min-w-0 flex-col">
@@ -89,8 +93,8 @@ export function KitMiniCard({
 
 /**
  * A grey product tile with the cut-out floating above the name, a note (or
- * the running offer), the price and a round yellow add-to-cart button (greyed
- * out when out of stock).
+ * the running offer), the price with the rating beside it once reviewed, and
+ * a round yellow add-to-cart button (greyed out when out of stock).
  */
 export function KitCard({
   name,
@@ -107,6 +111,7 @@ export function KitCard({
   cartItem,
   soldOut,
   offer,
+  rating,
   height = 400,
   className,
 }: KitCardProps) {
@@ -148,13 +153,16 @@ export function KitCard({
           ) : (
             note && <span className="text-[13px] leading-[18px] text-ink-muted">{note}</span>
           )}
-          <span className="mt-1 text-base leading-[22px] font-bold">
-            {formatPrice(price)}
-            {mrp && (
-              <span className="ml-1.5 text-[13px] font-normal text-ink-subtle line-through">
-                {formatPrice(mrp)}
-              </span>
-            )}
+          <span className="mt-1 flex flex-wrap items-baseline gap-x-2.5">
+            <span className="text-base leading-[22px] font-bold">
+              {formatPrice(price)}
+              {mrp && (
+                <span className="ml-1.5 text-[13px] font-normal text-ink-subtle line-through">
+                  {formatPrice(mrp)}
+                </span>
+              )}
+            </span>
+            <CardRating rating={rating} />
           </span>
         </div>
         <AddToCartButton

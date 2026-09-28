@@ -6,6 +6,8 @@ import { listAutomaticOffers } from "@/db/offers";
 import { listProductsForCatalogue } from "@/db/products";
 import type { Offer } from "@/db/schema";
 import { readSettings } from "@/db/settings";
+import { ratingsByProduct, type ProductRating } from "@/lib/reviews/model";
+import { getPublishedReviews } from "@/lib/reviews/store";
 import { deliveryFeePaise, DEFAULT_SETTINGS } from "@/lib/settings/model";
 
 import { seedProductRows, toStoreCatalogue, type ProductWithImages, type StoreCatalogue } from "./model";
@@ -53,11 +55,12 @@ async function loadInputs(): Promise<CatalogueInputs> {
 /**
  * Prices the inputs at `now`. Which offer runs is decided here, on every
  * request, not when the data was cached, so an offer starts and ends on the
- * store exactly at its India midnight.
+ * store exactly at its India midnight. `ratings` puts each product's review
+ * rating on it, for the cards.
  */
-function buildCatalogue(inputs: CatalogueInputs, now: Date): StoreCatalogue {
+function buildCatalogue(inputs: CatalogueInputs, now: Date, ratings?: Record<string, ProductRating>): StoreCatalogue {
   const offers = inputs.offers.map((offer) => ({ ...offer, startsAt: new Date(offer.startsAt), endsAt: new Date(offer.endsAt) }));
-  return toStoreCatalogue(inputs.rows, { offers, deliveryFeePaise: inputs.deliveryFeePaise, now });
+  return toStoreCatalogue(inputs.rows, { offers, deliveryFeePaise: inputs.deliveryFeePaise, now, ratings });
 }
 
 // The key names what the rows hold: rows cached before products had sizes
@@ -68,15 +71,17 @@ const getCatalogueInputs = unstable_cache(loadInputs, ["store-catalogue-inputs",
 });
 
 /**
- * The public catalogue for storefront pages, priced at this moment. Hidden
- * products are not in it. The data behind it is cached until an admin changes
- * a product, offer or setting; pages render for each request (see the root layout).
+ * The public catalogue for storefront pages, priced at this moment, with each
+ * product's rating from its published reviews. Hidden products are not in it.
+ * The data behind it is cached until an admin changes a product, offer,
+ * setting or review; pages render for each request (see the root layout).
  */
 export async function getStoreCatalogue(): Promise<StoreCatalogue> {
-  return buildCatalogue(await getCatalogueInputs(), new Date());
+  const [inputs, reviews] = await Promise.all([getCatalogueInputs(), getPublishedReviews()]);
+  return buildCatalogue(inputs, new Date(), ratingsByProduct(reviews));
 }
 
-/** The catalogue straight from the database, for pricing a checkout against current stock and offers. */
+/** The catalogue straight from the database, for pricing a checkout against current stock and offers. Without ratings. */
 export async function getFreshStoreCatalogue(): Promise<StoreCatalogue> {
   return buildCatalogue(await loadInputs(), new Date());
 }

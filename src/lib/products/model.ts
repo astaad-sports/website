@@ -20,6 +20,7 @@ import {
   type GearProduct,
 } from "@/lib/catalogue";
 import { bestOffer, offerPrice, type OfferTerms } from "@/lib/offers/model";
+import type { ProductRating } from "@/lib/reviews/model";
 
 import {
   countedStock,
@@ -270,6 +271,8 @@ function chipPercent(price: number, mrp: number, offer: StoreOffer | null, hasMr
  */
 export interface StoreBat extends Omit<Bat, "rating" | "reviews">, OfferPricing, StoreOffered {
   id: string;
+  /** From its published reviews; null while it has none (or where reviews aren't loaded, as at checkout). */
+  rating: ProductRating | null;
   subcategory: BatSubcategory;
   stockStatus: Exclude<StockStatus, "hidden">;
   /** Nothing of it can be bought, in any size. One size can run out while the bat stays on sale (see `variants`). */
@@ -283,6 +286,8 @@ export interface StoreBat extends Omit<Bat, "rating" | "reviews">, OfferPricing,
 /** A gear product as the storefront shows it. */
 export interface StoreGear extends GearProduct, OfferPricing, StoreOffered {
   id: string;
+  /** From its published reviews; null while it has none (or where reviews aren't loaded, as at checkout). */
+  rating: ProductRating | null;
   /** The "% OFF" chip; 0 when no offer is running. */
   off: number;
   stockStatus: Exclude<StockStatus, "hidden">;
@@ -306,6 +311,8 @@ export interface CatalogueContext {
   offers?: (OfferTerms & Pick<Offer, "endsAt">)[];
   deliveryFeePaise?: number;
   now?: Date;
+  /** Each reviewed product's rating, by product id (see ratingsByProduct). */
+  ratings?: Record<string, ProductRating>;
 }
 
 /**
@@ -388,6 +395,7 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     soldOut: status === "out",
     stockLeft,
     images: images.length ? images : [BAT_IMAGE],
+    rating: context.ratings?.[row.id] ?? null,
     customization: customizationFor(row.kind, row.subcategory, row.customization),
     ...storeOffered(row, sizePricing(row, context)),
   };
@@ -426,6 +434,7 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
     soldOut: status === "out",
     stockLeft,
     images: images.length ? images : [layout.image],
+    rating: context.ratings?.[row.id] ?? null,
     ...storeOffered(row, sizePricing(row, context)),
   };
 }

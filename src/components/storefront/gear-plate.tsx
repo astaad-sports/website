@@ -9,14 +9,15 @@ import { gearHref } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { gearLine, type StoreGear } from "@/lib/products/model";
 
+import { CardRating } from "./card-rating";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
 import { WishlistButton } from "./wishlist-button";
 
 /**
  * One gear product on its grey plate: badges, wishlist heart, name, note,
- * price (with the running offer under it) and Add to Cart. Out of stock, it
- * says so and cannot be added.
+ * price (with the rating beside it once reviewed, and the running offer under
+ * it) and Add to Cart. Out of stock, it says so and cannot be added.
  */
 export function GearPlate({ product }: { product: StoreGear }) {
   const href = gearHref(product);
@@ -57,15 +58,18 @@ export function GearPlate({ product }: { product: StoreGear }) {
         <p className="text-[13px] leading-[18px] text-ink-muted">{gearLine(product)}</p>
       </div>
       <div className="flex flex-col gap-1">
-        <div className="flex items-baseline gap-3">
-          <span className="text-2xl leading-[30px] font-bold">{formatPrice(product.price)}</span>
-          {product.mrp && (
-            <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
-              {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
-              {product.mrp > product.regularPrice && "MRP "}
-              {formatPrice(product.mrp)}
-            </span>
-          )}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <span className="flex items-baseline gap-3">
+            <span className="text-2xl leading-[30px] font-bold">{formatPrice(product.price)}</span>
+            {product.mrp && (
+              <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
+                {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
+                {product.mrp > product.regularPrice && "MRP "}
+                {formatPrice(product.mrp)}
+              </span>
+            )}
+          </span>
+          <CardRating rating={product.rating} />
         </div>
         {product.offer && <OfferNote offer={product.offer} />}
       </div>

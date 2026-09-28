@@ -8,6 +8,7 @@ import {
   photoAltText,
   ratingBreakdown,
   ratingLabel,
+  ratingsByProduct,
   reviewByline,
   reviewCount,
   reviewsOfProduct,
@@ -154,6 +155,14 @@ describe("a product's reviews", () => {
   test("the count reads as words", () => {
     expect(reviewCount(1)).toBe("1 review");
     expect(reviewCount(3)).toBe("3 reviews");
+  });
+
+  test("each reviewed product gets its average and count; reviews naming no product are left out", () => {
+    expect(ratingsByProduct(reviews)).toEqual({
+      "run-machine": { average: 5, count: 3 },
+      goat: { average: 4, count: 1 },
+    });
+    expect(ratingsByProduct([{ rating: null, product: product("goat") }])).toEqual({ goat: { average: null, count: 1 } });
   });
 
   test("an average is read out to one decimal", () => {

@@ -10,14 +10,15 @@ import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { CardRating } from "./card-rating";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
 import { WishlistButton } from "./wishlist-button";
 
 /**
  * The phone's 200px bat card for a row that scrolls sideways: the blade with
- * its chips and heart, name, grade, price, then View bat and an add-to-cart
- * icon button.
+ * its chips and heart, name (with its rating once reviewed), grade, price,
+ * then View bat and an add-to-cart icon button.
  */
 export function BatCard({ bat }: { bat: StoreBat }) {
   const href = `/bats/${bat.slug}`;
@@ -65,9 +66,12 @@ export function BatCard({ bat }: { bat: StoreBat }) {
           />
         </Link>
       </div>
-      <h3 className="mt-3 text-base leading-[22px] font-semibold">
-        <Link href={href}>{bat.name}</Link>
-      </h3>
+      <div className="mt-3 flex items-baseline justify-between gap-2">
+        <h3 className="min-w-0 text-base leading-[22px] font-semibold">
+          <Link href={href}>{bat.name}</Link>
+        </h3>
+        <CardRating rating={bat.rating} />
+      </div>
       <p className="text-[13px] leading-[18px] text-ink-muted">{bat.grade}</p>
       <p className="mt-1.5 flex items-baseline gap-2">
         <span className="text-[17px] leading-[22px] font-bold">{formatPrice(bat.price)}</span>
@@ -105,8 +109,9 @@ export function BatCard({ bat }: { bat: StoreBat }) {
 }
 
 /**
- * One bat on its plate: the blade, name, grade, price (with the running offer
- * under it) and two actions. Out of stock, it says so and cannot be added.
+ * One bat on its plate: the blade, name, grade, price (with the rating beside
+ * it once reviewed, and the running offer under it) and two actions. Out of
+ * stock, it says so and cannot be added.
  */
 export function BatPlate({ bat }: { bat: StoreBat }) {
   const href = `/bats/${bat.slug}`;
@@ -166,15 +171,18 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
         <p className="text-[13px] leading-[18px] text-ink-muted">{bat.grade}</p>
       </div>
       <div className="flex flex-col gap-1">
-        <div className="flex items-baseline gap-3">
-          <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
-          {discounted && (
-            <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
-              {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
-              {bat.mrp > bat.regularPrice && "MRP "}
-              {formatPrice(bat.mrp)}
-            </span>
-          )}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <span className="flex items-baseline gap-3">
+            <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
+            {discounted && (
+              <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
+                {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
+                {bat.mrp > bat.regularPrice && "MRP "}
+                {formatPrice(bat.mrp)}
+              </span>
+            )}
+          </span>
+          <CardRating rating={bat.rating} />
         </div>
         {bat.offer && <OfferNote offer={bat.offer} />}
       </div>

@@ -47,6 +47,25 @@ export function reviewsOfProduct<T extends Pick<PublicReview, "product">>(review
   return reviews.filter((review) => review.product?.id === productId);
 }
 
+/** A product's rating from its published reviews, for its cards. */
+export interface ProductRating {
+  /** The mean of the reviews with stars, or null when none has any. */
+  average: number | null;
+  /** Every published review of it, with stars or without. */
+  count: number;
+}
+
+/** Each reviewed product's rating, by product id. A product nobody has reviewed isn't in it. */
+export function ratingsByProduct(reviews: readonly Pick<PublicReview, "rating" | "product">[]): Record<string, ProductRating> {
+  const byProduct = new Map<string, Pick<PublicReview, "rating">[]>();
+  for (const review of reviews) {
+    if (review.product) byProduct.set(review.product.id, [...(byProduct.get(review.product.id) ?? []), review]);
+  }
+  return Object.fromEntries(
+    [...byProduct].map(([id, own]) => [id, { average: summariseReviews(own).average, count: own.length }])
+  );
+}
+
 export interface ReviewSummary {
   /** The mean star rating, or null while no review has one. */
   average: number | null;

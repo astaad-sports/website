@@ -12,6 +12,7 @@ import {
   type StoreGear,
   type StoreOffer,
 } from "@/lib/products/model";
+import type { ProductRating } from "@/lib/reviews/model";
 
 /** A product as a kit tile: what the tile shows, and what its cart button adds. */
 export interface KitTile extends KitItem {
@@ -20,6 +21,8 @@ export interface KitTile extends KitItem {
   soldOut: boolean;
   /** The running offer already in `price`. */
   offer: StoreOffer | null;
+  /** From the product's published reviews; none while it has no reviews. */
+  rating?: ProductRating | null;
 }
 
 /** A bat as a tile, sold in its standard build. */
@@ -40,6 +43,7 @@ export function batTile(bat: StoreBat): KitTile {
     cartItem: batCartItem(bat),
     soldOut: bat.soldOut,
     offer: bat.offer,
+    rating: bat.rating,
   };
 }
 
@@ -61,6 +65,7 @@ export function gearTile(product: StoreGear): KitTile {
     cartItem: gearCartItem(product),
     soldOut: product.soldOut,
     offer: product.offer,
+    rating: product.rating,
   };
 }
 

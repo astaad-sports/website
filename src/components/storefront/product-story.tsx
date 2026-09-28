@@ -8,7 +8,7 @@ import { Eyebrow } from "./eyebrow";
 const PHOTO = siteImage("home/bats-against-the-trees");
 
 /** "Built for bigger innings." — Astaad bats against the trees beside four numbered points. */
-export function ProductStory({ bat }: { bat: Bat }) {
+export function ProductStory({ bat }: { bat: Pick<Bat, "name" | "grade"> }) {
   const points: [string, string, string][] = [
     ["01 · Willow", bat.grade, "Naturally air-dried and pressed for a lively face that only gets better."],
     ["02 · Balance", "Weight behind the middle", "Mass sits behind the sweet spot, not in the toe, so the bat swings through."],

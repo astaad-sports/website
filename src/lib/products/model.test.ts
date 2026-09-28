@@ -191,6 +191,17 @@ describe("drafts", () => {
   });
 });
 
+describe("ratings on the cards", () => {
+  test("a product carries its rating from the context, and one nobody reviewed has none", () => {
+    const rows = seedProductRows();
+    const goat = rows.find((row) => row.slug === "goat")!;
+    const catalogue = toStoreCatalogue(rows, { ratings: { [goat.id]: { average: 4.5, count: 2 } } });
+    expect(findStoreBat(catalogue, "goat")?.rating).toEqual({ average: 4.5, count: 2 });
+    expect(findStoreBat(catalogue, "run-machine")?.rating).toBeNull();
+    expect(catalogue.gear.every((product) => product.rating === null)).toBe(true);
+  });
+});
+
 describe("words on the page", () => {
   test("low stock with a count reads Only N left", () => {
     const low = findStoreBat(catalogueWith({ goat: { stock: 2 } }), "goat")!;
