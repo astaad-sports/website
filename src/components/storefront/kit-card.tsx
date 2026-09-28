@@ -129,14 +129,23 @@ export function KitCard({
           {badge && <span className={CHIP}>{badge}</span>}
         </span>
       )}
-      <Image
-        src={image}
-        alt={name}
-        width={imageWidth}
-        height={imageHeight}
+      {/* The name below is the one link a keyboard or screen reader meets; the cut-out is a second target for the pointer. */}
+      <Link
+        href={href}
+        tabIndex={-1}
+        aria-hidden="true"
         style={{ top: imageTop, marginLeft: -imageWidth / 2, width: imageWidth, height: imageHeight }}
-        className="absolute left-1/2 object-contain drop-shadow-[0_20px_20px_rgba(14,14,14,0.28)] transition-transform duration-300 group-hover:-translate-y-2"
-      />
+        className="absolute left-1/2 block"
+      >
+        <Image
+          src={image}
+          alt=""
+          width={imageWidth}
+          height={imageHeight}
+          style={{ width: imageWidth, height: imageHeight }}
+          className="object-contain drop-shadow-[0_20px_20px_rgba(14,14,14,0.28)] transition-transform duration-300 group-hover:-translate-y-2"
+        />
+      </Link>
       <div className="absolute inset-x-6 bottom-6 flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           {eyebrow && (
