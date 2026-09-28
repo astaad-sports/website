@@ -11,7 +11,7 @@ import type { ProductAvailability } from "@/db/schema";
 import { STOCK_STATUS_LABEL, stockStatus, type StockStatus } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
-import { editorHref, isRestockable, menuTriggerId, ProductThumb, stockText, type ProductListItem } from "./product-row";
+import { editorHref, isRestockable, listStatus, menuTriggerId, ProductThumb, stockText, type ProductListItem } from "./product-row";
 import { Sheet, StockSheetBody, stockSheetFocus, type StockSaved } from "./restock";
 import { BUTTON_SECONDARY } from "./styles";
 
@@ -130,7 +130,7 @@ export function ProductActionsSheet({
           <span className="flex min-w-0 flex-1 flex-col">
             <Dialog.Title className="truncate text-lg leading-6 font-semibold">{item.name}</Dialog.Title>
             <Dialog.Description className="text-[13px] leading-[18px] text-ink-muted tabular-nums">
-              {stockText(item.stock)} · {STATUS_LINE[stockStatus(item)]}
+              {stockText(item.stock)} · {STATUS_LINE[listStatus(item)]}
             </Dialog.Description>
           </span>
         </div>

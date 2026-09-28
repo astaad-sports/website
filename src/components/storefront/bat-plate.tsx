@@ -5,7 +5,7 @@ import { ShoppingCart } from "lucide-react";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
-import { BAT_IMAGE, DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
+import { BAT_IMAGE } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ export function BatCard({ bat }: { bat: StoreBat }) {
           View bat
         </Button>
         <AddToCartButton
-          item={batCartItem(bat.slug, DEFAULT_BAT_CONFIG, 1, bat.customization)}
+          item={batCartItem(bat)}
           productName={`Astaad ${bat.name}`}
           soldOut={bat.soldOut}
           variant="secondary"
@@ -180,7 +180,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
       </div>
       <div className="flex gap-3">
         <AddToCartButton
-          item={batCartItem(bat.slug, DEFAULT_BAT_CONFIG, 1, bat.customization)}
+          item={batCartItem(bat)}
           productName={`Astaad ${bat.name}`}
           soldOut={bat.soldOut}
           className="h-12 flex-1 rounded-xs font-bold"

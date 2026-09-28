@@ -33,7 +33,8 @@ Postgres on [Neon](https://neon.com), queried with [Drizzle ORM](https://orm.dri
 - **Order history**: `/account` lists paid orders and `/account/orders/<number>` shows one, which is also the confirmation page after paying. Orders are numbered from AST-10001, and money is stored in paise.
 - Keep **automatic capture** on in Razorpay (Account & Settings, Payment capture). The store treats a verified payment as paid and has no manual capture step.
 - **Test accounts**: sign up on `/login` with any email and add it to `TEST_ACCOUNT_EMAILS`. That account shops, applies offers and pays like a customer, but its orders are test orders: Razorpay opens in test mode (pay with the UPI ID `success@razorpay`), stock is never taken, and the admin lists them only under the **Test** filter in `/admin/orders`, marked not to ship. Test orders use `RAZORPAY_TEST_KEY_ID` and `RAZORPAY_TEST_KEY_SECRET`, or the main keys while those are test keys; they never use live keys, and a test payment can never mark a real order paid.
-- Not built yet: cash on delivery, stock levels and order emails.
+- **Sizes and stock**: each product is sold in the sizes ticked for it in the admin's product editor (and, for pads and gloves, left and right hand), from the lists in [`src/lib/catalogue.ts`](src/lib/catalogue.ts). Each size and hand has its own stock count, set in the editor or on `/admin/inventory`: `products.variant_stock` holds them and `products.stock` their total. The store strikes through a size with none left, and a paid order takes each item from the size and hand that was bought (`order_items.variant`). The rules are in [`src/lib/products/variants.ts`](src/lib/products/variants.ts).
+- Not built yet: cash on delivery and order emails.
 
 ### Shipping with Trackon
 

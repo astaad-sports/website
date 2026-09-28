@@ -7,15 +7,11 @@ import type { BatCustomization } from "@/db/schema";
 import {
   BAT_HANDLES,
   BAT_PROFILES,
-  BAT_SIZES,
   BAT_TOES,
   BAT_WEIGHTS,
-  DEFAULT_BAT_CONFIG,
   ENGRAVING_MAX,
-  GEAR_CATEGORY_CONTENT,
   HANDS,
   type BatConfig,
-  type GearProduct,
   type Hand,
 } from "./catalogue";
 import {
@@ -27,13 +23,14 @@ import {
   type OfferTarget,
 } from "./offers/model";
 import {
-  FULL_CUSTOMIZATION,
   MAX_SLUG_LENGTH,
+  standardBatConfig,
   startingBatConfig,
   type StoreBat,
   type StoreCatalogue,
   type StoreGear,
 } from "./products/model";
+import { findVariant, startingVariant, variantSoldOut, type Sellable } from "./products/variants";
 
 export const MAX_QUANTITY = 10;
 export const MAX_LINES = 20;
@@ -48,7 +45,7 @@ const batItemSchema = z.object({
   kind: z.literal("bat"),
   slug: z.string().max(MAX_SLUG_LENGTH),
   options: z.object({
-    /** A BAT_SIZES code, e.g. "SH". */
+    /** A size code the bat is sold in, e.g. "SH". */
     size: z.string().max(8),
     /** BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES labels. */
     weight: z.string().max(40),
@@ -106,12 +103,14 @@ export interface PricedLine {
   offer: LineOffer | null;
   lineTotalPaise: number;
   /**
-   * Why this line cannot be bought right now: the product is out of stock, or
-   * the cart asks for more than are left. Null when it can.
+   * Why this line cannot be bought right now: its size and hand is out of
+   * stock, or the cart asks for more than are left. Null when it can.
    */
   problem: "sold_out" | "not_enough" | null;
-  /** Counted stock for this product, or null when it is not counted. */
+  /** Counted stock of this size and hand, or null when the product is not counted. */
   stockLeft: number | null;
+  /** The size and hand as a variant key: whose stock the order is taken from. */
+  variant: string;
 }
 
 /** The offer behind a line's price: one that applies by itself, or the customer's coupon (`code`). */
@@ -168,28 +167,30 @@ export function lineKey(item: CartItem): string {
   return `${item.kind}:${item.slug}:${JSON.stringify(options)}`;
 }
 
+/** What a cart item is built from: the bat's build options and the sizes it is sold in. */
+export type BatForCart = Pick<StoreBat, "slug" | "customization"> & Sellable;
+
+/** What a gear cart item is built from: the sizes and hands it is sold in. */
+export type GearForCart = Pick<StoreGear, "slug"> & Sellable;
+
 /**
- * A bat as configured in a builder, or the standard build. Options the bat
+ * A bat as configured in a builder, or its standard build. Options the bat
  * does not offer are left out (a bat that cannot be customised is sold in its
  * standard build, choosing only the size); a choice it no longer offers falls
- * back to the first one it does.
+ * back to the first one it does, and a size it is not sold in to its usual one.
  */
-export function batCartItem(
-  slug: string,
-  config: BatConfig = DEFAULT_BAT_CONFIG,
-  qty = 1,
-  customization: BatCustomization = FULL_CUSTOMIZATION
-): BatCartItem {
+export function batCartItem(bat: BatForCart, config: BatConfig = standardBatConfig(bat), qty = 1): BatCartItem {
   const pick = (labels: string[], allowed: string[], index: number) => {
     const label = labels[index];
     return label && allowed.includes(label) ? label : (allowed[0] ?? "");
   };
+  const { slug, customization } = bat;
   const on = customization.enabled;
   return {
     kind: "bat",
     slug,
     options: {
-      size: BAT_SIZES[config.size]?.code ?? "",
+      size: (findVariant(bat, config.size) ?? startingVariant(bat)).size ?? "",
       weight: on ? pick(BAT_WEIGHTS.map((entry) => entry.label), customization.weights, config.weight) : "",
       profile: on ? pick(BAT_PROFILES.map((entry) => entry.label), customization.profiles, config.profile) : "",
       toe: on && customization.toes.length ? pick(BAT_TOES.map((entry) => entry.label), customization.toes, config.toe) : undefined,
@@ -202,20 +203,21 @@ export function batCartItem(
   };
 }
 
-/** A gear product with its size and hand, defaulting to the category's usual choice. */
+/**
+ * A gear product in the size and hand chosen, or the one its pickers start on
+ * (see startingVariant). A product sold one way takes neither.
+ */
 export function gearCartItem(
-  product: Pick<GearProduct, "slug" | "categorySlug">,
-  choice: { size?: string; hand?: Hand } = {},
+  product: GearForCart,
+  choice: { size?: string | null; hand?: Hand | null } = {},
   qty = 1
 ): GearCartItem {
-  const content = GEAR_CATEGORY_CONTENT[product.categorySlug];
+  const start = startingVariant(product);
+  const variant = findVariant(product, choice.size ?? start.size, choice.hand ?? start.hand) ?? start;
   return {
     kind: "gear",
     slug: product.slug,
-    options: {
-      size: content.sizes ? (choice.size ?? content.defaultSize ?? content.sizes[0]) : undefined,
-      hand: content.hands ? (choice.hand ?? HANDS[0]) : undefined,
-    },
+    options: { size: variant.size ?? undefined, hand: variant.hand ?? undefined },
     quantity: qty,
   };
 }
@@ -256,8 +258,10 @@ function batOptionsValid(options: BatCartItem["options"], customization: BatCust
 function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | null {
   const bat = catalogue.bats.find((entry) => entry.slug === item.slug);
   const { options } = item;
-  const size = BAT_SIZES.find((entry) => entry.code === options.size);
-  if (!bat || !size || !batOptionsValid(options, bat.customization)) return null;
+  // The size must be one this bat is sold in.
+  const variant = bat && findVariant(bat, options.size);
+  if (!bat || !variant || !batOptionsValid(options, bat.customization)) return null;
+  const size = variant.sizeLabel ?? "";
   const custom = bat.customization.enabled;
   // A cart saved before toe shapes existed gets the toe the builder starts on.
   const toe =
@@ -272,7 +276,7 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
     image: bat.images[0],
     options: [
       { label: "Willow", value: bat.grade },
-      { label: "Size", value: size.label },
+      { label: "Size", value: size },
       ...(options.weight ? [{ label: "Weight", value: options.weight }] : []),
       ...(options.profile ? [{ label: "Profile", value: options.profile }] : []),
       ...(toe ? [{ label: "Toe", value: toe }] : []),
@@ -282,7 +286,7 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
       ...(custom && bat.customization.scuffSheet ? [{ label: "Scuff sheet", value: options.scuffSheet ? "Yes" : "No" }] : []),
     ],
     summary: [
-      size.label,
+      size,
       options.weight,
       options.profile,
       toe ? `${toe} toe` : null,
@@ -296,21 +300,20 @@ function priceBat(item: BatCartItem, catalogue: StoreCatalogue): PricedFields | 
     // Customisation is included in the price.
     product: bat,
     target: { id: bat.id, category: "bats" },
-    soldOut: bat.soldOut,
-    stockLeft: bat.stockLeft,
+    soldOut: variantSoldOut(bat, variant),
+    stockLeft: variant.left,
+    variant: variant.key,
   };
 }
 
 function priceGear(item: GearCartItem, catalogue: StoreCatalogue): PricedFields | null {
   const product = catalogue.gear.find((entry) => entry.slug === item.slug);
   if (!product) return null;
-  const content = GEAR_CATEGORY_CONTENT[product.categorySlug];
   const { size, hand } = item.options;
 
-  // A sized category needs one of its sizes; an unsized one takes none. Same for hands.
-  const sizeOk = content.sizes ? size !== undefined && content.sizes.includes(size) : size === undefined;
-  const handOk = content.hands ? hand !== undefined : hand === undefined;
-  if (!sizeOk || !handOk) return null;
+  // A sized product needs one of its sizes; an unsized one takes none. Same for hands.
+  const variant = findVariant(product, size, hand);
+  if (!variant || (variant.size ?? undefined) !== size || (variant.hand ?? undefined) !== hand) return null;
 
   return {
     name: `Astaad ${product.name}`,
@@ -323,8 +326,9 @@ function priceGear(item: GearCartItem, catalogue: StoreCatalogue): PricedFields 
     summary: [size, hand].filter(Boolean).join(" \u00b7 "),
     product,
     target: { id: product.id, category: product.categorySlug },
-    soldOut: product.soldOut,
-    stockLeft: product.stockLeft,
+    soldOut: variantSoldOut(product, variant),
+    stockLeft: variant.left,
+    variant: variant.key,
   };
 }
 
@@ -369,7 +373,8 @@ function unitPrice(
 
 /**
  * Resolve one item against the catalogue, or null if it no longer matches.
- * Stock is judged for this line alone; priceCart also adds up lines of the same product.
+ * Stock is judged for this line alone; priceCart also adds up lines of the
+ * same product in the same size and hand.
  */
 export function priceCartItem(
   item: CartItem,
@@ -416,7 +421,7 @@ function couponCovers(coupon: AppliedCoupon, lines: PricedLine[], catalogue: Sto
  * Price a whole cart, with the customer's coupon if they entered one. Lines
  * that no longer match the catalogue are dropped and counted; lines that
  * match but cannot be bought now (sold out, or more than are left across all
- * lines of that product) are kept and flagged.
+ * lines of that product, size and hand) are kept and flagged.
  */
 export function priceCart(
   items: CartItem[],
@@ -433,11 +438,12 @@ export function priceCart(
     else invalid += 1;
   }
 
-  // Different builds of one bat share its stock.
+  // Different builds of one bat in one size share that size's stock.
+  const stockKey = (line: PricedLine) => `${line.item.slug}\n${line.variant}`;
   const wanted = new Map<string, number>();
-  for (const line of lines) wanted.set(line.item.slug, (wanted.get(line.item.slug) ?? 0) + line.item.quantity);
+  for (const line of lines) wanted.set(stockKey(line), (wanted.get(stockKey(line)) ?? 0) + line.item.quantity);
   for (const line of lines) {
-    if (!line.problem && line.stockLeft !== null && (wanted.get(line.item.slug) ?? 0) > line.stockLeft) {
+    if (!line.problem && line.stockLeft !== null && (wanted.get(stockKey(line)) ?? 0) > line.stockLeft) {
       line.problem = "not_enough";
     }
   }

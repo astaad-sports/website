@@ -1,0 +1,183 @@
+import { describe, expect, test } from "bun:test";
+
+import { findStoreBat, findStoreGear, seedProductRows, standardBatConfig, toStoreCatalogue, type ProductWithImages } from "./model";
+import {
+  countedStock,
+  countsFor,
+  defaultOffered,
+  hasVariantOut,
+  productVariants,
+  sameCounts,
+  sizeOptions,
+  sizeSoldOut,
+  startingVariant,
+  stockColumns,
+  takeFromCounts,
+  variantCounts,
+  variantNote,
+} from "./variants";
+
+const row = (slug: string, changes: Partial<ProductWithImages> = {}): ProductWithImages => ({
+  ...seedProductRows().find((entry) => entry.slug === slug)!,
+  ...changes,
+});
+const keys = (product: ProductWithImages) => productVariants(product).map((variant) => variant.key);
+const labels = (product: ProductWithImages) => productVariants(product).map((variant) => variant.label);
+
+describe("what a product is sold in", () => {
+  test("each kind of product has its own sizes to pick from", () => {
+    expect(sizeOptions("bats", "english-willow").map((size) => size.code)).toEqual(["6", "H", "SH", "LH"]);
+    expect(sizeOptions("bats", "kashmir-willow").map((size) => size.code)).toEqual(["6", "H", "SH", "LH"]);
+    expect(sizeOptions("bats", "tennis-bats").map((size) => [size.label, size.hint])).toEqual([
+      ["Full Size", "35 inches long"],
+      ["SH / Standard", "33.5 inches long"],
+    ]);
+    expect(sizeOptions("helmets", null).map((size) => size.code)).toEqual(["Small", "Medium", "Large", "XL"]);
+    expect(sizeOptions("cricket-kitbags", null)).toEqual([]);
+  });
+
+  test("a new product starts with its kind's usual sizes", () => {
+    expect(defaultOffered("bats", "english-willow")).toEqual({ sizes: ["6", "H", "SH", "LH"], hands: false });
+    expect(defaultOffered("bats", "kashmir-willow")).toEqual({ sizes: ["SH"], hands: false });
+    expect(defaultOffered("bats", "tennis-bats")).toEqual({ sizes: ["FS", "SH"], hands: false });
+    expect(defaultOffered("batting-gloves", null)).toEqual({ sizes: ["Men’s"], hands: true });
+    expect(defaultOffered("helmets", null)).toEqual({ sizes: ["Medium", "Large", "XL"], hands: false });
+    expect(defaultOffered("cricket-kitbags", null)).toEqual({ sizes: [], hands: false });
+  });
+
+  test("a variant is one size and hand; with one size the hand alone names it", () => {
+    const gloves = row("elite-batting-gloves");
+    expect(keys(gloves)).toEqual(["Men’s|Right hand", "Men’s|Left hand"]);
+    expect(labels(gloves)).toEqual(["Right hand", "Left hand"]);
+    const pads = row("pro-batting-pads");
+    expect(labels(pads)).toEqual([
+      "Boys · Right hand",
+      "Boys · Left hand",
+      "Youth · Right hand",
+      "Youth · Left hand",
+      "Men’s · Right hand",
+      "Men’s · Left hand",
+    ]);
+    expect(keys(row("club-cricket-helmet"))).toEqual(["Medium", "Large", "XL"]);
+    expect(labels(row("run-machine"))).toEqual(["Size 6", "H / Harrow", "SH / Full Size", "LH / Long Handle"]);
+    expect(productVariants(row("pro-cricket-kitbag"))).toEqual([{ key: "", size: null, sizeLabel: null, hand: null, label: "" }]);
+  });
+
+  test("unknown sizes are dropped, a bat always has a size, and only pads and gloves have hands", () => {
+    expect(keys(row("club-cricket-helmet", { sizes: ["XL", "Huge", "Medium"], hands: true }))).toEqual(["Medium", "XL"]);
+    expect(keys(row("run-machine", { sizes: [] }))).toEqual(["SH"]);
+    expect(keys(row("run-machine", { sizes: ["FS"] }))).toEqual(["SH"]);
+    expect(keys(row("elite-batting-gloves", { sizes: [], hands: true }))).toEqual(["Right hand", "Left hand"]);
+  });
+});
+
+describe("stock by size and hand", () => {
+  test("an uncounted product has no counts", () => {
+    expect(variantCounts(row("club-cricket-helmet"))).toBeNull();
+    expect(countedStock(row("club-cricket-helmet"))).toBeNull();
+  });
+
+  test("each variant has its count; one without has 0, and they add up", () => {
+    const helmet = row("club-cricket-helmet", { stock: 5, variantStock: { Medium: 2, XL: 3, Small: 9 } });
+    expect(variantCounts(helmet)).toEqual({ Medium: 2, Large: 0, XL: 3 });
+    expect(countedStock(helmet)).toBe(5);
+  });
+
+  test("a product sold one way keeps its count in stock alone", () => {
+    expect(variantCounts(row("pro-cricket-kitbag", { stock: 4 }))).toEqual({ "": 4 });
+    expect(stockColumns(row("pro-cricket-kitbag"), { "": 4 })).toEqual({ stock: 4, variantStock: {} });
+    expect(variantCounts(row("run-machine", { sizes: ["SH"], stock: 2 }))).toEqual({ SH: 2 });
+  });
+
+  test("a count taken before the product had sizes is of its usual one", () => {
+    expect(variantCounts(row("run-machine", { stock: 2 }))).toEqual({ "6": 0, H: 0, SH: 2, LH: 0 });
+    expect(variantCounts(row("elite-batting-gloves", { stock: 1 }))).toEqual({ "Men’s|Right hand": 1, "Men’s|Left hand": 0 });
+    expect(variantCounts(row("club-cricket-helmet", { stock: 3 }))).toEqual({ Medium: 3, Large: 0, XL: 0 });
+  });
+
+  test("the columns to store: the total, and each count of a product sold in several", () => {
+    const helmet = row("club-cricket-helmet");
+    expect(stockColumns(helmet, { Medium: 2, XL: 3 })).toEqual({ stock: 5, variantStock: { Medium: 2, Large: 0, XL: 3 } });
+    expect(stockColumns(helmet, null)).toEqual({ stock: null, variantStock: {} });
+    expect(countsFor(helmet, { Medium: 1.9, Large: -2, Small: 4 })).toEqual({ Medium: 1, Large: 0, XL: 0 });
+  });
+
+  test("counts are the same only with the same variants and numbers", () => {
+    expect(sameCounts(null, null)).toBe(true);
+    expect(sameCounts(null, { SH: 0 })).toBe(false);
+    expect(sameCounts({ Medium: 2, Large: 0 }, { Large: 0, Medium: 2 })).toBe(true);
+    expect(sameCounts({ Medium: 2, Large: 0 }, { Medium: 2 })).toBe(false);
+    expect(sameCounts({ Medium: 2 }, { Medium: 1 })).toBe(false);
+  });
+
+  test("a size that ran out while others are on sale is flagged", () => {
+    expect(hasVariantOut({ Medium: 2, Large: 0, XL: 3 })).toBe(true);
+    expect(hasVariantOut({ Medium: 2, Large: 1 })).toBe(false);
+    expect(hasVariantOut({ Medium: 0, Large: 0 })).toBe(false);
+    expect(hasVariantOut(null)).toBe(false);
+  });
+});
+
+describe("taking an order out of stock", () => {
+  test("it comes out of the size that was bought, never below 0", () => {
+    const counts = { Medium: 2, Large: 0, XL: 3 };
+    expect(takeFromCounts(counts, "XL", 2)).toBe(0);
+    expect(takeFromCounts(counts, "Medium", 3)).toBe(1);
+    expect(takeFromCounts(counts, "Large", 1)).toBe(1);
+    expect(counts).toEqual({ Medium: 0, Large: 0, XL: 1 });
+  });
+
+  test("an order that names no size (or one no longer sold) comes out of whichever has the most", () => {
+    const counts = { Medium: 1, Large: 0, XL: 3 };
+    expect(takeFromCounts(counts, null, 2)).toBe(0);
+    expect(counts).toEqual({ Medium: 1, Large: 0, XL: 1 });
+    expect(takeFromCounts(counts, "Small", 3)).toBe(1);
+    expect(counts).toEqual({ Medium: 0, Large: 0, XL: 0 });
+  });
+});
+
+describe("on the store", () => {
+  const catalogueWith = (changes: Record<string, Partial<ProductWithImages>>) =>
+    toStoreCatalogue(seedProductRows().map((entry) => ({ ...entry, ...changes[entry.slug] })));
+
+  test("a picker starts on the usual size and hand", () => {
+    const catalogue = catalogueWith({});
+    expect(startingVariant(findStoreBat(catalogue, "goat")!).key).toBe("SH");
+    expect(startingVariant(findStoreGear(catalogue, "helmets", "club-cricket-helmet")!).key).toBe("Medium");
+    expect(startingVariant(findStoreGear(catalogue, "batting-gloves", "elite-batting-gloves")!).key).toBe("Men’s|Right hand");
+    expect(startingVariant(findStoreGear(catalogue, "cricket-kitbags", "pro-cricket-kitbag")!).key).toBe("");
+  });
+
+  test("when the usual one has run out, it starts on the first that can be bought", () => {
+    const catalogue = catalogueWith({
+      goat: { stock: 1, variantStock: { LH: 1 } },
+      "club-cricket-helmet": { stock: 3, variantStock: { XL: 3 } },
+      "pro-batting-pads": { stock: 1, variantStock: { "Men’s|Left hand": 1, "Boys|Right hand": 0 } },
+    });
+    const goat = findStoreBat(catalogue, "goat")!;
+    expect(startingVariant(goat).key).toBe("LH");
+    expect(standardBatConfig(goat).size).toBe("LH");
+    expect(sizeSoldOut(goat, "SH")).toBe(true);
+    expect(sizeSoldOut(goat, "LH")).toBe(false);
+    expect(startingVariant(findStoreGear(catalogue, "helmets", "club-cricket-helmet")!).key).toBe("XL");
+    // The usual size in the other hand comes before another size.
+    expect(startingVariant(findStoreGear(catalogue, "batting-pads", "pro-batting-pads")!).key).toBe("Men’s|Left hand");
+  });
+
+  test("a product with nothing left starts on the usual one all the same", () => {
+    const catalogue = catalogueWith({ goat: { stock: 0, availability: "out_of_stock" } });
+    const goat = findStoreBat(catalogue, "goat")!;
+    expect(goat.soldOut).toBe(true);
+    expect(startingVariant(goat).key).toBe("SH");
+  });
+
+  test("the chosen size says when it is running low or has run out", () => {
+    const catalogue = catalogueWith({ "club-cricket-helmet": { stock: 12, variantStock: { Medium: 2, XL: 10 } } });
+    const helmet = findStoreGear(catalogue, "helmets", "club-cricket-helmet")!;
+    const variant = (size: string) => helmet.variants.find((entry) => entry.size === size);
+    expect(helmet.stockStatus).toBe("in");
+    expect(variantNote(helmet, variant("Medium"))).toBe("Only 2 left");
+    expect(variantNote(helmet, variant("Large"))).toBe("Out of stock");
+    expect(variantNote(helmet, variant("XL"))).toBeNull();
+  });
+});

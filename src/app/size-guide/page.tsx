@@ -16,6 +16,8 @@ import {
   getCategory,
   type BatOption,
 } from "@/lib/catalogue";
+import { getStoreCatalogue } from "@/lib/products/catalogue";
+import { categoryOffered, type StoreCatalogue } from "@/lib/products/model";
 
 export const metadata: Metadata = {
   title: "Size guide",
@@ -25,13 +27,19 @@ export const metadata: Metadata = {
 
 const CARD = "flex flex-col gap-5 rounded-md border border-border bg-surface-raised p-6 shadow-card md:p-8";
 
-/** The sized gear categories, with their names, shop links and sizing copy from the catalogue. */
-const SIZED_GEAR = GEAR_CATEGORY_SLUGS.flatMap((slug) => {
-  const content = GEAR_CATEGORY_CONTENT[slug];
-  const category = getCategory(slug);
-  if (!content.sizes || !content.sizing || !category) return [];
-  return [{ slug, name: category.name, href: category.href, sizes: content.sizes, sizing: content.sizing, hands: content.hands }];
-});
+/**
+ * The sized gear categories, with their names, shop links and sizing copy,
+ * in the sizes their products are on sale in.
+ */
+function sizedGear(catalogue: StoreCatalogue) {
+  return GEAR_CATEGORY_SLUGS.flatMap((slug) => {
+    const content = GEAR_CATEGORY_CONTENT[slug];
+    const category = getCategory(slug);
+    const offered = categoryOffered(catalogue, slug);
+    if (!content.sizing || !category || offered.sizes.length === 0) return [];
+    return [{ slug, name: category.name, href: category.href, sizes: offered.sizes, sizing: content.sizing(offered), hands: offered.hands }];
+  });
+}
 
 const BAT_CHOICES: { title: string; options: BatOption[] }[] = [
   { title: "Weight", options: BAT_WEIGHTS },
@@ -45,7 +53,8 @@ const BAT_CHOICES: { title: string; options: BatOption[] }[] = [
  * lengths, and the silhouettes), the builder's weight, profile, toe and
  * handle choices, then pads, gloves and helmets from their category copy.
  */
-export default function SizeGuidePage() {
+export default async function SizeGuidePage() {
+  const SIZED_GEAR = sizedGear(await getStoreCatalogue());
   const jumpLinks = [{ id: "bats", name: "Bats" }, ...SIZED_GEAR.map((gear) => ({ id: gear.slug, name: gear.name }))];
 
   return (

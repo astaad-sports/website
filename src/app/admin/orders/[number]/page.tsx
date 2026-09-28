@@ -24,6 +24,7 @@ import {
 } from "@/lib/format";
 import { isFulfilmentStatus } from "@/lib/orders/fulfilment";
 import { productImage } from "@/lib/orders/product-image";
+import { shortfallName } from "@/lib/products/variants";
 import { defaultCarrier } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
 import { cn } from "@/lib/utils";
@@ -138,7 +139,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
             <span>
               Paid while out of stock:{" "}
               {order.stockShortfall
-                .map((line) => `${line.name} (${line.missing} more than you had)`)
+                .map((line) => `${shortfallName(line)} (${line.missing} more than you had)`)
                 .join(", ")}
               . Restock before shipping, or contact the customer about a refund.
             </span>

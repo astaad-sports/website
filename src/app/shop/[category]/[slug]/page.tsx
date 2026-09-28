@@ -12,7 +12,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { GEAR_CATEGORY_CONTENT, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
-import { findStoreGear, gearLine } from "@/lib/products/model";
+import { findStoreGear, gearLine, gearOffered } from "@/lib/products/model";
 import { getStoreSettings } from "@/lib/settings/store";
 
 // Products added after the build still render on first visit (dynamicParams is on by default).
@@ -30,7 +30,7 @@ export async function generateMetadata({
   const line = gearLine(product);
   return {
     title: `${product.name} — ${product.category}`,
-    description: `Astaad ${product.name}${line ? `: ${line}` : ""}. ${GEAR_CATEGORY_CONTENT[product.categorySlug].summary}`,
+    description: `Astaad ${product.name}${line ? `: ${line}` : ""}. ${GEAR_CATEGORY_CONTENT[product.categorySlug].summary(gearOffered(product))}`,
   };
 }
 
@@ -48,7 +48,7 @@ export default async function GearPage({ params }: PageProps<"/shop/[category]/[
     <>
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
-        <GearHero product={product} category={category} content={content} delivery={delivery} />
+        <GearHero product={product} category={category} delivery={delivery} />
         <GearDetails product={product} content={content} deliveryFeePaise={delivery.feePaise} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
         <CompleteYourKit

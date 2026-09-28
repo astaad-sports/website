@@ -7,7 +7,7 @@ import { ChevronLeft, CircleAlert, Copy, ExternalLink, LoaderCircle, Trash2 } fr
 
 import type { BatCustomization, Product, ProductAvailability } from "@/db/schema";
 import { duplicate, saveProduct } from "@/lib/products/admin-actions";
-import { parseCount, parseRupees, PRODUCT_LIMITS, type ProductField } from "@/lib/products/editor";
+import { parseCount, parseRupees, PRODUCT_LIMITS, variantStockField, type ProductField } from "@/lib/products/editor";
 import {
   availabilityForSave,
   BAT_SUBCATEGORIES,
@@ -20,17 +20,30 @@ import {
   stockStatus,
   type CategorySlug,
 } from "@/lib/products/model";
+import {
+  canHaveHands,
+  countedStock,
+  defaultOffered,
+  hasVariantOut,
+  offeredSizes,
+  offersHands,
+  productVariants,
+  sizeOptions,
+  totalStock,
+  variantCounts,
+} from "@/lib/products/variants";
 import { cn } from "@/lib/utils";
 
 import { AvailabilityChoice, availabilityNote } from "./availability-choice";
-import { ProductCustomization } from "./product-customization";
+import { ChipGroup, ProductCustomization, Switch } from "./product-customization";
 import { DeleteProductSheet } from "./product-delete";
-import { EditorSection, FieldHelp, SelectField, StockField, TextAreaField, TextField } from "./product-editor-fields";
+import { EditorSection, FieldError, FieldHelp, SelectField, StockField, TextAreaField, TextField } from "./product-editor-fields";
 import { ProductPhotos, type EditorPhoto } from "./product-photos";
 import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
-import { BUTTON_BASE, BUTTON_PRIMARY, BUTTON_SECONDARY, PAGE } from "./styles";
+import { BUTTON_BASE, BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_LABEL, PAGE } from "./styles";
 import { Toast } from "./toast";
+import { countFields, fieldCounts, StockFields, type CountFields } from "./variant-stock";
 
 /** A saved product as the editor needs it. `updatedAt` is in milliseconds, for the save's change check. */
 export type EditorProduct = Pick<
@@ -51,6 +64,9 @@ export type EditorProduct = Pick<
   | "mrpPaise"
   | "sku"
   | "stock"
+  | "sizes"
+  | "hands"
+  | "variantStock"
   | "lowStockThreshold"
   | "availability"
   | "customization"
@@ -81,7 +97,11 @@ interface Values {
   subcategory: string;
   price: string;
   mrp: string;
-  stock: string;
+  /** The sizes it is sold in (codes for bats), and whether it comes left- and right-handed. */
+  sizes: string[];
+  hands: boolean;
+  /** The count of each size and hand, by variant key; one entry for a product sold one way. */
+  counts: CountFields;
   lowStockThreshold: string;
   sku: string;
   /** The admin's choice; what is saved can differ with the stock (see availabilityForSave). */
@@ -100,6 +120,16 @@ function rupees(paise: number | null): string {
   return paise === null ? "" : rupeeFormat.format(Math.round(paise / 100));
 }
 
+/** The willow type, for a bat; gear has none. */
+function subcategoryOf(values: Pick<Values, "category" | "subcategory">): string | null {
+  return values.category === "bats" ? values.subcategory : null;
+}
+
+/** Each size and hand these choices make, named for its stock count. */
+function variantsOf(values: Pick<Values, "category" | "subcategory" | "sizes" | "hands">) {
+  return productVariants({ ...values, subcategory: subcategoryOf(values) }).map(({ key, label }) => ({ key, label }));
+}
+
 function valuesFor(product: EditorProduct | null, category: CategorySlug | null): Values {
   if (!product) {
     return {
@@ -108,7 +138,8 @@ function valuesFor(product: EditorProduct | null, category: CategorySlug | null)
       subcategory: "english-willow",
       price: "",
       mrp: "",
-      stock: "",
+      ...defaultOffered(category ?? "", category === "bats" ? "english-willow" : null),
+      counts: {},
       lowStockThreshold: "3",
       sku: "",
       availability: "available",
@@ -128,7 +159,9 @@ function valuesFor(product: EditorProduct | null, category: CategorySlug | null)
     subcategory: product.subcategory ?? "english-willow",
     price: rupees(product.pricePaise),
     mrp: rupees(product.mrpPaise),
-    stock: product.stock === null ? "" : String(product.stock),
+    sizes: offeredSizes(product).map((size) => size.code),
+    hands: offersHands(product),
+    counts: countFields({ variants: productVariants(product), counts: variantCounts(product) }),
     lowStockThreshold: String(product.lowStockThreshold),
     sku: product.sku ?? "",
     availability: product.availability,
@@ -282,6 +315,15 @@ export function ProductEditor({
     setEdited((current) => (current.has(key) ? current : new Set(current).add(key)));
   }
 
+  // Another category or willow type comes in other sizes, so the sizes start over from its usual ones.
+  function setKind(key: "category" | "subcategory", value: string) {
+    setValues((current) => {
+      const next = { ...current, [key]: value };
+      return { ...next, ...defaultOffered(next.category, subcategoryOf(next)) };
+    });
+    setEdited((current) => new Set(current).add(key).add("sizes").add("hands"));
+  }
+
   /** "7699" reads as "7,699" once the admin leaves the field. */
   function tidyRupees(key: "price" | "mrp") {
     const amount = parseRupees(values[key]);
@@ -301,26 +343,33 @@ export function ProductEditor({
 
   // While a save or duplicate is on its way, the last result's errors are out of date.
   const fieldErrors = saving ? {} : (state.fieldErrors ?? {});
-  const errorFor = (field: ProductField) => (edited.has(field) ? undefined : fieldErrors[field]);
+  // The stock counts are one field to the server, and `counts` here.
+  const errorFor = (field: ProductField) =>
+    edited.has(field === "stock" ? "counts" : field) ? undefined : fieldErrors[field];
   const topError =
     saving || duplicating ? undefined : ((duplicateState.at ?? 0) > (state.at ?? 0) ? duplicateState : state).error;
 
   const kind = values.category === "bats" ? "bat" : values.category ? "gear" : null;
-  const nextStock = countOrNull(values.stock);
+  const sizeChoices = sizeOptions(values.category, subcategoryOf(values));
+  const variants = variantsOf(values);
+  const nextCounts = fieldCounts({ variants }, values.counts);
+  const nextStock = totalStock(nextCounts);
   // Picking an option, even the saved one, is a choice the restock rule must not undo.
   const availabilityChosen = edited.has("availability");
   const shownAvailability = availabilityForSave(
     values.availability,
     saved?.availability ?? null,
-    saved?.stock ?? null,
+    saved ? countedStock(saved) : null,
     nextStock,
     availabilityChosen
   );
-  const liveStatus = stockStatus({
+  const totalStatus = stockStatus({
     availability: shownAvailability,
     stock: nextStock,
     lowStockThreshold: countOrNull(values.lowStockThreshold) ?? saved?.lowStockThreshold ?? 3,
   });
+  // As the product lists show it: a size that ran out reads Low stock while the rest is on sale.
+  const liveStatus = totalStatus === "in" && hasVariantOut(nextCounts) ? "low" : totalStatus;
 
   // A bat stays a bat and gear stays gear, so an existing product only moves within its kind.
   const categoryOptions = CATEGORY_SLUGS.filter((slug) => !saved || (slug === "bats") === (saved.kind === "bat")).map(
@@ -422,7 +471,7 @@ export function ProductEditor({
                 name="category"
                 label="Category"
                 value={values.category}
-                onValueChange={(value) => set("category", value)}
+                onValueChange={(value) => setKind("category", value)}
                 options={categoryOptions}
                 placeholder={saved ? undefined : "Choose a category"}
                 help={categoryHelp}
@@ -434,7 +483,7 @@ export function ProductEditor({
                   name="subcategory"
                   label="Willow type"
                   value={values.subcategory}
-                  onValueChange={(value) => set("subcategory", value)}
+                  onValueChange={(value) => setKind("subcategory", value)}
                   options={BAT_SUBCATEGORIES.map((entry) => ({ value: entry.slug, label: entry.name }))}
                   error={errorFor("subcategory")}
                 />
@@ -479,15 +528,85 @@ export function ProductEditor({
         </div>
 
         <div className="flex min-w-0 flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          {(sizeChoices.length > 0 || canHaveHands(values.category)) && (
+            <EditorSection id="sizes-title" title="Sizes">
+              {sizeChoices.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <ChipGroup
+                    id="field-sizes"
+                    label="Sold in"
+                    name="sizes"
+                    options={sizeChoices.map((size) => size.code)}
+                    labels={Object.fromEntries(sizeChoices.map((size) => [size.code, size.label]))}
+                    chosen={values.sizes}
+                    onChange={(sizes) => set("sizes", sizes)}
+                    invalid={Boolean(errorFor("sizes"))}
+                    errorId="sizes-error"
+                  />
+                  {errorFor("sizes") ? (
+                    <FieldError id="sizes-error" message={errorFor("sizes")} />
+                  ) : (
+                    <FieldHelp>
+                      {values.sizes.length === 0 && kind === "gear"
+                        ? "None picked: customers don't choose a size."
+                        : "Customers choose from the sizes you keep selected. Each has its own stock."}
+                    </FieldHelp>
+                  )}
+                </div>
+              )}
+              {canHaveHands(values.category) && (
+                <Switch
+                  name="hands"
+                  label="Left and right hand"
+                  help="Customers choose the hand. Each has its own stock."
+                  checked={values.hands}
+                  onChange={(hands) => set("hands", hands)}
+                />
+              )}
+            </EditorSection>
+          )}
+
           <EditorSection id="inventory-title" title="Inventory">
-            <StockField
-              id="field-stock"
-              label="Stock quantity"
-              value={values.stock}
-              onValueChange={(value) => set("stock", value)}
-              help="Leave empty if you haven't counted it. It stays on sale until it's counted."
-              error={errorFor("stock")}
-            />
+            {variants.length > 1 ? (
+              <div role="group" aria-labelledby="field-stock-label" className="flex flex-col gap-2">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span id="field-stock-label" className={FIELD_LABEL}>
+                    Stock quantity
+                  </span>
+                  <span className="text-[13px] leading-[18px] text-ink-muted tabular-nums">
+                    {nextStock === null ? "Not counted" : `${nextStock} in all`}
+                  </span>
+                </span>
+                <StockFields
+                  id="field-stock"
+                  item={{ variants }}
+                  subject="stock"
+                  fields={values.counts}
+                  onChange={(key, value) => set("counts", { ...values.counts, [key]: value })}
+                  fieldName={variantStockField}
+                  placeholder="–"
+                  invalid={Boolean(errorFor("stock"))}
+                  describedBy={errorFor("stock") ? "field-stock-error" : "field-stock-help"}
+                />
+                {errorFor("stock") ? (
+                  <FieldError id="field-stock-error" message={errorFor("stock")} />
+                ) : (
+                  <FieldHelp id="field-stock-help">
+                    Leave them all empty if you haven&apos;t counted it: it stays on sale until it&apos;s counted. Once
+                    one is filled in, an empty one counts as 0.
+                  </FieldHelp>
+                )}
+              </div>
+            ) : (
+              <StockField
+                id="field-stock"
+                label="Stock quantity"
+                value={values.counts[variants[0].key] ?? ""}
+                onValueChange={(value) => set("counts", { [variants[0].key]: value })}
+                help="Leave empty if you haven't counted it. It stays on sale until it's counted."
+                error={errorFor("stock")}
+              />
+            )}
             <TextField
               id="field-lowStockThreshold"
               name="lowStockThreshold"

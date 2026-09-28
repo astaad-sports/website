@@ -16,9 +16,22 @@ import {
   type Bat,
   type BatConfig,
   type GearCategorySlug,
+  type GearOffered,
   type GearProduct,
 } from "@/lib/catalogue";
 import { bestOffer, offerPrice, type OfferTerms } from "@/lib/offers/model";
+
+import {
+  countedStock,
+  defaultOffered,
+  sizeOptions,
+  startingVariant,
+  storeOffered,
+  type Sellable,
+  type StoreOffered,
+} from "./variants";
+
+export { countInWords, listInWords } from "@/lib/words";
 
 // ---------------------------------------------------------------------------
 // Categories
@@ -249,24 +262,27 @@ function chipPercent(price: number, mrp: number, offer: StoreOffer | null, hasMr
   return percentOff(price, mrp);
 }
 
-export interface StoreBat extends Bat, OfferPricing {
+export interface StoreBat extends Bat, OfferPricing, StoreOffered {
   id: string;
   subcategory: BatSubcategory;
   stockStatus: Exclude<StockStatus, "hidden">;
+  /** Nothing of it can be bought, in any size. One size can run out while the bat stays on sale (see `variants`). */
   soldOut: boolean;
-  /** Counted stock, or null when not counted. */
+  /** Counted stock across its sizes, or null when not counted. */
   stockLeft: number | null;
   images: string[];
   customization: BatCustomization;
 }
 
 /** A gear product as the storefront shows it. */
-export interface StoreGear extends GearProduct, OfferPricing {
+export interface StoreGear extends GearProduct, OfferPricing, StoreOffered {
   id: string;
   /** The "% OFF" chip; 0 when no offer is running. */
   off: number;
   stockStatus: Exclude<StockStatus, "hidden">;
+  /** Nothing of it can be bought, in any size or hand (see `variants` for each one). */
   soldOut: boolean;
+  /** Counted stock across its sizes and hands, or null when not counted. */
   stockLeft: number | null;
   images: string[];
 }
@@ -319,9 +335,15 @@ const GEAR_LAYOUT: Record<GearCategorySlug, Pick<GearProduct, "image" | "imageWi
 
 const rupees = (paise: number) => Math.round(paise / 100);
 
+/** The row's status on the store, judged on the total of its sizes and hands. */
+function storeStock(row: ProductWithImages): { status: Exclude<StockStatus, "hidden">; stockLeft: number | null } {
+  const stockLeft = countedStock(row);
+  return { status: stockStatus({ ...row, stock: stockLeft }) as Exclude<StockStatus, "hidden">, stockLeft };
+}
+
 function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat {
   const seeded = BATS.find((bat) => bat.slug === row.slug);
-  const status = stockStatus(row) as Exclude<StockStatus, "hidden">;
+  const { status, stockLeft } = storeStock(row);
   const { regularPrice, price, offer } = pricing(row, context);
   // With no MRP, an offer is shown against the regular price.
   const mrp = row.mrpPaise ? rupees(row.mrpPaise) : regularPrice;
@@ -347,9 +369,10 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     subcategory: (isBatSubcategory(row.subcategory) ? row.subcategory : "english-willow"),
     stockStatus: status,
     soldOut: status === "out",
-    stockLeft: row.stock,
+    stockLeft,
     images: images.length ? images : [BAT_IMAGE],
     customization: customizationFor(row.kind, row.subcategory, row.customization),
+    ...storeOffered(row),
   };
 }
 
@@ -357,7 +380,7 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
   const category = row.category as GearCategorySlug;
   const seeded = GEAR.find((item) => item.slug === row.slug);
   const layout = seeded ?? GEAR_LAYOUT[category];
-  const status = stockStatus(row) as Exclude<StockStatus, "hidden">;
+  const { status, stockLeft } = storeStock(row);
   const images = [...row.images].sort((a, b) => a.position - b.position).map((image) => image.url);
   const { regularPrice, price, offer } = pricing(row, context);
   const mrp = row.mrpPaise ? rupees(row.mrpPaise) : regularPrice;
@@ -385,8 +408,9 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
     featured: row.featured,
     stockStatus: status,
     soldOut: status === "out",
-    stockLeft: row.stock,
+    stockLeft,
     images: images.length ? images : [layout.image],
+    ...storeOffered(row),
   };
 }
 
@@ -398,7 +422,7 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
  */
 export function toStoreCatalogue(rows: ProductWithImages[], context: CatalogueContext = {}): StoreCatalogue {
   const visible = rows
-    .filter((row) => stockStatus(row) !== "hidden" && row.pricePaise > 0)
+    .filter((row) => row.availability !== "hidden" && row.pricePaise > 0)
     .sort(
       (a, b) =>
         CATEGORY_SLUGS.indexOf(a.category as CategorySlug) - CATEGORY_SLUGS.indexOf(b.category as CategorySlug) ||
@@ -430,6 +454,9 @@ export function seedProductRows(): ProductWithImages[] {
     mrpPaise: null,
     sku: null,
     stock: null,
+    sizes: [] as string[],
+    hands: false,
+    variantStock: {},
     lowStockThreshold: 3,
     availability: "available" as const,
     customization: null,
@@ -445,6 +472,7 @@ export function seedProductRows(): ProductWithImages[] {
     kind: "bat",
     category: "bats",
     subcategory: "english-willow",
+    ...defaultOffered("bats", "english-willow"),
     name: bat.name,
     tagline: bat.tagline ?? null,
     grade: bat.grade,
@@ -463,6 +491,7 @@ export function seedProductRows(): ProductWithImages[] {
     slug: item.slug,
     kind: "gear",
     category: item.categorySlug,
+    ...defaultOffered(item.categorySlug, null),
     name: item.name,
     line: item.line,
     note: item.note ?? null,
@@ -563,10 +592,19 @@ export function builderBat(catalogue: StoreCatalogue): StoreBat | undefined {
 }
 
 /**
- * A builder's first choices for a bat: the usual build wherever the bat
+ * A bat's standard build, which its builder starts on and its cart buttons
+ * add: the usual build options (see startingBatConfig), in SH if that can be
+ * bought, otherwise the first size that can.
+ */
+export function standardBatConfig(bat: Pick<StoreBat, "customization"> & Sellable): BatConfig {
+  return { ...startingBatConfig(bat.customization), size: startingVariant(bat).size ?? DEFAULT_BAT_CONFIG.size };
+}
+
+/**
+ * A builder's first choices for a bat's build: the usual one wherever the bat
  * offers it, otherwise the first option it does offer. Indexes still refer to
  * the full BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES lists; extras
- * the bat does not offer start switched off.
+ * the bat does not offer start switched off. The size is left as it is.
  */
 export function startingBatConfig(customization: BatCustomization, base: BatConfig = DEFAULT_BAT_CONFIG): BatConfig {
   const start = (labels: string[], offered: string[], index: number) => {
@@ -592,20 +630,29 @@ export function stockNote(product: Pick<StoreGear, "stockStatus" | "stockLeft">)
   return product.stockStatus === "low" && product.stockLeft !== null ? `Only ${product.stockLeft} left` : null;
 }
 
+/** The sizes (as the customer reads them) and hands a gear product is sold in, for the words about it. */
+export function gearOffered(product: Pick<StoreGear, "sizes" | "hands">): GearOffered {
+  return { sizes: product.sizes.map((size) => size.label), hands: product.hands };
+}
+
+/**
+ * The sizes a gear category is on sale in, across its products, in their
+ * usual order, and whether any comes left- and right-handed. With nothing on
+ * sale, what a new product of the category starts with.
+ */
+export function categoryOffered(catalogue: StoreCatalogue, category: GearCategorySlug): GearOffered {
+  const products = gearInCategory(catalogue, category);
+  if (products.length === 0) return defaultOffered(category, null);
+  const onSale = new Set(products.flatMap((product) => product.sizes.map((size) => size.label)));
+  return {
+    sizes: sizeOptions(category, null)
+      .map((size) => size.label)
+      .filter((label) => onSale.has(label)),
+    hands: products.some((product) => product.hands),
+  };
+}
+
 /** A gear product's range and note on one line, "Elite · Pro sheepskin palm", leaving out whichever is missing. */
 export function gearLine(product: Pick<StoreGear, "line" | "note">): string {
   return [product.line, product.note].filter(Boolean).join(" · ");
-}
-
-const NUMBER_WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
-
-/** 6 → "Six", for headings that count models; beyond twelve, digits. */
-export function countInWords(count: number): string {
-  return NUMBER_WORDS[count] ?? String(count);
-}
-
-/** ["a", "b", "c"] → "a, b and c" (or "a, b or c"). */
-export function listInWords(items: string[], conjunction: "and" | "or" = "and"): string {
-  if (items.length <= 1) return items.join("");
-  return `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
 }

@@ -3,24 +3,26 @@
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 
+import type { VariantStock } from "@/db/schema";
 import { saveStock, saveStocks, type ProductActionState } from "@/lib/products/admin-actions";
-import { availabilityForStock, stockStatus, type StockStatus } from "@/lib/products/model";
+import { availabilityForStock, type StockStatus } from "@/lib/products/model";
+import { sameCounts, totalStock } from "@/lib/products/variants";
 import { cn } from "@/lib/utils";
 
-import { editorHref, ErrorLine, ProductThumb, type ProductListItem } from "./product-row";
+import { editorHref, ErrorLine, hasVariants, listStatus, ProductThumb, variantsOut, type ProductListItem } from "./product-row";
 import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
-import { countValue, StockStepper } from "./stock-stepper";
 import { BUTTON_PRIMARY } from "./styles";
 import { Toast } from "./toast";
+import { countFields, fieldCounts, StockFields, type CountFields } from "./variant-stock";
 
 const safeSaveStock = safeAction(saveStock);
 const safeSaveStocks = safeAction(saveStocks);
 
-/** A count being edited, and the saved count it started from. */
+/** A product's counts being edited, and the saved counts they started from. */
 interface Draft {
-  value: string;
-  base: number | null;
+  fields: CountFields;
+  base: VariantStock | null;
 }
 
 interface RowSaveState extends ProductActionState {
@@ -44,39 +46,53 @@ function focusShown(ids: string[]) {
   }
 }
 
-/** What the store will show once this count is saved. */
-function statusFor(item: ProductListItem, count: number | null): StockStatus {
-  return stockStatus({
-    availability: availabilityForStock(item.availability, item.stock, count),
-    stock: count,
-    lowStockThreshold: item.lowStockThreshold,
-  });
+/** The product as it will be once these counts are saved. */
+function withCounts(item: ProductListItem, counts: VariantStock | null): ProductListItem {
+  const stock = totalStock(counts);
+  return { ...item, counts, stock, availability: availabilityForStock(item.availability, item.stock, stock) };
 }
 
-/** The status, plus "Stock not set" or the count it had before this edit. */
-function StatusLine({ item, count, changed }: { item: ProductListItem; count: number | null; changed: boolean }) {
+/** What the admin will show once these counts are saved. */
+function statusFor(item: ProductListItem, counts: VariantStock | null): StockStatus {
+  return listStatus(withCounts(item, counts));
+}
+
+/**
+ * The status, plus "Stock not set" or the total it had before this edit, and
+ * the sizes and hands that have run out.
+ */
+function StatusLine({ item, counts, changed }: { item: ProductListItem; counts: VariantStock | null; changed: boolean }) {
+  const out = variantsOut(withCounts(item, counts));
+  const note = "text-[13px] leading-[18px] text-ink-muted";
   return (
     <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-      <StockLabel status={statusFor(item, count)} />
+      <StockLabel status={statusFor(item, counts)} />
       {changed ? (
-        <span className="text-[13px] leading-[18px] text-ink-muted tabular-nums">· was {item.stock ?? "not set"}</span>
+        <span className={cn(note, "tabular-nums")}>
+          · was {item.stock ?? "not set"}
+          {hasVariants(item) && item.stock !== null && " in all"}
+        </span>
       ) : (
-        item.stock === null && <span className="text-[13px] leading-[18px] text-ink-muted">· Stock not set</span>
+        item.stock === null && <span className={note}>· Stock not set</span>
       )}
+      {out && <span className={note}>· None left: {out}</span>}
     </span>
   );
 }
 
 interface StockControl {
-  value: string;
-  onChange: (value: string) => void;
+  fields: CountFields;
+  onChange: (key: string, value: string) => void;
   changed: boolean;
   saving: boolean;
   error?: string;
   onSave: () => void;
 }
 
-/** [ − ] n [ + ] and, once the count changed, its Save button. Enter saves too. */
+/**
+ * [ − ] n [ + ] (one for each size and hand of a product sold in several)
+ * and, once a count changed, the Save button. Enter saves too.
+ */
 function StockForm({ item, place, control, children }: { item: ProductListItem; place: Place; control: StockControl; children?: ReactNode }) {
   const id = fieldId(place, item.id);
   const errorId = `${id}-error`;
@@ -87,14 +103,16 @@ function StockForm({ item, place, control, children }: { item: ProductListItem; 
   }
 
   const stepper = (
-    <StockStepper
+    <StockFields
       id={id}
-      value={control.value}
+      item={item}
+      subject={`stock for ${item.name}`}
+      fields={control.fields}
       onChange={control.onChange}
-      label={`stock for ${item.name}`}
       placeholder="–"
       invalid={Boolean(control.error)}
       describedBy={control.error ? errorId : undefined}
+      className="w-full max-w-64"
     />
   );
   const save = control.changed && (
@@ -108,10 +126,13 @@ function StockForm({ item, place, control, children }: { item: ProductListItem; 
     </button>
   );
 
+  // A product sold in several sizes or hands has a column of steppers, with Save under it.
+  const several = hasVariants(item);
+
   if (place === "table") {
     return (
       <form onSubmit={submit} className="flex flex-col gap-1.5 py-2">
-        <span className="flex items-center gap-2">
+        <span className={cn("flex gap-2", several ? "flex-col items-start" : "items-center")}>
           {stepper}
           {save}
         </span>
@@ -121,10 +142,17 @@ function StockForm({ item, place, control, children }: { item: ProductListItem; 
   }
   return (
     <form onSubmit={submit} className="flex flex-col gap-2 py-2.5">
-      <span className="flex min-h-11 items-center gap-3">
-        {children}
-        {stepper}
-      </span>
+      {several ? (
+        <>
+          <span className="flex min-h-11 items-center gap-3">{children}</span>
+          {stepper}
+        </>
+      ) : (
+        <span className="flex min-h-11 items-center gap-3">
+          {children}
+          {stepper}
+        </span>
+      )}
       {save && <span className="flex justify-end">{save}</span>}
       <ErrorLine id={errorId} message={control.error} />
     </form>
@@ -136,7 +164,8 @@ const TD = "h-16 border-b border-border px-3 text-sm leading-5";
 
 /**
  * Every product's stock on one page, the ones needing attention first. Each
- * row has its own stepper and a Save that appears once the count changes;
+ * row has its own stepper (one for each size and hand of a product sold in
+ * several) and a Save that appears once a count changes;
  * with several changes, "Save all changes" saves them together. Rows keep
  * the order they opened in, so a saved row never jumps away.
  */
@@ -148,13 +177,14 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
   };
   const rows = [...items].sort((a, b) => position(a.id) - position(b.id));
 
-  // A draft only counts while the saved count is still the one it started from.
+  // A draft only counts while the saved counts are still the ones it started from.
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const valueOf = (item: ProductListItem) => {
+  const fieldsOf = (item: ProductListItem) => {
     const draft = drafts[item.id];
-    return draft && draft.base === item.stock ? draft.value : (item.stock?.toString() ?? "");
+    return draft && sameCounts(draft.base, item.counts) ? draft.fields : countFields(item);
   };
-  const isChanged = (item: ProductListItem) => countValue(valueOf(item)) !== item.stock;
+  const countsOf = (item: ProductListItem) => fieldCounts(item, fieldsOf(item));
+  const isChanged = (item: ProductListItem) => !sameCounts(countsOf(item), item.counts);
   const changed = rows.filter(isChanged);
 
   const [sending, setSending] = useState<string | null>(null);
@@ -174,15 +204,15 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
     if (allState.saved && first) focusShown([fieldId("list", first), fieldId("table", first)]);
   }, [allState]);
 
-  function change(item: ProductListItem, value: string) {
-    setDrafts((current) => ({ ...current, [item.id]: { value, base: item.stock } }));
+  function change(item: ProductListItem, key: string, value: string) {
+    const fields = { ...fieldsOf(item), [key]: value };
+    setDrafts((current) => ({ ...current, [item.id]: { fields, base: item.counts } }));
   }
 
   function save(item: ProductListItem) {
     const form = new FormData();
     form.set("productId", item.id);
-    form.set("stock", valueOf(item));
-    form.set("from", item.stock?.toString() ?? "");
+    form.set("stock", JSON.stringify({ id: item.id, counts: countsOf(item), from: item.counts }));
     setSending(item.id);
     startTransition(() => saveRow(form));
   }
@@ -200,7 +230,7 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
     const form = new FormData();
     form.set(
       "stocks",
-      JSON.stringify(changed.map((item) => ({ id: item.id, stock: countValue(valueOf(item)), from: item.stock })))
+      JSON.stringify(changed.map((item) => ({ id: item.id, counts: countsOf(item), from: item.counts })))
     );
     startTransition(() => saveAll(form));
   }
@@ -212,8 +242,8 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
     rowState.productId === item.id && rowAt > allAt ? (rowState.fieldErrors?.stock ?? rowState.error) : undefined;
 
   const controlFor = (item: ProductListItem): StockControl => ({
-    value: valueOf(item),
-    onChange: (value) => change(item, value),
+    fields: fieldsOf(item),
+    onChange: (key, value) => change(item, key, value),
     changed: isChanged(item),
     saving: rowPending && sending === item.id,
     error: errorFor(item),
@@ -232,7 +262,7 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
               <StockForm item={item} place="list" control={control}>
                 <Link href={editorHref(item)} className="flex min-w-0 flex-1 flex-col gap-1 rounded-sm">
                   <span className="truncate text-[15px] leading-[22px] font-semibold">{item.name}</span>
-                  <StatusLine item={item} count={countValue(control.value)} changed={control.changed} />
+                  <StatusLine item={item} counts={fieldCounts(item, control.fields)} changed={control.changed} />
                 </Link>
               </StockForm>
             </li>
@@ -272,7 +302,7 @@ export function InventoryList({ items, empty }: { items: ProductListItem[]; empt
                   <StockForm item={item} place="table" control={control} />
                 </td>
                 <td className={TD}>
-                  <StatusLine item={item} count={countValue(control.value)} changed={control.changed} />
+                  <StatusLine item={item} counts={fieldCounts(item, control.fields)} changed={control.changed} />
                 </td>
               </tr>
             );

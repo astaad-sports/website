@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CircleAlert } from "lucide-react";
 
-import type { Product, ProductAvailability } from "@/db/schema";
+import type { Product, ProductAvailability, VariantStock } from "@/db/schema";
 import { BAT_IMAGE, STORE_CATEGORIES } from "@/lib/catalogue";
 import { formatPaise } from "@/lib/format";
 import {
@@ -16,7 +16,9 @@ import {
   subcategoryName,
   type CategorySlug,
   type ProductWithImages,
+  type StockStatus,
 } from "@/lib/products/model";
+import { countedStock, hasVariantOut, productVariants, variantCounts } from "@/lib/products/variants";
 import { cn } from "@/lib/utils";
 
 import { StockLabel } from "./stock-label";
@@ -33,8 +35,12 @@ export interface ProductListItem {
   image: string;
   pricePaise: number;
   mrpPaise: number | null;
-  /** Null until the admin counts it. */
+  /** The total in stock, across its sizes and hands. Null until the admin counts it. */
   stock: number | null;
+  /** Each size and hand it is sold in, named for a stock count: "Large", "Left hand". One entry for a product sold one way. */
+  variants: { key: string; label: string }[];
+  /** The count of each variant, by key. Null until the admin counts it. */
+  counts: VariantStock | null;
   lowStockThreshold: number;
   availability: ProductAvailability;
 }
@@ -61,10 +67,38 @@ export function toProductListItem(product: ProductWithImages): ProductListItem {
     image: primary?.url ?? defaultImage(product.category),
     pricePaise: product.pricePaise,
     mrpPaise: product.mrpPaise,
-    stock: product.stock,
+    stock: countedStock(product),
+    variants: productVariants(product).map(({ key, label }) => ({ key, label })),
+    counts: variantCounts(product),
     lowStockThreshold: product.lowStockThreshold,
     availability: product.availability,
   };
+}
+
+/** A product sold in several sizes or hands, each with its own count. */
+export function hasVariants(item: Pick<ProductListItem, "variants">): boolean {
+  return item.variants.length > 1;
+}
+
+type StockItem = Pick<ProductListItem, "availability" | "stock" | "lowStockThreshold" | "variants" | "counts">;
+
+/** The sizes and hands with none left, for a counted product that still has some: "Large, XL". */
+export function variantsOut(item: Pick<ProductListItem, "variants" | "counts">): string | null {
+  if (!hasVariantOut(item.counts)) return null;
+  return item.variants
+    .filter((variant) => (item.counts?.[variant.key] ?? 0) <= 0)
+    .map((variant) => variant.label)
+    .join(", ");
+}
+
+/**
+ * The status the admin shows for a product: the store's, except that one
+ * with a size or hand that ran out reads Low stock while the rest is on
+ * sale, so it turns up wherever restocking is looked for.
+ */
+export function listStatus(item: StockItem): StockStatus {
+  const status = stockStatus(item);
+  return status === "in" && hasVariantOut(item.counts) ? "low" : status;
 }
 
 /** Store order: categories as the store lists them, then the admin's order within each. */
@@ -91,12 +125,18 @@ export function isStockFilter(value: unknown): value is StockFilter {
   return typeof value === "string" && Object.hasOwn(STOCK_FILTERS, value);
 }
 
-/** Low and out follow the store's status (hidden products are neither); unset means never counted. */
+/**
+ * Low and out follow the store's status (hidden products are neither); unset
+ * means never counted. A product with a size or hand that ran out counts as
+ * low while other sizes are on sale, so it shows where restocking is looked for.
+ */
 export function matchesStockFilter(
-  product: Pick<Product, "availability" | "stock" | "lowStockThreshold">,
+  product: Pick<Product, "availability" | "stock" | "lowStockThreshold" | "category" | "subcategory" | "sizes" | "hands" | "variantStock">,
   filter: StockFilter
 ): boolean {
-  return filter === "unset" ? product.stock === null : stockStatus(product) === filter;
+  if (filter === "unset") return product.stock === null;
+  const status = stockStatus({ ...product, stock: countedStock(product) });
+  return (status === "in" && hasVariantOut(variantCounts(product)) ? "low" : status) === filter;
 }
 
 /**
@@ -159,6 +199,12 @@ export function stockText(stock: number | null): string {
   return stock === null ? "Stock not set" : `Stock: ${stock}`;
 }
 
+/** "Medium 2 · Large 0 · XL 3": each size and hand's count, for a counted product sold in several. */
+export function variantStockText(item: Pick<ProductListItem, "variants" | "counts">): string | null {
+  if (!hasVariants(item) || item.counts === null) return null;
+  return item.variants.map((variant) => `${variant.label} ${item.counts?.[variant.key] ?? 0}`).join(" · ");
+}
+
 /** The count in red at 0 and in bold when low, so the eye finds what needs restocking. */
 export function stockTone(item: Pick<ProductListItem, "stock" | "lowStockThreshold">): string {
   if (item.stock === null) return "text-ink-muted";
@@ -191,7 +237,7 @@ export function ProductResultRow({ item }: { item: ProductListItem }) {
             {item.sku && <span className="font-normal text-ink-muted"> · {item.sku}</span>}
           </span>
         </span>
-        <StockLabel status={stockStatus(item)} className="shrink-0" />
+        <StockLabel status={listStatus(item)} className="shrink-0" />
       </Link>
     </li>
   );

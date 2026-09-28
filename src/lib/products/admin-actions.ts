@@ -25,7 +25,7 @@ import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser } from "@/lib/auth/session";
 
 import { productsChanged } from "./catalogue";
-import { parseCount, parseProductForm, PRODUCT_LIMITS, productColumns, type ProductFieldErrors } from "./editor";
+import { parseProductForm, PRODUCT_LIMITS, productColumns, type ProductFieldErrors } from "./editor";
 import { slugify } from "./model";
 import { removeStoredImage, storeImage } from "./storage";
 
@@ -136,13 +136,6 @@ export async function duplicate(_previous: ProductActionState, form: FormData): 
 // ---------------------------------------------------------------------------
 // Stock and availability
 
-/** An empty field stops counting stock (the product stays on sale). */
-function stockValue(value: FormDataEntryValue | null): number | null | "invalid" {
-  const count = parseCount(typeof value === "string" ? value : "");
-  if (count === null) return null;
-  return Number.isNaN(count) || count > PRODUCT_LIMITS.maxStock ? "invalid" : count;
-}
-
 const STOCK_ERROR = `Enter a whole number from 0 to ${PRODUCT_LIMITS.maxStock}.`;
 const STOCK_CHANGED = "Stock changed since you opened this page, maybe an order was paid. Reload to see it, then save again.";
 
@@ -150,40 +143,45 @@ function stockFailure(reason: "not_found" | "changed"): ProductActionState {
   return failed(reason === "changed" ? STOCK_CHANGED : "This product no longer exists.");
 }
 
+/** The count of each size and hand by variant key, or null for a product that is not counted. */
+const countsOrNull = z.record(z.string().max(80), z.number().int().min(0)).nullable();
+const stockSchema = z.object({ id: z.uuid(), counts: countsOrNull, from: countsOrNull });
+const stocksSchema = z.array(stockSchema).min(1).max(500);
+
+function parseJson(value: FormDataEntryValue | null): unknown {
+  try {
+    return JSON.parse(String(value ?? ""));
+  } catch {
+    return undefined;
+  }
+}
+
+const overLimit = (counts: Record<string, number> | null) =>
+  counts !== null && Object.values(counts).some((count) => count > PRODUCT_LIMITS.maxStock);
+
 /**
- * Restock or correct one product's count, from the Restock sheet or a row.
- * Posts `productId`, `stock` and `from` (the count shown when the admin
- * started, empty when not counted).
+ * Restock or correct one product's counts, from the Restock sheet or a row.
+ * Posts `stock` as JSON: { id, counts, from }, where `counts` has the new
+ * count of each size and hand by variant key (null stops counting the
+ * product, which stays on sale) and `from` the counts shown when the admin started.
  */
 export async function saveStock(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
   if (!(await signedInAdmin())) return NOT_ADMIN;
-  const id = z.uuid().safeParse(form.get("productId"));
-  if (!id.success) return failed(SOMETHING_WRONG);
-  const stock = stockValue(form.get("stock"));
-  if (stock === "invalid") return { fieldErrors: { stock: STOCK_ERROR }, at: Date.now() };
-  const from = stockValue(form.get("from"));
-  if (from === "invalid") return failed(SOMETHING_WRONG);
+  const parsed = stockSchema.safeParse(parseJson(form.get("stock")));
+  if (!parsed.success) return failed(SOMETHING_WRONG);
+  if (overLimit(parsed.data.counts)) return { fieldErrors: { stock: STOCK_ERROR }, at: Date.now() };
 
-  const result = await setProductStocks([{ id: id.data, stock, from }]);
+  const result = await setProductStocks([parsed.data]);
   if (!result.ok) return stockFailure(result.reason);
   productsChanged();
   return done("Stock updated");
 }
 
-const countOrNull = z.number().int().min(0).max(PRODUCT_LIMITS.maxStock).nullable();
-const stocksSchema = z.array(z.object({ id: z.uuid(), stock: countOrNull, from: countOrNull })).min(1).max(500);
-
-/** Save the Inventory page's changed counts at once. Posts `stocks` as JSON: [{ id, stock, from }]. */
+/** Save the Inventory page's changed counts at once. Posts `stocks` as JSON: [{ id, counts, from }] (see saveStock). */
 export async function saveStocks(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
   if (!(await signedInAdmin())) return NOT_ADMIN;
-  let raw: unknown;
-  try {
-    raw = JSON.parse(String(form.get("stocks") ?? ""));
-  } catch {
-    return failed(SOMETHING_WRONG);
-  }
-  const parsed = stocksSchema.safeParse(raw);
-  if (!parsed.success) return failed(SOMETHING_WRONG);
+  const parsed = stocksSchema.safeParse(parseJson(form.get("stocks")));
+  if (!parsed.success || parsed.data.some((entry) => overLimit(entry.counts))) return failed(SOMETHING_WRONG);
 
   const result = await setProductStocks(parsed.data);
   if (!result.ok) return stockFailure(result.reason);

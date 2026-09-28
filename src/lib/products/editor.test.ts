@@ -18,7 +18,7 @@ const BAT = {
   grade: "Grade 4 English Willow",
   price: "7,699",
   mrp: "₹ 10,999",
-  stock: "",
+  sizes: ["6", "H", "SH", "LH"],
   lowStockThreshold: "3",
   sku: "ast-rm g4",
   availability: "available",
@@ -41,9 +41,84 @@ describe("the product editor's fields", () => {
       kind: "bat",
       pricePaise: 769_900,
       mrpPaise: 1_099_900,
+      sizes: ["6", "H", "SH", "LH"],
+      hands: false,
       stock: null,
+      variantStock: {},
       sku: "AST-RM-G4",
       customization: FULL_CUSTOMIZATION,
+    });
+  });
+
+  test("a bat is sold in the sizes ticked, and each has its own count", () => {
+    const parsed = parseProductForm(form({ ...BAT, sizes: ["LH", "SH", "XXL"], "stock:SH": "2", "stock:LH": "" }));
+    expect(parsed.ok && parsed.values).toMatchObject({ sizes: ["SH", "LH"], stock: 2, variantStock: { SH: 2, LH: 0 } });
+
+    const one = parseProductForm(form({ ...BAT, sizes: ["SH"], stock: "4", "stock:SH": "9" }));
+    expect(one.ok && one.values).toMatchObject({ sizes: ["SH"], stock: 4, variantStock: {} });
+
+    const none = parseProductForm(form({ ...BAT, sizes: [] }));
+    expect(!none.ok && none.fieldErrors.sizes).toBe("Pick at least one size.");
+  });
+
+  test("with every count empty the product is not counted; a bad one is reported", () => {
+    const uncounted = parseProductForm(form({ ...BAT, "stock:SH": "", "stock:LH": " " }));
+    expect(uncounted.ok && uncounted.values).toMatchObject({ stock: null, variantStock: {} });
+    const bad = parseProductForm(form({ ...BAT, "stock:SH": "2", "stock:LH": "1.5" }));
+    expect(!bad.ok && Object.keys(bad.fieldErrors)).toEqual(["stock"]);
+  });
+
+  test("tennis bats come in their own two sizes", () => {
+    const parsed = parseProductForm(
+      form({ ...BAT, subcategory: "tennis-bats", sizes: ["FS", "SH", "LH"], "stock:FS": "1", "stock:SH": "3" })
+    );
+    expect(parsed.ok && parsed.values).toMatchObject({
+      sizes: ["FS", "SH"],
+      stock: 4,
+      variantStock: { FS: 1, SH: 3 },
+      customization: NO_CUSTOMIZATION,
+    });
+  });
+
+  test("gloves are counted by hand, helmets by size; only pads and gloves have hands", () => {
+    const gloves = parseProductForm(
+      form({
+        name: "Falcon Pro Gloves",
+        category: "batting-gloves",
+        price: "1899",
+        lowStockThreshold: "3",
+        availability: "available",
+        sizes: ["Men’s"],
+        hands: "on",
+        "stock:Men’s|Right hand": "2",
+        "stock:Men’s|Left hand": "1",
+      })
+    );
+    expect(gloves.ok && gloves.values).toMatchObject({
+      sizes: ["Men’s"],
+      hands: true,
+      stock: 3,
+      variantStock: { "Men’s|Right hand": 2, "Men’s|Left hand": 1 },
+    });
+
+    const helmet = parseProductForm(
+      form({
+        name: "Legacy Pro Helmet",
+        category: "helmets",
+        price: "2499",
+        lowStockThreshold: "3",
+        availability: "available",
+        sizes: ["Medium", "Large", "XL"],
+        hands: "on",
+        "stock:Medium": "2",
+        "stock:XL": "3",
+      })
+    );
+    expect(helmet.ok && helmet.values).toMatchObject({
+      sizes: ["Medium", "Large", "XL"],
+      hands: false,
+      stock: 5,
+      variantStock: { Medium: 2, Large: 0, XL: 3 },
     });
   });
 
@@ -67,7 +142,7 @@ describe("the product editor's fields", () => {
 
   test("missing and malformed fields are reported one by one", () => {
     const parsed = parseProductForm(
-      form({ ...BAT, name: " ", price: "76.99", mrp: "500", stock: "-2", sku: "A/B", availability: "sold" })
+      form({ ...BAT, name: " ", price: "76.99", mrp: "500", "stock:SH": "-2", sku: "A/B", availability: "sold" })
     );
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
@@ -100,7 +175,8 @@ describe("the product editor's fields", () => {
     );
     expect(gear.ok).toBe(true);
     if (!gear.ok) return;
-    expect(gear.values).toMatchObject({ kind: "gear", subcategory: null, grade: null, customization: null, stock: 6 });
+    // No sizes ticked and no hand: sold one way, with one count.
+    expect(gear.values).toMatchObject({ kind: "gear", subcategory: null, grade: null, customization: null, stock: 6, sizes: [], hands: false });
     expect(productColumns(gear.values)).toMatchObject({ note: "Pro sheepskin palm", shortDescription: null, line: "Elite" });
     expect(productColumns(gear.values)).not.toHaveProperty("kind");
   });

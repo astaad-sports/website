@@ -9,7 +9,16 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { gearCartItem } from "@/lib/cart";
-import { HANDS, type GearCategoryContent, type GearProduct, type Hand } from "@/lib/catalogue";
+import { HANDS, type Hand } from "@/lib/catalogue";
+import type { StoreGear } from "@/lib/products/model";
+import { findVariant, sizeSoldOut, startingVariant, variantNote, variantSoldOut } from "@/lib/products/variants";
+
+interface Pill {
+  value: string;
+  label: string;
+  /** None left: shown struck through, and cannot be picked. */
+  soldOut: boolean;
+}
 
 function OptionPills({
   label,
@@ -18,7 +27,7 @@ function OptionPills({
   onChange,
 }: {
   label: string;
-  options: string[];
+  options: Pill[];
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -33,11 +42,13 @@ function OptionPills({
       >
         {options.map((option) => (
           <RadioPrimitive.Root
-            key={option}
-            value={option}
-            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xs border px-5 text-sm leading-5 font-semibold text-foreground transition-colors data-checked:border-surface-dark data-checked:bg-surface-dark data-checked:text-on-dark not-data-checked:border-border not-data-checked:bg-surface-raised not-data-checked:hover:border-border-strong"
+            key={option.value}
+            value={option.value}
+            disabled={option.soldOut}
+            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xs border px-5 text-sm leading-5 font-semibold text-foreground transition-colors data-checked:border-surface-dark data-checked:bg-surface-dark data-checked:text-on-dark data-disabled:cursor-not-allowed data-disabled:text-ink-subtle data-disabled:line-through not-data-checked:border-border not-data-checked:bg-surface-raised not-data-disabled:not-data-checked:hover:border-border-strong"
           >
-            {option}
+            {option.label}
+            {option.soldOut && <span className="sr-only"> (out of stock)</span>}
           </RadioPrimitive.Root>
         ))}
       </RadioGroup>
@@ -45,45 +56,82 @@ function OptionPills({
   );
 }
 
+export type GearOptionsProduct = Pick<
+  StoreGear,
+  "slug" | "name" | "sizes" | "hands" | "variants" | "usualSize" | "soldOut" | "lowStockThreshold"
+>;
+
 /**
- * Size and hand choices (where the category has them), the selection line and
- * Add to cart, which reads "Out of stock" and cannot be pressed when `soldOut`.
+ * Size and hand choices (where the product has them), the selection line and
+ * Add to cart. Each size and hand has its own stock: one with none left is
+ * struck through, and the button reads "Out of stock" and cannot be pressed
+ * when the chosen one cannot be bought.
  */
 export function GearOptions({
   product,
-  soldOut,
-  content,
   categoryName,
   categoryHref,
 }: {
-  product: Pick<GearProduct, "slug" | "categorySlug" | "name">;
-  soldOut: boolean;
-  content: GearCategoryContent;
+  product: GearOptionsProduct;
   categoryName: string;
   categoryHref: string;
 }) {
-  const [size, setSize] = useState(content.defaultSize ?? content.sizes?.[0] ?? "");
-  const [hand, setHand] = useState<Hand>(HANDS[0]);
-  const selection = [content.sizes ? size : null, content.hands ? hand : null].filter(Boolean);
+  const [chosen, setChosen] = useState(() => {
+    const start = startingVariant(product);
+    return { size: start.size, hand: start.hand };
+  });
+  // The product may have changed under the page (a size removed): fall back to where a picker starts.
+  const variant = findVariant(product, chosen.size, chosen.hand) ?? startingVariant(product);
+  const selection = [variant.sizeLabel, variant.hand].filter(Boolean);
+  const note = variantNote(product, variant);
+  // A product with nothing left says so on the button; its sizes stay readable.
+  const mark = !product.soldOut;
+
+  function chooseSize(size: string) {
+    // Keep the hand if this size has it in stock, otherwise the first hand that is.
+    const inSize = product.variants.filter((entry) => entry.size === size);
+    const keep = inSize.find((entry) => entry.hand === variant.hand && !variantSoldOut(product, entry));
+    const next = keep ?? inSize.find((entry) => !variantSoldOut(product, entry)) ?? inSize[0];
+    setChosen({ size, hand: next?.hand ?? null });
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      {content.sizes && (
-        <OptionPills label="Size" options={content.sizes} value={size} onChange={setSize} />
+      {product.sizes.length > 0 && (
+        <OptionPills
+          label="Size"
+          options={product.sizes.map((size) => ({
+            value: size.code,
+            label: size.label,
+            soldOut: mark && sizeSoldOut(product, size.code),
+          }))}
+          value={variant.size ?? ""}
+          onChange={chooseSize}
+        />
       )}
-      {content.hands && (
-        <OptionPills label="Hand" options={[...HANDS]} value={hand} onChange={(value) => setHand(value as Hand)} />
+      {product.hands && (
+        <OptionPills
+          label="Hand"
+          options={HANDS.map((hand) => ({
+            value: hand,
+            label: hand,
+            soldOut: mark && variantSoldOut(product, findVariant(product, variant.size, hand)),
+          }))}
+          value={variant.hand ?? ""}
+          onChange={(hand) => setChosen({ size: variant.size, hand: hand as Hand })}
+        />
       )}
       {selection.length > 0 && (
         <p className="text-[13px] leading-[18px] text-ink-muted">
           Selected: <span className="font-semibold text-foreground">{selection.join(" · ")}</span>
+          {note && !product.soldOut && <span className="font-semibold text-foreground"> · {note}</span>}
         </p>
       )}
       <div className="flex flex-col gap-2.5">
         <AddToCartButton
-          item={gearCartItem(product, { size, hand })}
+          item={gearCartItem(product, variant)}
           productName={`Astaad ${product.name}`}
-          soldOut={soldOut}
+          soldOut={variantSoldOut(product, variant)}
           size="lg"
           className="h-15 w-full rounded-xs text-[15px] font-bold tracking-[0.1em] uppercase"
         >

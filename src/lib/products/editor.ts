@@ -1,7 +1,7 @@
 // The product editor's form: the field names it posts, and how they are
 // checked and turned into a product. Shared by the editor (client) and its
 // Server Action, so both use the same rules and messages.
-import type { BatCustomization, ProductAvailability } from "@/db/schema";
+import type { BatCustomization, ProductAvailability, VariantStock } from "@/db/schema";
 
 import {
   HANDLE_OPTIONS,
@@ -15,6 +15,7 @@ import {
   type BatSubcategory,
   type CategorySlug,
 } from "./model";
+import { canHaveHands, productVariants, sizeOptions, stockColumns } from "./variants";
 
 export const AVAILABILITY_OPTIONS: { value: ProductAvailability; label: string; help: string }[] = [
   { value: "available", label: "Available", help: "Shown on the store and can be bought" },
@@ -49,6 +50,7 @@ export type ProductField =
   | "grade"
   | "price"
   | "mrp"
+  | "sizes"
   | "stock"
   | "lowStockThreshold"
   | "sku"
@@ -58,6 +60,11 @@ export type ProductField =
   | "customization";
 
 export type ProductFieldErrors = Partial<Record<ProductField, string>>;
+
+/** The field a size and hand's stock count posts as, for a product sold in more than one: "stock:Men’s|Left hand". */
+export function variantStockField(key: string): string {
+  return `stock:${key}`;
+}
 
 /** What the editor saves. Money in paise; `stock` null means not counted. */
 export interface ProductValues {
@@ -74,7 +81,13 @@ export interface ProductValues {
   description: string | null;
   pricePaise: number;
   mrpPaise: number | null;
+  /** The sizes it is sold in, and whether it comes left- and right-handed. */
+  sizes: string[];
+  hands: boolean;
+  /** The total of the counts below. */
   stock: number | null;
+  /** The count of each size and hand, for a product sold in more than one. */
+  variantStock: VariantStock;
   lowStockThreshold: number;
   sku: string | null;
   availability: ProductAvailability;
@@ -110,10 +123,14 @@ export function normaliseSku(value: string): string {
 }
 
 /**
- * Check the editor's fields. Field names match ProductField, plus the
- * customisation group: `customEnabled`, `customWeights`, `customProfiles`,
- * `customToes`, `customHandles` (each repeated) and `customEngraving`,
- * `customMatchReady`, `customScuffSheet` (checkboxes).
+ * Check the editor's fields. Field names match ProductField, plus:
+ * - `sizes` (repeated) and `hands` (a checkbox): what the product is sold in.
+ *   A product sold in several sizes or hands posts each one's count as
+ *   `stock:<variant key>` instead of `stock`; an empty one counts as 0 once
+ *   any is filled in, and with all of them empty the product is not counted.
+ * - the customisation group: `customEnabled`, `customWeights`,
+ *   `customProfiles`, `customToes`, `customHandles` (each repeated) and
+ *   `customEngraving`, `customMatchReady`, `customScuffSheet` (checkboxes).
  */
 export function parseProductForm(form: FormData): ParsedProductForm {
   const errors: ProductFieldErrors = {};
@@ -156,10 +173,29 @@ export function parseProductForm(form: FormData): ParsedProductForm {
     else if (price !== null && !Number.isNaN(price) && mrp < price) errors.mrp = "The MRP can't be lower than the price.";
   }
 
-  const stock = parseCount(text(form, "stock"));
-  if (stock !== null && (Number.isNaN(stock) || stock > PRODUCT_LIMITS.maxStock)) {
+  const chosen = (field: string) => form.getAll(field).filter((value): value is string => typeof value === "string");
+
+  // Only sizes this kind of product comes in, in their usual order.
+  const picked = chosen("sizes");
+  const sizes = sizeOptions(category, subcategory)
+    .map((size) => size.code)
+    .filter((code) => picked.includes(code));
+  if (kind === "bat" && sizes.length === 0) errors.sizes = "Pick at least one size.";
+  const hands = canHaveHands(category) && form.get("hands") === "on";
+  const offered = { category, subcategory, sizes, hands };
+
+  const variants = productVariants(offered);
+  const entered = variants.map((variant) =>
+    parseCount(text(form, variants.length === 1 ? "stock" : variantStockField(variant.key)))
+  );
+  if (entered.some((count) => count !== null && (Number.isNaN(count) || count > PRODUCT_LIMITS.maxStock))) {
     errors.stock = `Enter a whole number from 0 to ${PRODUCT_LIMITS.maxStock}, or leave it empty.`;
   }
+  const counted = entered.some((count) => count !== null);
+  const { stock, variantStock } = stockColumns(
+    offered,
+    counted ? Object.fromEntries(variants.map((variant, index) => [variant.key, entered[index] ?? 0])) : null
+  );
 
   const threshold = parseCount(text(form, "lowStockThreshold"));
   if (threshold === null || Number.isNaN(threshold) || threshold > PRODUCT_LIMITS.maxThreshold) {
@@ -177,7 +213,6 @@ export function parseProductForm(form: FormData): ParsedProductForm {
   if (kind === "bat") {
     const enabled = subcategory === "english-willow" && form.get("customEnabled") === "on";
     if (enabled) {
-      const chosen = (field: string) => form.getAll(field).filter((value): value is string => typeof value === "string");
       const weights = chosen("customWeights").filter((value) => WEIGHT_OPTIONS.includes(value));
       const profiles = chosen("customProfiles").filter((value) => PROFILE_OPTIONS.includes(value));
       const handles = chosen("customHandles").filter((value) => HANDLE_OPTIONS.includes(value));
@@ -216,7 +251,10 @@ export function parseProductForm(form: FormData): ParsedProductForm {
       description,
       pricePaise: price! * 100,
       mrpPaise: mrp === null ? null : mrp * 100,
+      sizes,
+      hands,
       stock,
+      variantStock,
       lowStockThreshold: threshold!,
       sku: sku || null,
       availability,

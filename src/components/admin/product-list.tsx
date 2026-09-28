@@ -6,7 +6,6 @@ import { EllipsisVertical, Plus } from "lucide-react";
 
 import type { ProductAvailability } from "@/db/schema";
 import { changeAvailability, duplicate, type ProductActionState } from "@/lib/products/admin-actions";
-import { stockStatus } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { DeleteProductSheet } from "./product-delete";
@@ -15,11 +14,13 @@ import {
   editorHref,
   ErrorLine,
   isRestockable,
+  listStatus,
   menuTriggerId,
   ProductPrice,
   ProductThumb,
   stockText,
   stockTone,
+  variantStockText,
   type ProductListItem,
 } from "./product-row";
 import { RestockForm, type StockSaved } from "./restock";
@@ -104,7 +105,7 @@ function ProductListRow({
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="flex items-center justify-between gap-2">
               <span className="truncate text-[15px] leading-[22px] font-semibold">{item.name}</span>
-              <StockLabel status={stockStatus(item)} className="shrink-0" />
+              <StockLabel status={listStatus(item)} className="shrink-0" />
             </span>
             <span className="truncate text-[13px] leading-[18px] text-ink-muted">{item.detail}</span>
             <span className="mt-0.5 flex flex-wrap items-center justify-between gap-x-2">
@@ -113,6 +114,9 @@ function ProductListRow({
                 {stockText(item.stock)}
               </span>
             </span>
+            {variantStockText(item) && (
+              <span className="text-[13px] leading-[18px] text-ink-muted tabular-nums">{variantStockText(item)}</span>
+            )}
           </span>
         </Link>
         <button
@@ -216,9 +220,11 @@ function ProductTable({
                     {/* The MRP and discount wrap under the price, leaving the name room. */}
                     <ProductPrice pricePaise={item.pricePaise} mrpPaise={item.mrpPaise} className="flex-wrap gap-y-0.5" />
                   </td>
-                  <td className={cn(TD, "tabular-nums", stockTone(item))}>{item.stock ?? "Not set"}</td>
+                  <td className={cn(TD, "tabular-nums", stockTone(item))} title={variantStockText(item) ?? undefined}>
+                    {item.stock ?? "Not set"}
+                  </td>
                   <td className={TD}>
-                    <StockLabel status={stockStatus(item)} />
+                    <StockLabel status={listStatus(item)} />
                   </td>
                   <td className={cn(TD, "pr-0")}>
                     <div className="flex items-center justify-end gap-2">

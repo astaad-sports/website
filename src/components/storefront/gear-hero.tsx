@@ -13,13 +13,10 @@ import {
   type Truck,
 } from "lucide-react";
 
-import {
-  type GearCategoryContent,
-  type GearCategorySlug,
-  type StoreCategory,
-} from "@/lib/catalogue";
+import { type GearCategorySlug, type StoreCategory } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { gearLine, type StoreGear } from "@/lib/products/model";
+import { gearLine, listInWords, type StoreGear } from "@/lib/products/model";
+import { midSentence } from "@/lib/words";
 
 import type { DeliveryTerms } from "./delivery";
 import { Eyebrow } from "./eyebrow";
@@ -29,23 +26,29 @@ import { OfferNote } from "./offer-note";
 import { ProductPromises } from "./product-promises";
 import { StockStatus } from "./stock-status";
 
-const HIGHLIGHTS: Record<GearCategorySlug, { icon: typeof Truck; label: string }[]> = {
+interface Highlight {
+  icon: typeof Truck;
+  label: string;
+}
+
+/** Each category's highlights; "sizes" and "hands" stand for what the product itself is sold in. */
+const HIGHLIGHTS: Record<GearCategorySlug, (Highlight | "sizes" | "hands")[]> = {
   "batting-pads": [
     { icon: ShieldCheck, label: "Leg protection" },
     { icon: Feather, label: "Light on the run" },
-    { icon: Ruler, label: "Boys, youth and men’s" },
-    { icon: ArrowLeftRight, label: "Right or left hand" },
+    "sizes",
+    "hands",
   ],
   "batting-gloves": [
     { icon: Hand, label: "Palm grip" },
     { icon: ShieldCheck, label: "Finger protection" },
-    { icon: Ruler, label: "Boys, youth and men’s" },
-    { icon: ArrowLeftRight, label: "Right or left hand" },
+    "sizes",
+    "hands",
   ],
   helmets: [
     { icon: ShieldCheck, label: "Steel grille" },
     { icon: SlidersHorizontal, label: "Adjustable fit" },
-    { icon: Ruler, label: "Small, medium, large" },
+    "sizes",
     { icon: Feather, label: "Padded liner" },
   ],
   "cricket-kitbags": [
@@ -56,6 +59,24 @@ const HIGHLIGHTS: Record<GearCategorySlug, { icon: typeof Truck; label: string }
   ],
 };
 
+/** "Medium, large and XL", or "Men’s size" for a product sold in one. */
+function sizesLabel(sizes: string[]): string {
+  if (sizes.length === 1) return `${sizes[0]} size`;
+  const [first, ...rest] = sizes;
+  return listInWords([first, ...rest.map(midSentence)]);
+}
+
+/** The category's highlights, with the sizes and hands this product is sold in (left out when it has none). */
+function highlightsFor(product: StoreGear): Highlight[] {
+  return HIGHLIGHTS[product.categorySlug].flatMap((entry) => {
+    if (entry === "sizes") {
+      return product.sizes.length ? [{ icon: Ruler, label: sizesLabel(product.sizes.map((size) => size.label)) }] : [];
+    }
+    if (entry === "hands") return product.hands ? [{ icon: ArrowLeftRight, label: "Right or left hand" }] : [];
+    return [entry];
+  });
+}
+
 /**
  * The gear product hero: the stage on the left; name, stock, price (with any
  * running offer), delivery promises, options and highlights on the right.
@@ -64,12 +85,10 @@ const HIGHLIGHTS: Record<GearCategorySlug, { icon: typeof Truck; label: string }
 export function GearHero({
   product,
   category,
-  content,
   delivery,
 }: {
   product: StoreGear;
   category: StoreCategory;
-  content: GearCategoryContent;
   delivery: DeliveryTerms;
 }) {
   // The % OFF chip and the saving show only while an offer runs; an MRP alone
@@ -126,14 +145,21 @@ export function GearHero({
         </div>
         <ProductPromises delivery={delivery} />
         <GearOptions
-          product={{ slug: product.slug, categorySlug: product.categorySlug, name: product.name }}
-          soldOut={product.soldOut}
-          content={content}
+          product={{
+            slug: product.slug,
+            name: product.name,
+            sizes: product.sizes,
+            hands: product.hands,
+            variants: product.variants,
+            usualSize: product.usualSize,
+            soldOut: product.soldOut,
+            lowStockThreshold: product.lowStockThreshold,
+          }}
           categoryName={category.name}
           categoryHref={category.href}
         />
         <ul aria-label="Highlights" className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3">
-          {HIGHLIGHTS[product.categorySlug].map((item) => (
+          {highlightsFor(product).map((item) => (
             <li key={item.label} className="flex items-center gap-3 text-sm leading-5 font-semibold">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xs bg-surface-sunken">
                 <item.icon className="size-5" strokeWidth={1.5} aria-hidden="true" />

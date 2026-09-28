@@ -60,7 +60,9 @@ function buildCatalogue(inputs: CatalogueInputs, now: Date): StoreCatalogue {
   return toStoreCatalogue(inputs.rows, { offers, deliveryFeePaise: inputs.deliveryFeePaise, now });
 }
 
-const getCatalogueInputs = unstable_cache(loadInputs, ["store-catalogue-inputs"], {
+// The key names what the rows hold: rows cached before products had sizes
+// must not be read by code that expects them.
+const getCatalogueInputs = unstable_cache(loadInputs, ["store-catalogue-inputs", "sizes"], {
   tags: [PRODUCTS_TAG],
   revalidate: CATALOGUE_REVALIDATE,
 });

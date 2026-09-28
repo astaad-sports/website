@@ -16,7 +16,7 @@ import {
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { countInWords, listInWords, startingBatConfig, type StoreBat } from "@/lib/products/model";
+import { countInWords, listInWords, standardBatConfig, type StoreBat } from "@/lib/products/model";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
 import { BladeEngraving } from "./blade-engraving";
@@ -90,7 +90,7 @@ function BuildTeaser({ bat }: { bat: StoreBat }) {
  */
 export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
   const custom = bat.customization;
-  const { config, update } = useBatConfig(startingBatConfig(custom));
+  const { config, update } = useBatConfig(standardBatConfig(bat));
   const engraved = custom.engraving ? config.name.trim() : "";
   const toes = custom.toes.length > 0;
   const chips = [
@@ -220,7 +220,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
             )}
             <div className="flex flex-wrap items-center gap-5">
               <AddToCartButton
-                item={batCartItem(bat.slug, config, 1, custom)}
+                item={batCartItem(bat, config)}
                 productName={`Astaad ${bat.name}`}
                 soldOut={bat.soldOut}
                 size="lg"

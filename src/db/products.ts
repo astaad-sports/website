@@ -4,6 +4,15 @@ import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 
 import { PRODUCT_LIMITS } from "@/lib/products/editor";
 import { availabilityForSave, availabilityForStock, MAX_SLUG_LENGTH, type ProductWithImages } from "@/lib/products/model";
+import {
+  countedStock,
+  productVariants,
+  sameCounts,
+  stockColumns,
+  takeFromCounts,
+  totalStock,
+  variantCounts,
+} from "@/lib/products/variants";
 
 import { getDb } from "./index";
 import {
@@ -16,6 +25,7 @@ import {
   type Product,
   type ProductAvailability,
   type ProductImage,
+  type VariantStock,
 } from "./schema";
 
 export type ProductWithAllImages = Product & { images: ProductImage[] };
@@ -114,7 +124,7 @@ export async function updateProduct(
       const availability = availabilityForSave(
         input.availability ?? current.availability,
         current.availability,
-        current.stock,
+        countedStock(current),
         nextStock,
         availabilityChosen
       );
@@ -144,16 +154,18 @@ export async function setProductAvailability(id: string, availability: ProductAv
   const [current] = await getDb().select().from(products).where(eq(products.id, id)).limit(1);
   if (!current) return { ok: false, reason: "not_found" };
   if (availability !== "hidden" && current.pricePaise <= 0) return { ok: false, reason: "no_price" };
-  if (availability === "available" && current.stock !== null && current.stock <= 0) return { ok: false, reason: "no_stock" };
+  const stock = countedStock(current);
+  if (availability === "available" && stock !== null && stock <= 0) return { ok: false, reason: "no_stock" };
   const [product] = await getDb().update(products).set({ availability }).where(eq(products.id, id)).returning();
   return { ok: true, product };
 }
 
 export type StockWrite = {
   id: string;
-  stock: number | null;
-  /** The count the admin started from; if a sale has changed it since, nothing is written. */
-  from: number | null;
+  /** The new count of each size and hand, by variant key; null stops counting the product. */
+  counts: VariantStock | null;
+  /** The counts the admin started from; if a sale has changed one since, nothing is written. */
+  from: VariantStock | null;
 };
 
 export type StockWriteResult = { ok: true; products: Product[] } | { ok: false; reason: "not_found" | "changed" };
@@ -168,20 +180,24 @@ async function writeStock(tx: Tx, entry: StockWrite): Promise<Product> {
   const [current] = await tx.select().from(products).where(eq(products.id, entry.id)).for("update");
   if (!current) throw new StockConflict("not_found");
   // Counts are absolute, so a sale since the page loaded would be written over.
-  if (current.stock !== entry.from) throw new StockConflict("changed");
-  const availability = availabilityForStock(current.availability, current.stock, entry.stock);
+  // A size added or removed since then is a change too.
+  const before = variantCounts(current);
+  if (!sameCounts(before, entry.from)) throw new StockConflict("changed");
+  const columns = stockColumns(current, entry.counts);
+  const availability = availabilityForStock(current.availability, totalStock(before), columns.stock);
   const [product] = await tx
     .update(products)
-    .set({ stock: entry.stock, availability })
+    .set({ ...columns, availability })
     .where(eq(products.id, entry.id))
     .returning();
   return product;
 }
 
 /**
- * Set stock counts (null: stop counting), all or none. Reaching 0 marks a
- * product out of stock; restocking makes it available again. Refused when a
- * count changed since the admin's page loaded, e.g. an order was paid.
+ * Set stock counts, each size and hand by itself (null: stop counting the
+ * product), all or none. A product out of stock in every size is marked out
+ * of stock; restocking makes it available again. Refused when a count changed
+ * since the admin's page loaded, e.g. an order was paid.
  */
 export async function setProductStocks(entries: StockWrite[]): Promise<StockWriteResult> {
   try {
@@ -199,36 +215,48 @@ export async function setProductStocks(entries: StockWrite[]): Promise<StockWrit
 
 /**
  * Take a paid order's items out of stock, inside the transaction that marks it
- * paid. Uncounted products are left alone. Stock never goes below 0; a product
- * that reaches 0 becomes out of stock. Returns whether any count changed, and
- * any lines that had fewer in stock than were paid for (two customers paying
- * for the last one at once).
+ * paid: each line from the size and hand that was bought. Uncounted products
+ * are left alone. A count never goes below 0; a product with nothing left in
+ * any size becomes out of stock. Returns whether any count changed, and any
+ * lines that had fewer in stock than were paid for (two customers paying for
+ * the last one at once).
  */
 export async function takeOrderFromStock(
   tx: Tx,
   orderId: string
 ): Promise<{ changed: boolean; shortfall: OrderStockShortfall[] }> {
   const lines = await tx
-    .select({ slug: orderItems.productSlug, quantity: sql<number>`sum(${orderItems.quantity})::int` })
+    .select({
+      slug: orderItems.productSlug,
+      variant: orderItems.variant,
+      quantity: sql<number>`sum(${orderItems.quantity})::int`,
+    })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId))
-    .groupBy(orderItems.productSlug);
+    .groupBy(orderItems.productSlug, orderItems.variant);
   let changed = false;
   const shortfall: OrderStockShortfall[] = [];
-  for (const line of lines) {
+  // One product at a time, in a fixed order, so two orders never wait on each other's rows.
+  const slugs = [...new Set(lines.map((line) => line.slug))].sort();
+  for (const slug of slugs) {
     const [current] = await tx
       .select()
       .from(products)
-      .where(and(eq(products.slug, line.slug), isNotNull(products.stock)))
+      .where(and(eq(products.slug, slug), isNotNull(products.stock)))
       .for("update");
-    if (!current || current.stock === null) continue;
-    const wanted = Number(line.quantity);
-    if (current.stock < wanted) {
-      shortfall.push({ slug: current.slug, name: current.name, missing: wanted - Math.max(0, current.stock) });
+    const counts = current && variantCounts(current);
+    if (!current || !counts) continue;
+    const variants = productVariants(current);
+    const before = totalStock(counts);
+    for (const line of lines.filter((entry) => entry.slug === slug)) {
+      const missing = takeFromCounts(counts, line.variant, Number(line.quantity));
+      if (missing === 0) continue;
+      const label = variants.find((variant) => variant.key === line.variant)?.label;
+      shortfall.push({ slug: current.slug, name: current.name, ...(label ? { variant: label } : {}), missing });
     }
-    const stock = Math.max(0, current.stock - wanted);
-    const availability = availabilityForStock(current.availability, current.stock, stock);
-    await tx.update(products).set({ stock, availability }).where(eq(products.id, current.id));
+    const columns = stockColumns(current, counts);
+    const availability = availabilityForStock(current.availability, before, columns.stock);
+    await tx.update(products).set({ ...columns, availability }).where(eq(products.id, current.id));
     changed = true;
   }
   return { changed, shortfall };
@@ -410,6 +438,7 @@ export async function duplicateProduct(id: string): Promise<Product | undefined>
         name,
         sku: null,
         stock: null,
+        variantStock: {},
         availability: "hidden",
         // Chips like "Bestseller" and the home page pick belong to the original.
         badges: [],

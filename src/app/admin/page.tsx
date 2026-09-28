@@ -25,6 +25,7 @@ import type { Order } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatOrderNumber } from "@/lib/format";
 import { daysLeft, offerNote } from "@/lib/offers/model";
+import { shortfallName } from "@/lib/products/variants";
 import { cn } from "@/lib/utils";
 
 // The layout's title template only reaches child segments, so this page spells out its own.
@@ -184,7 +185,7 @@ export default async function AdminHomePage() {
       // Paid for more than was in stock: the owner restocks or refunds before anything else.
       const short = unshipped[index].stockShortfall;
       if (!short?.length) return row;
-      return { ...row, detail: `Paid while out of stock: ${short.map((line) => line.name).join(", ")}`, action: "Check", icon: CircleAlert };
+      return { ...row, detail: `Paid while out of stock: ${short.map(shortfallName).join(", ")}`, action: "Check", icon: CircleAlert };
     }
   );
   const later: AttentionItem[] = [];

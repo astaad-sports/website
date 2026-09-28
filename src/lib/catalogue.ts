@@ -1,6 +1,7 @@
 // Storefront catalogue for the Astaad Sports home and product pages.
 // Prices are rupees; format them with `formatPrice`.
 import { siteImage, type SiteImage } from "./site-images";
+import { listInWords, midSentence } from "./words";
 
 export type GearCategorySlug =
   | "batting-pads"
@@ -291,16 +292,39 @@ for (const product of GEAR) {
   product.href = gearHref(product);
 }
 
+/** The sizes and hands one gear product is sold in. */
+export interface GearOffered {
+  sizes: string[];
+  hands: boolean;
+}
+
 export interface GearCategoryContent {
-  /** Size options, if the category is sized. */
+  /**
+   * Every size the category can come in. Each product is sold in the ones
+   * ticked for it in the admin (see src/lib/products/variants.ts).
+   */
   sizes?: string[];
+  /** The usual size: what a size picker starts on when the product has it. */
   defaultSize?: string;
-  /** Right / left hand choice for pads and gloves. */
+  /** The sizes a new product starts with; every size when not given. */
+  newSizes?: string[];
+  /** Pads and gloves can come left- and right-handed. */
   hands?: boolean;
-  /** One sentence used in the "Product details" row. */
-  summary: string;
-  sizing?: string;
+  /** One sentence used in the "Product details" row, naming the sizes and hands the product is sold in. */
+  summary: (offered: GearOffered) => string;
+  sizing?: (offered: GearOffered) => string;
   care: string;
+}
+
+/** "boys, youth and men’s sizes", "men’s size"; `noun` is ["size", "sizes"]. */
+function sizesPhrase(sizes: string[], [one, many]: [string, string]): string {
+  return `${listInWords(sizes.map(midSentence))} ${sizes.length === 1 ? one : many}`;
+}
+
+/** Pads and gloves follow the same sizing; `advice` is what to do between two sizes. */
+function standardSizing(sizes: string[], advice: string): string {
+  if (sizes.length === 1) return `${sizes[0]} follows standard cricket sizing.`;
+  return `${listInWords(sizes)} follow standard cricket sizing. Between two sizes? ${advice}`;
 }
 
 /** Category-level copy for the gear product pages. Placeholder until the real range lands. */
@@ -309,30 +333,47 @@ export const GEAR_CATEGORY_CONTENT: Record<GearCategorySlug, GearCategoryContent
     sizes: ["Boys", "Youth", "Men\u2019s"],
     defaultSize: "Men\u2019s",
     hands: true,
-    summary: "Batting pads with a right- or left-hand cut, sized for boys, youth and men.",
-    sizing:
-      "Boys, Youth and Men\u2019s follow standard cricket sizing. Between two sizes? Choose the smaller one for a snug fit that will not slip on the run.",
+    summary: ({ sizes, hands }) =>
+      [
+        hands ? "Batting pads with a right- or left-hand cut" : "Batting pads",
+        sizes.length ? `in ${sizesPhrase(sizes, ["size", "sizes"])}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ") + ".",
+    sizing: ({ sizes }) => standardSizing(sizes, "Choose the smaller one for a snug fit that will not slip on the run."),
     care: "Air dry after play, brush off dirt and keep out of direct sun. Store flat with the straps undone.",
   },
   "batting-gloves": {
     sizes: ["Boys", "Youth", "Men\u2019s"],
     defaultSize: "Men\u2019s",
+    newSizes: ["Men\u2019s"],
     hands: true,
-    summary: "Batting gloves cut for the right or left hand, sized for boys, youth and men.",
-    sizing:
-      "Boys, Youth and Men\u2019s follow standard cricket sizing. Between two sizes? Choose the smaller one so the fingers sit fully in the finger rolls.",
+    summary: ({ sizes, hands }) =>
+      [
+        hands ? "Batting gloves cut for the right or left hand" : "Batting gloves",
+        sizes.length ? `in ${sizesPhrase(sizes, ["size", "sizes"])}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ") + ".",
+    sizing: ({ sizes }) => standardSizing(sizes, "Choose the smaller one so the fingers sit fully in the finger rolls."),
     care: "Air dry palm-up after every innings and keep out of direct sun. Never machine wash.",
   },
   helmets: {
-    sizes: ["Small", "Medium", "Large"],
+    sizes: ["Small", "Medium", "Large", "XL"],
     defaultSize: "Medium",
-    summary: "A cricket helmet with a steel grille and an adjustable fit, in small, medium and large shells.",
-    sizing:
-      "Measure around the head just above the ears. Between two sizes? Choose the smaller shell and open the adjuster.",
+    newSizes: ["Medium", "Large", "XL"],
+    summary: ({ sizes }) =>
+      sizes.length
+        ? `A cricket helmet with a steel grille and an adjustable fit, in ${sizesPhrase(sizes, ["shell", "shells"])}.`
+        : "A cricket helmet with a steel grille and an adjustable fit.",
+    sizing: ({ sizes }) =>
+      sizes.length > 1
+        ? "Measure around the head just above the ears. Between two sizes? Choose the smaller shell and open the adjuster."
+        : "Measure around the head just above the ears, then set the adjuster for a snug fit.",
     care: "Wipe the shell and liner after play, check the grille bolts before each season, and replace the helmet after any hard impact.",
   },
   "cricket-kitbags": {
-    summary: "A wheeled cricket kitbag with room for a full kit, in one size.",
+    summary: () => "A wheeled cricket kitbag with room for a full kit, in one size.",
     care: "Empty and air the bag after wet days, wipe the wheels and store it unzipped.",
   },
 };
@@ -403,12 +444,22 @@ export interface BatSize {
   longHandle?: boolean;
 }
 
+/** The sizes English and Kashmir willow bats can come in; each bat is sold in the ones ticked for it in the admin. */
 export const BAT_SIZES: BatSize[] = [
   { code: "6", label: "Size 6", age: "10–12 years", height: "4'6\" – 5'0\"", length: "31.5\"", scale: 0.8 },
   { code: "H", label: "H / Harrow", age: "12–14 years", height: "5'0\" – 5'4\"", length: "32.75\"", scale: 0.89 },
   { code: "SH", label: "SH / Full Size", age: "15+ years", height: "5'4\" – 5'10\"", length: "33.5\"", scale: 1 },
   { code: "LH", label: "LH / Long Handle", age: "15+ years", height: "5'10\"+", length: "34.5\"", scale: 1, longHandle: true },
 ];
+
+/** Tennis bats come in two lengths, at one price. They go by length, not by age or height. */
+export const TENNIS_BAT_SIZES: Pick<BatSize, "code" | "label" | "length" | "scale">[] = [
+  { code: "FS", label: "Full Size", length: "35\"", scale: 1 },
+  { code: "SH", label: "SH / Standard", length: "33.5\"", scale: 0.96 },
+];
+
+/** The usual bat size: what a size picker starts on when the bat has it. */
+export const DEFAULT_BAT_SIZE = "SH";
 
 export interface BatOption {
   label: string;
@@ -444,7 +495,7 @@ export const BAT_TOES: BatOption[] = [
 
 export const ENGRAVING_MAX = 15;
 
-/** A bat's configuration as indices into BAT_SIZES, BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES. */
+/** A bat's configuration: indices into BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES, and the size's code. */
 export interface BatConfig {
   weight: number;
   profile: number;
@@ -454,7 +505,8 @@ export interface BatConfig {
   name: string;
   knock: boolean;
   scuff: boolean;
-  size: number;
+  /** A size code the bat is sold in, e.g. "SH". */
+  size: string;
 }
 
 /** The standard build: balanced weight, Duckbill profile, semi-round toe, oval handle, knocked, scuff sheet, SH. */
@@ -466,7 +518,7 @@ export const DEFAULT_BAT_CONFIG: BatConfig = {
   name: "",
   knock: true,
   scuff: true,
-  size: 2,
+  size: DEFAULT_BAT_SIZE,
 };
 
 /** Right / left hand choice for pads and gloves. */

@@ -16,7 +16,7 @@ import { CHIP, CHIP_OFF, CHIP_ON, FIELD_LABEL } from "./styles";
  * the rest of the form and reads as a switch. The track is black when on,
  * with the yellow knob of a selected state.
  */
-function Switch({
+export function Switch({
   name,
   label,
   help,
@@ -63,23 +63,31 @@ function Switch({
   );
 }
 
-/** A group of round chips, each a checkbox posting its label under `name`. */
-function ChipGroup({
+/**
+ * A group of round chips, each a checkbox posting its option under `name`.
+ * `labels` gives the words for options that are codes ("SH" reads "SH / Full Size").
+ */
+export function ChipGroup({
   id,
   label,
   name,
   options,
+  labels,
   chosen,
   onChange,
   invalid,
+  errorId = "customization-error",
 }: {
   id: string;
   label: string;
   name: string;
   options: string[];
+  labels?: Record<string, string>;
   chosen: string[];
   onChange: (chosen: string[]) => void;
   invalid: boolean;
+  /** The message the chips point at when `invalid`. */
+  errorId?: string;
 }) {
   function toggle(option: string, on: boolean) {
     // Keep the usual order, so turning an option off and on again is not a change.
@@ -109,11 +117,11 @@ function ChipGroup({
                 checked={on}
                 onChange={(event) => toggle(option, event.target.checked)}
                 aria-invalid={invalid ? true : undefined}
-                aria-describedby={invalid ? "customization-error" : undefined}
+                aria-describedby={invalid ? errorId : undefined}
                 className="sr-only"
               />
               {on && <Check className="size-4" strokeWidth={2} aria-hidden="true" />}
-              {option}
+              {labels?.[option] ?? option}
             </label>
           );
         })}

@@ -15,19 +15,16 @@ import {
   withResolvedToe,
   type CartItem,
 } from "./cart";
-import { DEFAULT_BAT_CONFIG, getBat, getGear } from "./catalogue";
+import type { BatConfig } from "./catalogue";
 import {
   FULL_CUSTOMIZATION,
   NO_CUSTOMIZATION,
   seedProductRows,
+  standardBatConfig,
   toStoreCatalogue,
   type ProductWithImages,
   type StoreCatalogue,
 } from "./products/model";
-
-const runMachine = getBat("run-machine")!;
-const eliteGloves = getGear("elite-batting-gloves")!;
-const kitbag = getGear("pro-cricket-kitbag")!;
 
 /** The seeded catalogue, with some products changed the way an admin would. */
 function catalogueWith(changes: Record<string, Partial<ProductWithImages>> = {}): StoreCatalogue {
@@ -35,25 +32,38 @@ function catalogueWith(changes: Record<string, Partial<ProductWithImages>> = {})
 }
 
 const seeded = catalogueWith();
+const batIn = (catalogue: StoreCatalogue, slug = "run-machine") => catalogue.bats.find((bat) => bat.slug === slug)!;
+const gearIn = (catalogue: StoreCatalogue, slug: string) => catalogue.gear.find((product) => product.slug === slug)!;
+
+const runMachine = batIn(seeded);
+const eliteGloves = gearIn(seeded, "elite-batting-gloves");
+const helmet = gearIn(seeded, "club-cricket-helmet");
+const kitbag = gearIn(seeded, "pro-cricket-kitbag");
+
+/** A Run Machine from `catalogue`, in its standard build with these choices changed. */
+function build(config: Partial<BatConfig> = {}, qty = 1, catalogue = seeded) {
+  const bat = batIn(catalogue);
+  return batCartItem(bat, { ...standardBatConfig(bat), ...config }, qty);
+}
 const priceCart = (items: CartItem[], catalogue = seeded) => priceCartIn(items, catalogue);
 const priceCartItem = (item: CartItem, catalogue = seeded) => priceCartItemIn(item, catalogue);
 
 describe("pricing comes from the catalogue", () => {
   test("a standard bat costs its catalogue price, in paise", () => {
-    const line = priceCartItem(batCartItem("run-machine"))!;
+    const line = priceCartItem(build())!;
     expect(line.unitPricePaise).toBe(runMachine.price * 100);
     expect(line.name).toBe("Astaad Run Machine");
     expect(line.summary).toContain("SH / Full Size");
   });
 
   test("customisation is free: engraving does not change the price", () => {
-    const engraved = priceCartItem(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat" }))!;
+    const engraved = priceCartItem(build({ name: "virat" }))!;
     expect(engraved.unitPricePaise).toBe(runMachine.price * 100);
     expect(engraved.options).toContainEqual({ label: "Engraving", value: "VIRAT" });
   });
 
   test("a cart totals its lines, with free delivery", () => {
-    const cart = priceCart([batCartItem("run-machine", DEFAULT_BAT_CONFIG, 2), gearCartItem(eliteGloves)]);
+    const cart = priceCart([build({}, 2), gearCartItem(eliteGloves)]);
     const expected = (runMachine.price * 2 + eliteGloves.price) * 100;
     expect(cart.subtotalPaise).toBe(expected);
     expect(cart.shippingPaise).toBe(0);
@@ -63,7 +73,7 @@ describe("pricing comes from the catalogue", () => {
   });
 
   test("a price sent by the browser is ignored", () => {
-    const tampered = { ...batCartItem("run-machine"), price: 1, unitPricePaise: 100 } as unknown as CartItem;
+    const tampered = { ...build(), price: 1, unitPricePaise: 100 } as unknown as CartItem;
     const parsed = cartItemSchema.parse(tampered);
     expect(priceCartItem(parsed)!.unitPricePaise).toBe(runMachine.price * 100);
   });
@@ -71,7 +81,7 @@ describe("pricing comes from the catalogue", () => {
 
 describe("items must match the catalogue", () => {
   test("unknown products and options are dropped and counted", () => {
-    const standard = batCartItem("run-machine");
+    const standard = build();
     const cart = priceCart([
       { ...standard, slug: "no-such-bat" },
       { ...standard, options: { ...standard.options, size: "XXL" } },
@@ -90,10 +100,39 @@ describe("items must match the catalogue", () => {
     expect(priceCartItem({ kind: "gear", slug: kitbag.slug, options: { size: "Large" }, quantity: 1 })).toBeNull();
   });
 
+  test("a product sells only the sizes and hands ticked for it", () => {
+    // Gloves come in Men's only; helmets in Medium, Large and XL, with no hand.
+    const gloves = (size: string) => ({ kind: "gear" as const, slug: eliteGloves.slug, options: { size, hand: "Left hand" as const }, quantity: 1 });
+    expect(priceCartItem(gloves("Men’s"))!.summary).toBe("Men’s · Left hand");
+    expect(priceCartItem(gloves("Boys"))).toBeNull();
+    const helmetIn = (size: string) => ({ kind: "gear" as const, slug: helmet.slug, options: { size }, quantity: 1 });
+    expect(priceCartItem(helmetIn("XL"))!.summary).toBe("XL");
+    expect(priceCartItem(helmetIn("Small"))).toBeNull();
+    expect(priceCartItem({ ...helmetIn("Medium"), options: { size: "Medium", hand: "Right hand" } })).toBeNull();
+
+    const shOnly = catalogueWith({ "run-machine": { sizes: ["SH"] } });
+    expect(priceCartItem(build({ size: "SH" }), shOnly)!.summary).toContain("SH / Full Size");
+    expect(priceCartItem({ ...build(), options: { ...build().options, size: "LH" } }, shOnly)).toBeNull();
+    // A size the bat is not sold in falls back to the one it is.
+    expect(build({ size: "LH" }, 1, shOnly).options.size).toBe("SH");
+  });
+
+  test("a tennis bat comes in two lengths and cannot be customised", () => {
+    const tennis = catalogueWith({ "run-machine": { subcategory: "tennis-bats", sizes: ["FS", "SH"] } });
+    const bat = batIn(tennis);
+    expect(bat.customization.enabled).toBe(false);
+    expect(bat.sizes.map((size) => size.label)).toEqual(["Full Size", "SH / Standard"]);
+    expect(priceCartItem(batCartItem(bat), tennis)!.summary).toBe("SH / Standard");
+    const full = priceCartItem(batCartItem(bat, { ...standardBatConfig(bat), size: "FS" }), tennis)!;
+    expect(full.summary).toBe("Full Size");
+    expect(full.unitPricePaise).toBe(priceCartItem(batCartItem(bat), tennis)!.unitPricePaise);
+    expect(priceCartItem({ ...batCartItem(bat), options: { ...batCartItem(bat).options, size: "LH" } }, tennis)).toBeNull();
+  });
+
   test("quantities outside 1 to 10 fail validation", () => {
-    expect(cartItemSchema.safeParse({ ...batCartItem("run-machine"), quantity: 0 }).success).toBe(false);
-    expect(cartItemSchema.safeParse({ ...batCartItem("run-machine"), quantity: 11 }).success).toBe(false);
-    expect(cartItemSchema.safeParse({ ...batCartItem("run-machine"), quantity: 1.5 }).success).toBe(false);
+    expect(cartItemSchema.safeParse({ ...build(), quantity: 0 }).success).toBe(false);
+    expect(cartItemSchema.safeParse({ ...build(), quantity: 11 }).success).toBe(false);
+    expect(cartItemSchema.safeParse({ ...build(), quantity: 1.5 }).success).toBe(false);
   });
 });
 
@@ -112,13 +151,13 @@ describe("engraving", () => {
 describe("adding to the cart", () => {
   test("the same build merges into one line, up to the quantity cap", () => {
     let items: CartItem[] = [];
-    for (let i = 0; i < 12; i += 1) items = addToItems(items, batCartItem("run-machine"));
+    for (let i = 0; i < 12; i += 1) items = addToItems(items, build());
     expect(items).toHaveLength(1);
     expect(items[0].quantity).toBe(MAX_QUANTITY);
   });
 
   test("a different build is its own line", () => {
-    const items = addToItems([batCartItem("run-machine")], batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, size: 3 }));
+    const items = addToItems([build()], build({ size: "LH" }));
     expect(items).toHaveLength(2);
     expect(lineKey(items[0])).not.toBe(lineKey(items[1]));
   });
@@ -126,14 +165,14 @@ describe("adding to the cart", () => {
 
 describe("stock", () => {
   test("an uncounted product can be bought in any quantity", () => {
-    const cart = priceCart([batCartItem("run-machine", DEFAULT_BAT_CONFIG, MAX_QUANTITY)]);
+    const cart = priceCart([build({}, MAX_QUANTITY)]);
     expect(cart.unavailable).toBe(0);
     expect(cart.lines[0].stockLeft).toBeNull();
   });
 
   test("a sold-out product stays in the cart but cannot be bought", () => {
     const catalogue = catalogueWith({ "run-machine": { stock: 0, availability: "out_of_stock" } });
-    const cart = priceCart([batCartItem("run-machine"), gearCartItem(kitbag)], catalogue);
+    const cart = priceCart([build(), gearCartItem(kitbag)], catalogue);
     expect(cart.lines).toHaveLength(2);
     expect(cart.unavailable).toBe(1);
     expect(cart.lines[0].problem).toBe("sold_out");
@@ -142,29 +181,63 @@ describe("stock", () => {
 
   test("marking a product out of stock by hand works even with stock left", () => {
     const catalogue = catalogueWith({ "run-machine": { stock: 5, availability: "out_of_stock" } });
-    expect(priceCartItem(batCartItem("run-machine"), catalogue)!.problem).toBe("sold_out");
+    expect(priceCartItem(build(), catalogue)!.problem).toBe("sold_out");
   });
 
-  test("different builds of one bat share its stock", () => {
-    const catalogue = catalogueWith({ "run-machine": { stock: 2 } });
-    const cart = priceCart(
-      [batCartItem("run-machine"), batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, size: 3 }, 2)],
-      catalogue
-    );
+  test("different builds of one bat in one size share that size's stock", () => {
+    const catalogue = catalogueWith({ "run-machine": { stock: 3, variantStock: { SH: 2, LH: 1 } } });
+    const cart = priceCart([build(), build({ name: "virat" }, 2)], catalogue);
     expect(cart.lines.map((line) => line.problem)).toEqual(["not_enough", "not_enough"]);
     expect(lineProblemText(cart.lines[0])).toBe("Only 2 left in total. Remove one to check out.");
     expect(lineProblemText(cart.lines[1])).toBe("Only 2 left in total. Remove one to check out.");
 
-    const tooMany = priceCart([batCartItem("run-machine", DEFAULT_BAT_CONFIG, 3)], catalogue);
+    const tooMany = priceCart([build({}, 3)], catalogue);
     expect(lineProblemText(tooMany.lines[0])).toBe("Only 2 left. Lower the quantity to check out.");
 
-    const fits = priceCart([batCartItem("run-machine"), batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, size: 3 })], catalogue);
+    const fits = priceCart([build({}, 2), build({ size: "LH" })], catalogue);
     expect(fits.unavailable).toBe(0);
+    expect(fits.lines.map((line) => line.stockLeft)).toEqual([2, 1]);
+  });
+
+  test("each size has its own stock: one can run out while another is on sale", () => {
+    const catalogue = catalogueWith({ "run-machine": { stock: 3, variantStock: { SH: 2, LH: 1 } } });
+    expect(batIn(catalogue).soldOut).toBe(false);
+    expect(priceCartItem(build({ size: "6" }), catalogue)!.problem).toBe("sold_out");
+    expect(priceCartItem(build({ size: "LH" }, 2), catalogue)!.problem).toBe("not_enough");
+    expect(priceCartItem(build({ size: "LH" }), catalogue)!.problem).toBeNull();
+  });
+
+  test("the left and right hand of a glove are counted apart", () => {
+    const catalogue = catalogueWith({
+      "elite-batting-gloves": { stock: 2, variantStock: { "Men’s|Right hand": 0, "Men’s|Left hand": 2 } },
+    });
+    const gloves = gearIn(catalogue, "elite-batting-gloves");
+    expect(gloves.soldOut).toBe(false);
+    const right = priceCartItem(gearCartItem(gloves, { hand: "Right hand" }), catalogue)!;
+    expect(right.problem).toBe("sold_out");
+    const left = priceCartItem(gearCartItem(gloves, { hand: "Left hand" }, 2), catalogue)!;
+    expect(left.problem).toBeNull();
+    expect(left.variant).toBe("Men’s|Left hand");
+    // A card's cart button adds the hand that can be bought.
+    expect(gearCartItem(gloves).options).toEqual({ size: "Men’s", hand: "Left hand" });
+  });
+
+  test("a helmet is counted by size", () => {
+    const catalogue = catalogueWith({ "club-cricket-helmet": { stock: 5, variantStock: { Medium: 2, XL: 3 } } });
+    const counted = gearIn(catalogue, "club-cricket-helmet");
+    expect(counted.variants.map((variant) => [variant.size, variant.left])).toEqual([
+      ["Medium", 2],
+      ["Large", 0],
+      ["XL", 3],
+    ]);
+    expect(priceCartItem(gearCartItem(counted, { size: "Large" }), catalogue)!.problem).toBe("sold_out");
+    expect(priceCartItem(gearCartItem(counted, { size: "XL" }, 3), catalogue)!.problem).toBeNull();
+    expect(priceCartItem(gearCartItem(counted, { size: "Medium" }, 3), catalogue)!.problem).toBe("not_enough");
   });
 
   test("a hidden product is no longer sold", () => {
     const catalogue = catalogueWith({ "run-machine": { availability: "hidden" } });
-    const cart = priceCart([batCartItem("run-machine")], catalogue);
+    const cart = priceCart([build()], catalogue);
     expect(cart.lines).toHaveLength(0);
     expect(cart.invalid).toBe(1);
   });
@@ -175,7 +248,7 @@ describe("a bat sells only the build options it offers", () => {
   const plainBat = plain.bats.find((bat) => bat.slug === "run-machine")!;
 
   test("without customisation only the size is chosen", () => {
-    const item = batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat", knock: true }, 1, plainBat.customization);
+    const item = batCartItem(plainBat, { ...standardBatConfig(runMachine), name: "virat", knock: true });
     expect(item.options).toMatchObject({ weight: "", profile: "", handle: "", engraving: "", knocking: false, scuffSheet: false });
     const line = priceCartItem(item, plain)!;
     expect(line.options.map((option) => option.label)).toEqual(["Willow", "Size"]);
@@ -183,16 +256,15 @@ describe("a bat sells only the build options it offers", () => {
   });
 
   test("a customised build of a bat that no longer offers it is refused", () => {
-    expect(priceCartItem(batCartItem("run-machine"), plain)).toBeNull();
+    expect(priceCartItem(build(), plain)).toBeNull();
   });
 
   test("an option the bat does not offer is refused", () => {
     const noEngraving = catalogueWith({
       "run-machine": { customization: { ...seeded.bats[0].customization, engraving: false } },
     });
-    expect(priceCartItem(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat" }), noEngraving)).toBeNull();
-    const bat = noEngraving.bats.find((entry) => entry.slug === "run-machine")!;
-    const item = batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, name: "virat" }, 1, bat.customization);
+    expect(priceCartItem(build({ name: "virat" }), noEngraving)).toBeNull();
+    const item = build({ name: "virat" }, 1, noEngraving);
     expect(item.options.engraving).toBe("");
     expect(priceCartItem(item, noEngraving)).not.toBeNull();
   });
@@ -200,17 +272,17 @@ describe("a bat sells only the build options it offers", () => {
 
 describe("toe shapes", () => {
   test("the chosen toe is recorded on the line, semi-round by default", () => {
-    const standard = priceCartItem(batCartItem("run-machine"))!;
+    const standard = priceCartItem(build())!;
     expect(standard.item.options).toMatchObject({ toe: "Semi Round" });
     expect(standard.options).toContainEqual({ label: "Toe", value: "Semi Round" });
 
-    const flat = priceCartItem(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 }))!;
+    const flat = priceCartItem(build({ toe: 2 }))!;
     expect(flat.options).toContainEqual({ label: "Toe", value: "Flat" });
     expect(flat.summary).toContain("Flat toe");
   });
 
   test("a cart saved before toe shapes existed still prices, with the usual toe", () => {
-    const options = { ...batCartItem("run-machine").options };
+    const options = { ...build().options };
     delete options.toe;
     const line = priceCartItem({ kind: "bat", slug: "run-machine", options, quantity: 1 })!;
     expect(line).not.toBeNull();
@@ -218,26 +290,25 @@ describe("toe shapes", () => {
   });
 
   test("a saved bat without a toe merges with the same build added now", () => {
-    const options = { ...batCartItem("run-machine").options };
+    const options = { ...build().options };
     delete options.toe;
     const saved: CartItem = { kind: "bat", slug: "run-machine", options, quantity: 1 };
     const resolved = withResolvedToe(saved, seeded);
     expect(resolved.kind === "bat" && resolved.options.toe).toBe("Semi Round");
-    const items = addToItems([resolved], batCartItem("run-machine"));
+    const items = addToItems([resolved], build());
     expect(items).toHaveLength(1);
     expect(items[0].quantity).toBe(2);
-    expect(withResolvedToe(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 }), seeded)).toEqual(
-      batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 })
+    expect(withResolvedToe(build({ toe: 2 }), seeded)).toEqual(
+      build({ toe: 2 })
     );
   });
 
   test("a toe the bat does not offer is refused, and a bat with none has no toe", () => {
     const roundOnly = catalogueWith({ "run-machine": { customization: { ...FULL_CUSTOMIZATION, toes: ["Round"] } } });
-    expect(priceCartItem(batCartItem("run-machine", { ...DEFAULT_BAT_CONFIG, toe: 2 }), roundOnly)).toBeNull();
+    expect(priceCartItem(build({ toe: 2 }), roundOnly)).toBeNull();
 
     const noToes = catalogueWith({ "run-machine": { customization: { ...FULL_CUSTOMIZATION, toes: [] } } });
-    const bat = noToes.bats.find((entry) => entry.slug === "run-machine")!;
-    const item = batCartItem("run-machine", DEFAULT_BAT_CONFIG, 1, bat.customization);
+    const item = build({}, 1, noToes);
     expect(item.options.toe).toBeUndefined();
     expect(priceCartItem(item, noToes)!.options.map((option) => option.label)).not.toContain("Toe");
   });

@@ -66,6 +66,7 @@ export async function createOrder(input: {
         productSlug: line.item.slug,
         productName: line.name,
         options: line.options,
+        variant: line.variant,
         unitPricePaise: line.unitPricePaise,
         quantity: line.item.quantity,
         lineTotalPaise: line.lineTotalPaise,

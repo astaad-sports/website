@@ -5,7 +5,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { type GearCategoryContent } from "@/lib/catalogue";
-import { gearLine, type StoreGear } from "@/lib/products/model";
+import { gearLine, gearOffered, type StoreGear } from "@/lib/products/model";
 
 import { deliveryPromise } from "./delivery";
 import { Eyebrow } from "./eyebrow";
@@ -20,13 +20,15 @@ export function GearDetails({
   content: GearCategoryContent;
   deliveryFeePaise: number;
 }) {
+  const offered = gearOffered(product);
   const rows = [
     {
       id: "details",
       title: "Product Details",
-      body: `${[product.name, gearLine(product)].filter(Boolean).join(" · ")}. ${content.summary}`,
+      body: `${[product.name, gearLine(product)].filter(Boolean).join(" · ")}. ${content.summary(offered)}`,
     },
-    content.sizing ? { id: "sizing", title: "Sizing", body: content.sizing } : null,
+    // A product with no size to choose has no sizing advice.
+    content.sizing && offered.sizes.length ? { id: "sizing", title: "Sizing", body: content.sizing(offered) } : null,
     { id: "care", title: "Care", body: content.care },
     {
       id: "delivery",

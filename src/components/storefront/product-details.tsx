@@ -58,6 +58,14 @@ function buildRows({ customization }: StoreBat): { profile: Row | null; weight: 
   };
 }
 
+/** The sizes this bat is sold in: willow sizes point to the size guide, tennis sizes give their length. */
+function sizeBody({ sizes, subcategory }: StoreBat): string {
+  if (subcategory === "tennis-bats") {
+    return `${listInWords(sizes.map((size) => (size.hint ? `${size.label} (${size.hint})` : size.label)))}.`;
+  }
+  return `${listInWords(sizes.map((size) => size.label))}. See the size guide above for age and height ranges.`;
+}
+
 /** Specifications as an accordion, one row open at a time. */
 export function ProductDetails({ bat }: { bat: StoreBat }) {
   const build = buildRows(bat);
@@ -66,11 +74,7 @@ export function ProductDetails({ bat }: { bat: StoreBat }) {
     build.profile,
     { id: "willow", title: "Willow Grade", body: bat.willow },
     build.weight,
-    {
-      id: "size",
-      title: "Size",
-      body: "Size 6, Harrow, Short Handle and Long Handle. See the size guide above for age and height ranges.",
-    },
+    { id: "size", title: "Size", body: sizeBody(bat) },
     build.handle,
     build.care,
   ].filter((row): row is Row => row !== null);

@@ -57,10 +57,12 @@ export const orderStatus = pgEnum("order_status", [
 
 export type OrderStatus = (typeof orderStatus.enumValues)[number];
 
-/** A paid order asked for more than the counted stock of one product. */
+/** A paid order asked for more than the counted stock of one product, in one size and hand. */
 export interface OrderStockShortfall {
   slug: string;
   name: string;
+  /** The size and hand that ran short, e.g. "Large" or "Men’s · Left hand", for a product sold in several. */
+  variant?: string;
   /** How many more were paid for than were in stock. */
   missing: number;
 }
@@ -157,6 +159,12 @@ export const orderItems = pgTable(
     productSlug: text("product_slug").notNull(),
     productName: text("product_name").notNull(),
     options: jsonb("options").$type<OrderItemOption[]>().notNull().default([]),
+    /**
+     * The size and hand bought, as a variant key (see src/lib/products/variants.ts):
+     * whose stock the order is taken from. Null on orders placed before each
+     * size had its own stock.
+     */
+    variant: text("variant"),
     unitPricePaise: integer("unit_price_paise").notNull(),
     quantity: integer("quantity").notNull(),
     lineTotalPaise: integer("line_total_paise").notNull(),
@@ -197,6 +205,9 @@ export interface BatCustomization {
   scuffSheet: boolean;
 }
 
+/** The count of each size and hand of a product, by variant key (see src/lib/products/variants.ts). */
+export type VariantStock = Record<string, number>;
+
 /**
  * A product in the store. The five categories are fixed in code; bats also
  * have a subcategory. Money is integer paise, as on orders. `stock` is null
@@ -229,7 +240,17 @@ export const products = pgTable(
     pricePaise: integer("price_paise").notNull(),
     mrpPaise: integer("mrp_paise"),
     sku: text("sku").unique(),
+    /** How many are in stock in all. A product sold in several sizes or hands keeps each one's count in `variantStock`. */
     stock: integer("stock"),
+    /**
+     * The sizes it is sold in, from the list for its category: bat size codes
+     * ("SH") or gear sizes ("Medium"). Empty when there is no size to choose.
+     */
+    sizes: jsonb("sizes").$type<string[]>().notNull().default([]),
+    /** Sold left- and right-handed (pads and gloves). */
+    hands: boolean("hands").notNull().default(false),
+    /** The count of each size and hand, for a counted product sold in more than one. They add up to `stock`. */
+    variantStock: jsonb("variant_stock").$type<VariantStock>().notNull().default({}),
     lowStockThreshold: integer("low_stock_threshold").notNull().default(3),
     availability: productAvailability("availability").notNull().default("available"),
     customization: jsonb("customization").$type<BatCustomization>(),

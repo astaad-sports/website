@@ -12,13 +12,13 @@ import { batCartItem, cleanEngravingInput, type CartItem } from "@/lib/cart";
 import {
   BAT_HANDLES,
   BAT_PROFILES,
-  BAT_SIZES,
   BAT_TOES,
   BAT_WEIGHTS,
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { startingBatConfig, type StoreBat } from "@/lib/products/model";
+import { standardBatConfig, type StoreBat } from "@/lib/products/model";
+import { findVariant, startingVariant, variantNote, variantSoldOut, type StoreVariant } from "@/lib/products/variants";
 import { cn } from "@/lib/utils";
 
 import { ChoiceButtons, FreeChip, HandleGlyph, OptionGroup, useBatConfig, YesNo } from "./bat-options";
@@ -30,12 +30,13 @@ import { OfferNote } from "./offer-note";
 import { SectionHeading } from "./section-heading";
 import { SizeGuideDialog } from "./size-guide-dialog";
 
-const SILHOUETTE_HEIGHTS = [
-  "h-[200px] lg:h-[292px]",
-  "h-[224px] lg:h-[326px]",
-  "h-[246px] lg:h-[360px]",
-  "h-[246px] lg:h-[360px]",
-];
+/** Silhouette heights by a size's scale (see BAT_SIZES and TENNIS_BAT_SIZES), the longest at full height. */
+const SILHOUETTE_HEIGHTS: Record<number, string> = {
+  0.8: "h-[200px] lg:h-[292px]",
+  0.89: "h-[224px] lg:h-[326px]",
+  0.96: "h-[236px] lg:h-[346px]",
+  1: "h-[246px] lg:h-[360px]",
+};
 
 /** The row under the summary's Add to cart, with delivery as Settings have it. */
 function trustRow(deliveryFeePaise: number) {
@@ -46,8 +47,24 @@ function trustRow(deliveryFeePaise: number) {
   ];
 }
 
-function shortRange(age: string, height: string) {
-  return `${age.replace(" years", " yrs")} · ${height.replace(/ /g, "")}`;
+/** The words beside the size picker, for the sizes this bat is sold in. */
+function sizeAdvice({ sizes, subcategory }: Pick<StoreBat, "sizes" | "subcategory">): string {
+  const has = (code: string) => sizes.some((size) => size.code === code);
+  if (sizes.length === 1) {
+    const [only] = sizes;
+    const detail = subcategory === "tennis-bats" ? only.hint : has("SH") ? "the size most adult players use" : only.hint;
+    return `This bat comes in one size: ${only.label}${detail ? `, ${detail}` : ""}.`;
+  }
+  if (subcategory === "tennis-bats") {
+    return `${sizes.map((size) => `${size.label} is ${size.hint}`).join(", ")}. Tap a bat to select it.`;
+  }
+  return [
+    has("SH") ? "Most adult players are SH." : null,
+    has("LH") ? "LH adds an inch to the handle, not the blade." : null,
+    "Tap a bat to select it.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** The heading's promise, naming only the free extras this bat offers. */
@@ -58,21 +75,28 @@ function freeExtrasNote({ engraving, matchReady }: StoreBat["customization"]): s
   return "";
 }
 
-/** "Choose your size": the four sizes as silhouettes, and `buy` under the selection when the bat has no builder. */
+/**
+ * "Choose your size": the sizes this bat is sold in as silhouettes, and `buy`
+ * under the selection when the bat has no builder. Each size has its own
+ * stock: one with none left is dimmed, reads "Out of stock" and cannot be picked.
+ */
 function SizeSection({
   id,
   eyebrow,
-  value,
+  bat,
+  selected,
   onChange,
   buy,
 }: {
   id?: string;
   eyebrow: string;
-  value: number;
-  onChange: (size: number) => void;
+  bat: StoreBat;
+  selected: StoreVariant;
+  onChange: (size: string) => void;
   buy?: ReactNode;
 }) {
-  const size = BAT_SIZES[value];
+  const one = bat.sizes.length === 1;
+  const note = variantNote(bat, selected);
   return (
     <section
       id={id}
@@ -85,57 +109,64 @@ function SizeSection({
       <div className="flex w-full flex-col gap-5 lg:w-[340px] lg:shrink-0">
         <Eyebrow>{eyebrow}</Eyebrow>
         <h2 id="size-title" className="type-display text-[40px] leading-[0.95] tracking-[-0.02em] md:text-[48px]">
-          Choose your size
+          {one ? "Your size" : "Choose your size"}
         </h2>
-        <p className="text-[15px] leading-[22px] text-ink-muted">
-          Most adult players are SH. LH adds an inch to the handle, not the blade. Tap a bat
-          to select it.
-        </p>
+        <p className="text-[15px] leading-[22px] text-ink-muted">{sizeAdvice(bat)}</p>
         <div className="flex flex-col gap-1 rounded-xs bg-surface-sunken p-4">
           <span className="text-[11px] leading-[14px] font-semibold tracking-[0.2em] text-ink-muted uppercase">
-            Selected
+            {one ? "Size" : "Selected"}
           </span>
-          <span className="text-xl leading-[26px] font-bold">{size.label}</span>
+          <span className="text-xl leading-[26px] font-bold">{selected.sizeLabel}</span>
+          {note && !bat.soldOut && <span className="text-[13px] leading-[18px] font-semibold">{note}</span>}
         </div>
-        <SizeGuideDialog
-          trigger={
-            <button
-              type="button"
-              className="inline-flex h-11 cursor-pointer items-center gap-2.5 self-start border-b-2 border-brand-yellow px-1 text-sm leading-5 font-bold tracking-[0.08em] text-foreground uppercase transition-colors hover:text-ink-muted"
-            >
-              View size guide
-              <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden="true" />
-            </button>
-          }
-        />
+        {/* The guide is for willow sizes; tennis bats go by length. */}
+        {bat.subcategory !== "tennis-bats" && (
+          <SizeGuideDialog
+            trigger={
+              <button
+                type="button"
+                className="inline-flex h-11 cursor-pointer items-center gap-2.5 self-start border-b-2 border-brand-yellow px-1 text-sm leading-5 font-bold tracking-[0.08em] text-foreground uppercase transition-colors hover:text-ink-muted"
+              >
+                View size guide
+                <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden="true" />
+              </button>
+            }
+          />
+        )}
         {buy}
       </div>
       <RadioGroup
         aria-label="Bat size"
-        value={String(value)}
-        onValueChange={(next) => onChange(Number(next))}
+        value={selected.size ?? ""}
+        onValueChange={(next) => onChange(String(next))}
         className="grid w-full flex-1 grid-cols-2 gap-3 border-b border-border-strong lg:flex lg:items-end"
       >
-        {BAT_SIZES.map((item, index) => {
-          const selected = index === value;
+        {bat.sizes.map((item) => {
+          const chosen = item.code === selected.size;
+          // A bat with nothing left says so on its button; its sizes stay readable.
+          const out = !bat.soldOut && variantSoldOut(bat, findVariant(bat, item.code));
           return (
             <RadioPrimitive.Root
               key={item.code}
-              value={String(index)}
+              value={item.code}
+              disabled={out}
               className={cn(
-                "flex h-[300px] cursor-pointer flex-col items-center justify-end gap-3.5 rounded-xs px-2 pt-5 pb-4 text-foreground transition-colors lg:h-[420px] lg:flex-1 lg:basis-0",
-                selected && "bg-surface-dark text-on-dark"
+                // Up to four share the row; one or two keep a bat's width.
+                "flex h-[300px] cursor-pointer flex-col items-center justify-end gap-3.5 rounded-xs px-2 pt-5 pb-4 text-foreground transition-colors data-disabled:cursor-not-allowed lg:h-[420px] lg:max-w-[260px] lg:flex-1 lg:basis-0",
+                chosen && "bg-surface-dark text-on-dark"
               )}
             >
               <BatSilhouette
-                className={SILHOUETTE_HEIGHTS[index]}
+                className={cn(SILHOUETTE_HEIGHTS[item.scale ?? 1] ?? SILHOUETTE_HEIGHTS[1], out && "opacity-40")}
                 longHandle={item.longHandle}
-                fill={selected ? "var(--brand-yellow)" : "var(--border-dark)"}
-                handle={selected ? "var(--on-dark)" : "var(--ink)"}
+                fill={chosen ? "var(--brand-yellow)" : "var(--border-dark)"}
+                handle={chosen ? "var(--on-dark)" : "var(--ink)"}
               />
               <span className="flex flex-col items-center gap-0.5 text-center">
-                <span className="text-[15px] leading-5 font-bold">{item.label}</span>
-                <span className="text-xs leading-4 opacity-70">{shortRange(item.age, item.height)}</span>
+                <span className={cn("text-[15px] leading-5 font-bold", out && "text-ink-muted")}>{item.label}</span>
+                <span className={cn("text-xs leading-4", out ? "font-semibold text-danger" : "opacity-70")}>
+                  {out ? "Out of stock" : item.hint}
+                </span>
               </span>
             </RadioPrimitive.Root>
           );
@@ -145,8 +176,11 @@ function SizeSection({
   );
 }
 
-/** Price (with any running offer) and Add to cart for a bat sold only in its standard build, under the size picker. */
-function StandardBuy({ bat, item }: { bat: StoreBat; item: CartItem }) {
+/**
+ * Price (with any running offer) and Add to cart for a bat sold only in its
+ * standard build, under the size picker. `soldOut` is for the size chosen.
+ */
+function StandardBuy({ bat, item, soldOut }: { bat: StoreBat; item: CartItem; soldOut: boolean }) {
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-5">
       <div className="flex flex-col gap-1">
@@ -166,7 +200,7 @@ function StandardBuy({ bat, item }: { bat: StoreBat; item: CartItem }) {
       <AddToCartButton
         item={item}
         productName={`Astaad ${bat.name}`}
-        soldOut={bat.soldOut}
+        soldOut={soldOut}
         size="lg"
         className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
       >
@@ -186,18 +220,22 @@ function StandardBuy({ bat, item }: { bat: StoreBat; item: CartItem }) {
  */
 export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliveryFeePaise: number }) {
   const custom = bat.customization;
-  const { config, update } = useBatConfig(startingBatConfig(custom));
-  const item = batCartItem(bat.slug, config, 1, custom);
-  const onSizeChange = (size: number) => update("size", size);
+  const { config, update } = useBatConfig(standardBatConfig(bat));
+  const item = batCartItem(bat, config);
+  // The bat may have changed under the page (a size removed): fall back to where the picker starts.
+  const size = findVariant(bat, config.size) ?? startingVariant(bat);
+  const soldOut = variantSoldOut(bat, size);
+  const onSizeChange = (code: string) => update("size", code);
 
   if (!custom.enabled) {
     return (
       <SizeSection
         id="build"
         eyebrow="Standard build"
-        value={config.size}
+        bat={bat}
+        selected={size}
         onChange={onSizeChange}
-        buy={<StandardBuy bat={bat} item={item} />}
+        buy={<StandardBuy bat={bat} item={item} soldOut={soldOut} />}
       />
     );
   }
@@ -213,7 +251,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
   if (custom.engraving) summary.push(["Engraving", engraving || "None", true]);
   if (custom.matchReady) summary.push(["Knocking", config.knock ? "Yes · Free" : "No"]);
   if (custom.scuffSheet) summary.push(["Scuff sheet", config.scuff ? "Yes" : "No"]);
-  summary.push(["Size", BAT_SIZES[config.size].label]);
+  summary.push(["Size", size.sizeLabel ?? ""]);
 
   return (
     <>
@@ -412,7 +450,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
               <AddToCartButton
                 item={item}
                 productName={`Astaad ${bat.name}`}
-                soldOut={bat.soldOut}
+                soldOut={soldOut}
                 size="lg"
                 className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
               >
@@ -432,7 +470,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
         </div>
       </section>
 
-      <SizeSection eyebrow="Step 2 of 2" value={config.size} onChange={onSizeChange} />
+      <SizeSection eyebrow="Step 2 of 2" bat={bat} selected={size} onChange={onSizeChange} />
     </>
   );
 }

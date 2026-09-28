@@ -1,7 +1,7 @@
 // The product tiles in "What players are buying" and "Complete your kit",
 // built from the catalogue on the server and handed to KitCard.
 import { batCartItem, gearCartItem, type CartItem } from "@/lib/cart";
-import { DEFAULT_BAT_CONFIG, gearHref, type GearCategorySlug, type KitItem } from "@/lib/catalogue";
+import { gearHref, type GearCategorySlug, type KitItem } from "@/lib/catalogue";
 import {
   entryBat,
   findStoreBat,
@@ -37,13 +37,13 @@ export function batTile(bat: StoreBat): KitTile {
     // A bat photo runs toe to handle, so it stops above the name.
     imageHeight: 232,
     imageTop: 40,
-    cartItem: batCartItem(bat.slug, DEFAULT_BAT_CONFIG, 1, bat.customization),
+    cartItem: batCartItem(bat),
     soldOut: bat.soldOut,
     offer: bat.offer,
   };
 }
 
-/** A gear product as a tile, in its category's usual size and hand. */
+/** A gear product as a tile, in its usual size and hand (or the first in stock). */
 export function gearTile(product: StoreGear): KitTile {
   return {
     slug: product.slug,

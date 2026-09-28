@@ -4,7 +4,6 @@ import { ArrowRight, Leaf, Scale, ShoppingCart, Star, Target, Zap } from "lucide
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
-import { DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
 
@@ -95,7 +94,7 @@ export function ProductHero({ bat, delivery }: { bat: StoreBat; delivery: Delive
             <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
           </Button>
           <AddToCartButton
-            item={batCartItem(bat.slug, DEFAULT_BAT_CONFIG, 1, bat.customization)}
+            item={batCartItem(bat)}
             productName={`Astaad ${bat.name}`}
             soldOut={bat.soldOut}
             size="lg"

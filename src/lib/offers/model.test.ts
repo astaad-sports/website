@@ -87,7 +87,7 @@ describe("prices", () => {
     expect(bat.price).toBe(6159);
     expect(bat.offer?.name).toBe("Diwali Sale");
 
-    const cart = priceCart([batCartItem("run-machine", undefined, 2, bat.customization)], catalogue, null, NOW);
+    const cart = priceCart([batCartItem(bat, undefined, 2)], catalogue, null, NOW);
     expect(cart.subtotalPaise).toBe(615_900 * 2);
     expect(cart.discountPaise).toBe((769_900 - 615_900) * 2);
     expect(cart.lines[0].offer).toEqual({ name: "Diwali Sale", percentOff: 20, code: null });
@@ -102,14 +102,14 @@ describe("prices", () => {
     const bat = catalogue.bats.find((entry) => entry.slug === "run-machine")!;
     const coupon = toAppliedCoupon(offer({ code: "GLOVES15", percentOff: 15, scope: "categories", categories: ["batting-gloves"] }));
 
-    const cart = priceCart([gearCartItem(gloves), batCartItem("run-machine", undefined, 1, bat.customization)], catalogue, coupon, NOW);
+    const cart = priceCart([gearCartItem(gloves), batCartItem(bat)], catalogue, coupon, NOW);
     expect(cart.lines[0].offer).toEqual({ name: "Diwali Sale", percentOff: 15, code: "GLOVES15" });
     expect(cart.lines[0].unitPricePaise).toBe(offerPrice(gloves.regularPrice, 15) * 100);
     expect(cart.lines[1].offer?.code).toBeNull();
     expect(cart.coupon).toEqual({ code: "GLOVES15", name: "Diwali Sale", covered: true, applied: true });
 
     const weaker = toAppliedCoupon(offer({ code: "BATS5", percentOff: 5, scope: "categories", categories: ["bats"] }));
-    const onlyBat = priceCart([batCartItem("run-machine", undefined, 1, bat.customization)], catalogue, weaker, NOW);
+    const onlyBat = priceCart([batCartItem(bat)], catalogue, weaker, NOW);
     expect(onlyBat.coupon).toMatchObject({ covered: true, applied: false });
     expect(onlyBat.lines[0].offer?.percentOff).toBe(10);
   });

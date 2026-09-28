@@ -6,7 +6,7 @@ import { ArrowRight, CircleAlert, Layers } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { editorHref, isRestockable, type ProductListItem } from "./product-row";
+import { editorHref, isRestockable, variantsOut, type ProductListItem } from "./product-row";
 import { RestockSheet, type StockSaved } from "./restock";
 import { Toast } from "./toast";
 
@@ -29,12 +29,14 @@ interface SheetState {
 const ROW = "flex min-h-16 w-full items-center gap-3 py-2.5 text-left transition-colors hover:bg-surface-sunken/60";
 
 /**
- * "G.O.A.T · Out of stock → Manage" or "Black Edition · Only 2 left → Update
- * stock". Opens the Restock sheet; a product marked out of stock by hand
+ * "G.O.A.T · Out of stock → Manage", "Black Edition · Only 2 left → Update
+ * stock" or "Pro Helmet · None left: Large → Update stock". Opens the Restock sheet; a product marked out of stock by hand
  * with stock left opens its editor instead, where it can be made available.
  */
 function StockAttentionRow({ row, onOpen }: { row: StockAttention; onOpen: (trigger: HTMLElement) => void }) {
   const out = row.kind === "out";
+  // On sale, but a size or hand has run out.
+  const noneLeft = variantsOut(row.item);
   const Icon = out ? CircleAlert : Layers;
   const body = (
     <>
@@ -42,7 +44,7 @@ function StockAttentionRow({ row, onOpen }: { row: StockAttention; onOpen: (trig
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[15px] leading-[22px] font-semibold">{row.item.name}</span>
         <span className={cn("truncate text-[13px] leading-[18px] tabular-nums", out ? "text-danger" : "text-ink-muted")}>
-          {out ? "Out of stock" : `Only ${row.item.stock} left`}
+          {out ? "Out of stock" : (noneLeft ? `None left: ${noneLeft}` : `Only ${row.item.stock} left`)}
         </span>
       </span>
       <span className="inline-flex shrink-0 items-center gap-1 text-sm leading-5 font-semibold">
