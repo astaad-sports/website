@@ -1,20 +1,21 @@
 "use client";
 
-import { useState } from "react";
-
 import { IconButton } from "@/components/astaad";
+import { useSaved } from "@/components/wishlist/use-wishlist";
 
-/** The heart on a product plate: outline at rest, filled once saved. */
+/** The heart on a product plate: outline at rest, filled once saved to this browser's wishlist. */
 export function WishlistButton({
+  productId,
   name,
   onDark,
   className,
 }: {
+  productId: string;
   name: string;
   onDark?: boolean;
   className?: string;
 }) {
-  const [saved, setSaved] = useState(false);
+  const { saved, toggle } = useSaved(productId);
   return (
     <IconButton
       icon="heart"
@@ -22,7 +23,7 @@ export function WishlistButton({
       pressed={saved}
       filled={saved}
       onDark={onDark}
-      onClick={() => setSaved((value) => !value)}
+      onClick={toggle}
       className={className}
     />
   );

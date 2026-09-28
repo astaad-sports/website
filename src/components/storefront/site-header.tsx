@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, Menu, Search, Truck, User } from "lucide-react";
+import { Menu, Search, Truck, User } from "lucide-react";
 
 import { Crest } from "@/components/astaad";
 import { CartLink } from "@/components/cart/cart-link";
@@ -11,6 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { WishlistLink, WishlistMenuLink } from "@/components/wishlist/wishlist-link";
 import { STORE_CATEGORIES } from "@/lib/catalogue";
 import { cn } from "@/lib/utils";
 
@@ -96,10 +97,7 @@ export function SiteHeader({ activeHref, sticky }: { activeHref?: string; sticky
                   <User className="size-5" strokeWidth={1.5} aria-hidden="true" />
                   Account
                 </Link>
-                <Link href="/wishlist" className="flex min-h-11 items-center gap-3 px-4 text-sm font-semibold">
-                  <Heart className="size-5" strokeWidth={1.5} aria-hidden="true" />
-                  Wishlist
-                </Link>
+                <WishlistMenuLink className="flex min-h-11 items-center gap-3 px-4 text-sm font-semibold" />
               </div>
             </SheetContent>
           </Sheet>
@@ -144,7 +142,7 @@ export function SiteHeader({ activeHref, sticky }: { activeHref?: string; sticky
 
         <div className="flex items-center gap-1">
           <HeaderAction href="/account" label="Account" icon={User} className="hidden lg:flex" />
-          <HeaderAction href="/wishlist" label="Wishlist" icon={Heart} className="hidden lg:flex" />
+          <WishlistLink className={cn(ACTION_LINK, "hidden lg:flex")} iconClassName={ACTION_ICON} />
           <CartLink className={ACTION_LINK} iconClassName={ACTION_ICON} />
         </div>
       </div>

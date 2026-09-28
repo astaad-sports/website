@@ -27,6 +27,7 @@ import { OfferNote } from "./offer-note";
 import { ProductPromises } from "./product-promises";
 import { ProductRatingLink } from "./product-reviews";
 import { StockStatus } from "./stock-status";
+import { WishlistButton } from "./wishlist-button";
 
 interface Highlight {
   icon: typeof Truck;
@@ -80,9 +81,9 @@ function highlightsFor(product: StoreGear): Highlight[] {
 }
 
 /**
- * The gear product hero: the stage on the left; name, rating (from the
- * product's own published reviews), stock, price (with any running offer),
- * delivery promises, options and highlights on the right. From xl it is at
+ * The gear product hero: the stage on the left; the wishlist heart, name,
+ * rating (from the product's own published reviews), stock, price (with any
+ * running offer), delivery promises, options and highlights on the right. From xl it is at
  * least 760px tall, growing with the options beside the stage.
  */
 export function GearHero({
@@ -104,15 +105,18 @@ export function GearHero({
     <section aria-labelledby="pdp-title" className="grid grid-cols-1 lg:grid-cols-[54%_1fr] xl:min-h-[760px]">
       <GearGallery product={product} />
       <div className="flex flex-col gap-[18px] px-4 py-8 md:px-8 md:py-10 xl:py-14 xl:pr-16 xl:pl-14">
-        <Eyebrow bar>
-          <Link href="/" className="transition-colors hover:text-foreground">
-            Home
-          </Link>
-          <span aria-hidden="true">·</span>
-          <Link href={category.href} className="transition-colors hover:text-foreground">
-            {category.name}
-          </Link>
-        </Eyebrow>
+        <div className="flex items-center justify-between gap-3">
+          <Eyebrow bar>
+            <Link href="/" className="transition-colors hover:text-foreground">
+              Home
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link href={category.href} className="transition-colors hover:text-foreground">
+              {category.name}
+            </Link>
+          </Eyebrow>
+          <WishlistButton productId={product.id} name={product.name} className="-my-3 -mr-2.5 shrink-0" />
+        </div>
         {/* A container, so the title can size to its column: "Godfather" is
             about 6.44em wide, and at 64px it pushed the column past a 1024px
             screen. With room to spare the title keeps its size. */}

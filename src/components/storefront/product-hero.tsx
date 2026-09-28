@@ -16,12 +16,13 @@ import { ProductGallery } from "./product-gallery";
 import { ProductPromises } from "./product-promises";
 import { ProductRatingLink } from "./product-reviews";
 import { StockStatus } from "./stock-status";
+import { WishlistButton } from "./wishlist-button";
 
 /**
- * The product hero: the gallery on the left; name, rating (from the bat's own
- * published reviews), stock, price (with any running offer), delivery
- * promises and actions on the right. From xl it is 760px tall, growing when
- * an offer or a dispatch time needs the room.
+ * The product hero: the gallery on the left; the wishlist heart, name, rating
+ * (from the bat's own published reviews), stock, price (with any running
+ * offer), delivery promises and actions on the right. From xl it is 760px
+ * tall, growing when an offer or a dispatch time needs the room.
  */
 export function ProductHero({
   bat,
@@ -48,7 +49,10 @@ export function ProductHero({
     <section aria-labelledby="pdp-title" className="grid grid-cols-1 lg:grid-cols-[54%_1fr] xl:min-h-[760px]">
       <ProductGallery bat={bat} />
       <div className="flex flex-col gap-[18px] px-4 py-8 md:px-8 md:py-10 xl:py-14 xl:pr-16 xl:pl-14">
-        <Eyebrow bar>Astaad Sports</Eyebrow>
+        <div className="flex items-center justify-between gap-3">
+          <Eyebrow bar>Astaad Sports</Eyebrow>
+          <WishlistButton productId={bat.id} name={bat.name} className="-my-3 -mr-2.5 shrink-0" />
+        </div>
         {/* A container, so the title can size to its column: "Godfather" is
             about 6.44em wide, and at 72px it pushed the column past a 1024px
             screen. With room to spare the title keeps its size. */}

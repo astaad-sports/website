@@ -40,7 +40,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
             )}
           </span>
         )}
-        <WishlistButton name={product.name} className="absolute top-2 right-2 z-10" />
+        <WishlistButton productId={product.id} name={product.name} className="absolute top-2 right-2 z-10" />
         <Image
           src={product.images[0]}
           alt={`Astaad ${product.name}`}

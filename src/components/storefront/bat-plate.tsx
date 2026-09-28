@@ -50,7 +50,7 @@ export function BatCard({ bat }: { bat: StoreBat }) {
             </span>
           ))}
         </span>
-        <WishlistButton name={bat.name} onDark={bat.dark} className="absolute top-0.5 right-0.5 z-10" />
+        <WishlistButton productId={bat.id} name={bat.name} onDark={bat.dark} className="absolute top-0.5 right-0.5 z-10" />
         <Image
           src={image}
           alt={`Astaad ${bat.name} bat`}
@@ -143,7 +143,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
             </span>
           ))}
         </span>
-        <WishlistButton name={bat.name} onDark={bat.dark} className="absolute top-2 right-2 z-10" />
+        <WishlistButton productId={bat.id} name={bat.name} onDark={bat.dark} className="absolute top-2 right-2 z-10" />
         <Image
           src={image}
           alt={`Astaad ${bat.name} bat`}
