@@ -87,9 +87,9 @@ function CategoryChip({ category, stats }: { category: StoreCategory; stats: Cat
   );
 }
 
-/** The cut-out's size inside the 76px circle: its tile placement scaled to fit a 54px box (64px wide for the bat). */
+/** The cut-out's size inside the 76px circle: its tile placement scaled to fit a 54px box (60px tall for the bats). */
 function chipSize({ tile, kind }: StoreCategory): { width: number; height: number } {
-  const box = kind === "bats" ? 64 : 54;
+  const box = kind === "bats" ? 60 : 54;
   const scale = box / Math.max(tile.width, tile.height);
   return { width: Math.round(tile.width * scale), height: Math.round(tile.height * scale) };
 }

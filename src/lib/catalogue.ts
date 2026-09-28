@@ -29,8 +29,8 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     name: "Bats",
     href: "/#collection",
     number: "01",
-    image: siteImage("bats/scoop-master-diagonal").src,
-    tile: { width: 224, height: 158, top: 44, shadowWidth: 200, shadowTop: 150 },
+    image: siteImage("categories/bats").src,
+    tile: { width: 88, height: 216, top: 4, shadowWidth: 140, shadowTop: 198 },
   },
   {
     slug: "batting-pads",
@@ -201,6 +201,9 @@ export interface BatRange {
   /** Tennis bats show the bat cut-out partly desaturated. */
   grayscale?: boolean;
 }
+
+/** The size of a bat lying diagonally, which the range hero doubles. */
+export const DIAGONAL_BAT_TILE: StoreCategory["tile"] = { width: 224, height: 158, top: 44, shadowWidth: 200, shadowTop: 150 };
 
 export const BAT_RANGES: BatRange[] = [
   {

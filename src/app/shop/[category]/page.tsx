@@ -9,7 +9,14 @@ import { kitTilesForBat, kitTilesForGear } from "@/components/storefront/kit-til
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
-import { BAT_RANGES, GEAR_CATEGORY_SLUGS, getBatRange, getCategory, type BatRange } from "@/lib/catalogue";
+import {
+  BAT_RANGES,
+  DIAGONAL_BAT_TILE,
+  GEAR_CATEGORY_SLUGS,
+  getBatRange,
+  getCategory,
+  type BatRange,
+} from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { batsInSubcategory, gearInCategory } from "@/lib/products/model";
 import { deliveryFeePaise } from "@/lib/settings/model";
@@ -87,7 +94,7 @@ async function BatRangePage({ range }: { range: BatRange }) {
       <SiteHeader activeHref={batsCategory.href} />
       <main className="flex-1">
         <CategoryHero
-          category={{ name: range.name, tagline: range.tagline, image: range.image, tile: batsCategory.tile }}
+          category={{ name: range.name, tagline: range.tagline, image: range.image, tile: DIAGONAL_BAT_TILE }}
           count={bats.length}
           from={bats.length ? Math.min(...bats.map((bat) => bat.price)) : null}
           deliveryFeePaise={deliveryFeePaise(settings)}
