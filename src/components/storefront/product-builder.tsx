@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 import { ChoiceButtons, FreeChip, HandleGlyph, OptionGroup, useBatConfig, YesNo } from "./bat-options";
 import { BatSilhouette } from "./bat-silhouette";
+import { BladeEngraving, EngravingSwatch } from "./blade-engraving";
 import { deliveryShort } from "./delivery";
 import { Eyebrow } from "./eyebrow";
 import { OfferNote } from "./offer-note";
@@ -231,7 +232,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
           />
 
           <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)_336px] xl:items-start">
-            {/* Live preview: the bat's main photo, with the engraving drawn down the lower blade */}
+            {/* Live preview: the bat's main photo, with the engraving cut into the lower blade */}
             <div className="relative h-[560px] overflow-hidden rounded-xs bg-surface-dark text-on-dark xl:h-[780px]">
               <div
                 aria-hidden="true"
@@ -241,7 +242,8 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
                 <span aria-hidden="true" className="block size-2 rounded-full bg-success" />
                 Live preview
               </span>
-              <div className="relative mx-auto mt-14 h-[360px] w-[142px] xl:mt-[70px] xl:h-[482px] xl:w-[190px]">
+              {/* The photo is centred and fills the height, so the blade sits the same way for every bat. */}
+              <div className="relative mx-auto mt-14 h-[360px] w-[142px] [container-type:size] xl:mt-[70px] xl:h-[482px] xl:w-[190px]">
                 <Image
                   src={bat.images[0]}
                   alt={`${bat.name} preview with your configuration`}
@@ -249,16 +251,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
                   sizes="190px"
                   className="object-contain drop-shadow-[0_36px_44px_rgba(0,0,0,0.85)]"
                 />
-                {/* The photo is centred and fills the height, so the blade's centre line and toe are
-                    fixed: the name starts just above the toe and a longer one grows up the blade. */}
-                {custom.engraving && (
-                  <span
-                    aria-hidden="true"
-                    className="type-display absolute top-[90%] left-[calc(50%-0.5em)] origin-top-left -rotate-90 text-[13px] leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow xl:text-[15px]"
-                  >
-                    {engraving || "YOUR NAME"}
-                  </span>
-                )}
+                {custom.engraving && <BladeEngraving text={engraving || "YOUR NAME"} />}
               </div>
               <dl className="absolute inset-x-6 bottom-6 flex flex-col gap-2.5 text-[13px] leading-[18px]">
                 {summary
@@ -339,11 +332,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
                         Maximum {ENGRAVING_MAX} letters. Engraved on the lower blade.
                       </span>
                     </div>
-                    <div className="flex h-13 w-full items-center justify-center overflow-hidden rounded-xs bg-surface-dark px-4 sm:w-[220px] sm:shrink-0">
-                      <span className="type-display text-base leading-none tracking-[0.14em] whitespace-nowrap text-brand-yellow">
-                        {engraving || "YOUR NAME"}
-                      </span>
-                    </div>
+                    <EngravingSwatch text={engraving || "YOUR NAME"} className="h-13 w-full sm:w-[220px] sm:shrink-0" />
                   </div>
                 </OptionGroup>
               )}

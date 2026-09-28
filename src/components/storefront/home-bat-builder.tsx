@@ -19,6 +19,7 @@ import { formatPrice } from "@/lib/format";
 import { countInWords, listInWords, startingBatConfig, type StoreBat } from "@/lib/products/model";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
+import { BladeEngraving } from "./blade-engraving";
 import { OfferNote } from "./offer-note";
 import { SectionHeading } from "./section-heading";
 
@@ -146,10 +147,9 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 {bat.offer && <OfferNote offer={bat.offer} tone="dark" className="mt-1" />}
               </div>
             </div>
-            {/* The bat's main photo, with the engraving drawn on the lower blade. The photo is
-                centred and fills the height, so the blade's centre line and toe are fixed: the
-                name starts just above the toe and a longer one grows up the blade. */}
-            <div className="relative mx-auto mt-6 h-[360px] w-[142px] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[390px] md:w-[168px]">
+            {/* The bat's main photo, with the engraving cut into the lower blade. The photo is
+                centred and fills the height, so the blade sits the same way for every bat. */}
+            <div className="relative mx-auto mt-6 h-[360px] w-[142px] [container-type:size] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[390px] md:w-[168px]">
               <Image
                 src={bat.images[0]}
                 alt={`Preview of your ${bat.name} bat`}
@@ -157,14 +157,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 sizes="168px"
                 className="object-contain drop-shadow-[0_32px_40px_rgba(0,0,0,0.8)]"
               />
-              {custom.engraving && (
-                <span
-                  aria-hidden="true"
-                  className="type-script-accent absolute top-[90%] left-[calc(50%-0.5em)] origin-top-left -rotate-90 text-[22px] leading-none whitespace-nowrap text-brand-yellow md:text-[24px]"
-                >
-                  {engraved || "Your Name"}
-                </span>
-              )}
+              {custom.engraving && <BladeEngraving text={engraved || "Your Name"} />}
             </div>
             <div className="relative mt-6 flex flex-wrap gap-2 md:absolute md:inset-x-8 md:bottom-7 md:mt-0">
               {chips.map((chip) => (
