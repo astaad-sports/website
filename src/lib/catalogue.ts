@@ -87,7 +87,7 @@ export interface Bat {
   off: number;
   /** Extra black chips beside the discount, e.g. "Top 1%". */
   badges?: string[];
-  /** The Black Edition sits on a dark plate with a darkened blade. */
+  /** Puts the bat on a dark plate. No bat has it now: the Black Edition sits on the light plate like the others. */
   dark?: boolean;
   rating?: number;
   reviews?: number;
@@ -133,7 +133,6 @@ export const BATS: Bat[] = [
     price: 12599,
     mrp: 20999,
     off: 40,
-    dark: true,
     details: `Black Edition · Grade 2 English Willow · ${FINISH}`,
     willow: "Grade 2 English Willow. Naturally air-dried and pressed for a lively face that only gets better.",
   },
