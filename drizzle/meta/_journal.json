@@ -106,6 +106,13 @@
       "when": 1790593772286,
       "tag": "0014_size_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790606103243,
+      "tag": "0015_order_emails",
+      "breakpoints": true
     }
   ]
 }

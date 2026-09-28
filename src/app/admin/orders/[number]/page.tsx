@@ -5,14 +5,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, CircleAlert, FlaskConical, Mail, Phone } from "lucide-react";
 
+import { CancelOrder } from "@/components/admin/cancel-order";
+import { FailedEmails } from "@/components/admin/failed-emails";
 import { NextStepButton, StatusStepper } from "@/components/admin/fulfilment-controls";
 import { StatusLabel } from "@/components/admin/status-label";
 import { PAGE, SECTION_LABEL } from "@/components/admin/styles";
 import { TrackingForm } from "@/components/admin/tracking-form";
+import { listOrderEmails } from "@/db/emails";
 import { getOrderForAdmin } from "@/db/orders";
 import { primaryImagesBySlug } from "@/db/products";
 import type { OrderItemOffer } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
+import { emailsToSendAgain, ORDER_EMAIL_LABEL } from "@/lib/email/kinds";
 import {
   formatMobile,
   formatOrderDate,
@@ -22,9 +26,8 @@ import {
   mobileHref,
   parseOrderNumber,
 } from "@/lib/format";
-import { isFulfilmentStatus } from "@/lib/orders/fulfilment";
+import { canCancel, isFulfilmentStatus, stockShortfallNotice } from "@/lib/orders/fulfilment";
 import { productImage } from "@/lib/orders/product-image";
-import { shortfallName } from "@/lib/products/variants";
 import { defaultCarrier } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
 import { cn } from "@/lib/utils";
@@ -98,9 +101,10 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   const order = await getOrderForAdmin(number);
   if (!order) notFound();
   // The product's current primary photo; the built-in cut-out for a product since removed.
-  const [photos, settings] = await Promise.all([
+  const [photos, settings, emails] = await Promise.all([
     primaryImagesBySlug(order.items.map((item) => item.productSlug)),
     getStoreSettings(),
+    listOrderEmails(order.id),
   ]);
 
   const status = order.status;
@@ -108,6 +112,16 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   const hasTracking = Boolean(order.trackingNumber);
   const customerName = order.customer.name?.trim() || order.shipName;
   const email = order.customer.email ?? order.email;
+  // Failed or stuck emails that Send again can still send; one about a step the order has left stays quiet.
+  const failedEmails = emailsToSendAgain(emails, order).map((row) => ({
+    id: row.id,
+    label: ORDER_EMAIL_LABEL[row.kind],
+    recipients: row.recipients.split(",").join(", "),
+    stuck: row.status !== "failed",
+    error: row.status === "failed" ? row.error : null,
+  }));
+  // What the customer has been sent; the admins' new-order alert is not theirs.
+  const emailed = emails.filter((row) => row.status === "sent" && row.kind !== "new_order_alert");
 
   return (
     <main className={cn(PAGE, "gap-4 pt-1 lg:gap-6 lg:pt-6")}>
@@ -136,15 +150,10 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
         {order.stockShortfall && order.stockShortfall.length > 0 && (
           <p className="mt-2 flex items-start gap-2 text-[15px] leading-[22px] font-semibold text-danger">
             <CircleAlert className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
-            <span>
-              Paid while out of stock:{" "}
-              {order.stockShortfall
-                .map((line) => `${shortfallName(line)} (${line.missing} more than you had)`)
-                .join(", ")}
-              . Restock before shipping, or contact the customer about a refund.
-            </span>
+            <span>{stockShortfallNotice(order.stockShortfall)}</span>
           </p>
         )}
+        <FailedEmails emails={failedEmails} />
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
@@ -168,12 +177,34 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
               <div className="border-t border-border pt-5 max-lg:hidden">
                 <NextStepButton orderId={order.id} status={status} hasTracking={hasTracking} placement="inline" />
               </div>
+              {canCancel(status) && (
+                <div className="flex flex-col border-t border-border pt-3 pb-2 lg:mt-5">
+                  <CancelOrder
+                    orderId={order.id}
+                    status={status}
+                    orderNumber={formatOrderNumber(order.number)}
+                    total={formatPaise(order.totalPaise)}
+                    test={order.isTest}
+                  />
+                </div>
+              )}
             </>
+          ) : status === "cancelled" ? (
+            <Section id="status-title" title="Status">
+              <p className="text-[15px] leading-[22px] font-semibold text-ink-muted">
+                {order.cancelledAt ? `Cancelled on ${formatOrderDate(order.cancelledAt)}.` : "This order was cancelled."}
+              </p>
+              {order.paidAt && !order.isTest && (
+                <p className="text-[13px] leading-[18px] text-ink-muted">
+                  If you haven’t yet, refund {formatPaise(order.totalPaise)} in the Razorpay dashboard
+                  {order.razorpayPaymentId && ` (payment ${order.razorpayPaymentId})`}. The returns policy promises it
+                  within 7 working days.
+                </p>
+              )}
+            </Section>
           ) : (
             <Section id="status-title" title="Status">
-              <p className={cn("text-[15px] leading-[22px] font-semibold", status === "cancelled" ? "text-ink-muted" : "text-danger")}>
-                {status === "cancelled" ? "This order was cancelled." : "Not paid yet. Do not ship this order."}
-              </p>
+              <p className="text-[15px] leading-[22px] font-semibold text-danger">Not paid yet. Do not ship this order.</p>
             </Section>
           )}
         </div>
@@ -191,6 +222,12 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                   <Mail className="size-5 shrink-0 text-ink-muted" strokeWidth={1.5} aria-hidden="true" />
                   {email}
                 </a>
+              )}
+              {emailed.length > 0 && (
+                <p className="text-[13px] leading-[18px] text-ink-muted">
+                  Emailed:{" "}
+                  {emailed.map((row) => `${ORDER_EMAIL_LABEL[row.kind]} ${formatShortDate(row.updatedAt)}`).join(" · ")}
+                </p>
               )}
             </div>
           </Section>

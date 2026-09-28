@@ -227,6 +227,20 @@ export function takeFromCounts(counts: VariantStock, key: string | null, quantit
   return wanted;
 }
 
+/**
+ * Put `quantity` of one variant back into the counts, for a cancelled order.
+ * An order placed before each size had its own stock names no variant (or a
+ * size may have been removed since): it goes back only when the product has
+ * a single count to go to. Returns whether it went back.
+ */
+export function returnToCounts(counts: VariantStock, key: string | null, quantity: number): boolean {
+  const keys = Object.keys(counts);
+  const target = key !== null && Object.hasOwn(counts, key) ? key : keys.length === 1 ? keys[0] : null;
+  if (target === null || quantity <= 0) return false;
+  counts[target] += quantity;
+  return true;
+}
+
 /** What ran short on a paid order: "Legacy Pro Helmet, Large". */
 export function shortfallName(line: Pick<OrderStockShortfall, "name" | "variant">): string {
   return [line.name, line.variant].filter(Boolean).join(", ");

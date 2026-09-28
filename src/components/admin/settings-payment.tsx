@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const DASHBOARD_URL = "https://dashboard.razorpay.com";
 
 /** "CONNECTED" or "NOT CONNECTED" with a dot, like the order status labels. The word carries the meaning. */
-function ConnectionLabel({ connected }: { connected: boolean }) {
+export function ConnectionLabel({ connected }: { connected: boolean }) {
   return (
     <span
       className={cn(
@@ -21,13 +21,30 @@ function ConnectionLabel({ connected }: { connected: boolean }) {
   );
 }
 
-function Note({ children, className }: { children: ReactNode; className?: string }) {
+/** A grey line under a service's name. */
+export function Note({ children, className }: { children: ReactNode; className?: string }) {
   return <p className={cn("text-[13px] leading-[18px] text-ink-muted", className)}>{children}</p>;
 }
 
 /** An environment variable's name, set apart so it can be copied exactly. */
-function EnvName({ children }: { children: string }) {
+export function EnvName({ children }: { children: string }) {
   return <code className="font-mono text-xs font-semibold break-all text-foreground">{children}</code>;
+}
+
+/** "Open Razorpay dashboard": a link out to the service, in a new tab. */
+export function DashboardLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm leading-5 font-semibold transition-colors hover:text-ink-muted"
+    >
+      {children}
+      <ExternalLink className="size-4" strokeWidth={1.5} aria-hidden="true" />
+      <span className="sr-only">(opens in a new tab)</span>
+    </a>
+  );
 }
 
 /**
@@ -63,16 +80,7 @@ export function RazorpaySettings({ status }: { status: RazorpayStatus }) {
           set in the site&apos;s environment variables.
         </Note>
       )}
-      <a
-        href={DASHBOARD_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm leading-5 font-semibold transition-colors hover:text-ink-muted"
-      >
-        Open Razorpay dashboard
-        <ExternalLink className="size-4" strokeWidth={1.5} aria-hidden="true" />
-        <span className="sr-only">(opens in a new tab)</span>
-      </a>
+      <DashboardLink href={DASHBOARD_URL}>Open Razorpay dashboard</DashboardLink>
     </div>
   );
 }

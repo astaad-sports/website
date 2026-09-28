@@ -3,10 +3,17 @@ import "server-only";
 import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 
 import { PRODUCT_LIMITS } from "@/lib/products/editor";
-import { availabilityForSave, availabilityForStock, MAX_SLUG_LENGTH, type ProductWithImages } from "@/lib/products/model";
+import {
+  availabilityForSave,
+  availabilityForStock,
+  MAX_SLUG_LENGTH,
+  stockStatus,
+  type ProductWithImages,
+} from "@/lib/products/model";
 import {
   countedStock,
   productVariants,
+  returnToCounts,
   sameCounts,
   stockColumns,
   takeFromCounts,
@@ -21,6 +28,7 @@ import {
   productImages,
   products,
   type NewProduct,
+  type Order,
   type OrderStockShortfall,
   type Product,
   type ProductAvailability,
@@ -260,6 +268,89 @@ export async function takeOrderFromStock(
     changed = true;
   }
   return { changed, shortfall };
+}
+
+/**
+ * Put a cancelled order's items back in stock, inside the transaction that
+ * cancels it: what takeOrderFromStock took, so any shortfall recorded when it
+ * was paid stays out. Uncounted products are left alone, and restocking an
+ * out-of-stock product makes it available again. Returns whether any count
+ * changed.
+ */
+export async function returnOrderToStock(
+  tx: Tx,
+  order: Pick<Order, "id" | "stockShortfall">
+): Promise<boolean> {
+  const lines = await tx
+    .select({
+      slug: orderItems.productSlug,
+      variant: orderItems.variant,
+      quantity: sql<number>`sum(${orderItems.quantity})::int`,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, order.id))
+    .groupBy(orderItems.productSlug, orderItems.variant);
+  // What never came out of stock, by product and the size's label as the shortfall names it.
+  const missing = new Map<string, number>();
+  for (const line of order.stockShortfall ?? []) {
+    const key = `${line.slug}\n${line.variant ?? ""}`;
+    missing.set(key, (missing.get(key) ?? 0) + line.missing);
+  }
+  let changed = false;
+  // One product at a time, in a fixed order, as takeOrderFromStock does.
+  const slugs = [...new Set(lines.map((line) => line.slug))].sort();
+  for (const slug of slugs) {
+    const [current] = await tx
+      .select()
+      .from(products)
+      .where(and(eq(products.slug, slug), isNotNull(products.stock)))
+      .for("update");
+    const counts = current && variantCounts(current);
+    if (!current || !counts) continue;
+    const variants = productVariants(current);
+    const before = totalStock(counts);
+    let returned = false;
+    for (const line of lines.filter((entry) => entry.slug === slug)) {
+      const label = variants.find((variant) => variant.key === line.variant)?.label ?? "";
+      const key = `${slug}\n${label}`;
+      const short = Math.min(missing.get(key) ?? 0, Number(line.quantity));
+      missing.set(key, (missing.get(key) ?? 0) - short);
+      if (returnToCounts(counts, line.variant, Number(line.quantity) - short)) returned = true;
+    }
+    if (!returned) continue;
+    const columns = stockColumns(current, counts);
+    const availability = availabilityForStock(current.availability, before, columns.stock);
+    await tx.update(products).set({ ...columns, availability }).where(eq(products.id, current.id));
+    changed = true;
+  }
+  return changed;
+}
+
+/**
+ * The counted products among `slugs` that are low or out of stock now, by
+ * the admin's own rule (stockStatus), out of stock first, then fewest left,
+ * with that status so the alert labels them as the admin's product list
+ * does. For the new-order alert, so the owner knows what to restock.
+ */
+export async function lowStockAmong(
+  slugs: string[]
+): Promise<{ name: string; stock: number; status: "low" | "out" }[]> {
+  if (slugs.length === 0) return [];
+  const rows = await getDb()
+    .select()
+    .from(products)
+    .where(and(inArray(products.slug, [...new Set(slugs)]), isNotNull(products.stock)));
+  return rows
+    .flatMap((row) => {
+      const status = stockStatus(row);
+      return row.stock !== null && (status === "low" || status === "out")
+        ? [{ name: row.name, stock: row.stock, status }]
+        : [];
+    })
+    .sort(
+      // The admin may mark a product out of stock with some still counted.
+      (a, b) => Number(b.status === "out") - Number(a.status === "out") || a.stock - b.stock || a.name.localeCompare(b.name)
+    );
 }
 
 // ---------------------------------------------------------------------------

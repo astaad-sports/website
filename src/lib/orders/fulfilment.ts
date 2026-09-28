@@ -1,7 +1,8 @@
 // Fulfilment rules shared by the admin pages, their Server Actions and the
 // order queries: the five steps a paid order moves through, what the admin
 // calls each one, and which list filter holds which statuses.
-import type { OrderStatus } from "@/db/schema";
+import type { OrderStatus, OrderStockShortfall } from "@/db/schema";
+import { shortfallName } from "@/lib/products/variants";
 
 /** A paid order moves through these, in order. The admin can tap any of them. */
 export const FULFILMENT_STEPS = ["paid", "confirmed", "packed", "shipped", "delivered"] as const;
@@ -43,6 +44,26 @@ export const ADMIN_STATUS_TONE: Record<OrderStatus, { dot: string; text: string 
   delivered: { dot: "bg-success", text: "text-success" },
   cancelled: { dot: "bg-danger", text: "text-danger" },
 };
+
+/**
+ * The warning on an order paid for more than was in stock, worded the same
+ * on the admin's order page and in the new-order alert email.
+ */
+export function stockShortfallNotice(shortfall: OrderStockShortfall[]): string {
+  const lines = shortfall.map((line) => `${shortfallName(line)} (${line.missing} more than you had)`).join(", ");
+  return `Paid while out of stock: ${lines}. Restock before shipping, or contact the customer about a refund.`;
+}
+
+/**
+ * The admin can cancel a paid order until it is delivered: before packing at
+ * the customer's request, or later when the parcel comes back. A delivered
+ * order goes through a return instead.
+ */
+export const CANCELLABLE_STEPS = ["paid", "confirmed", "packed", "shipped"] as const satisfies readonly FulfilmentStatus[];
+
+export function canCancel(status: OrderStatus): boolean {
+  return (CANCELLABLE_STEPS as readonly string[]).includes(status);
+}
 
 /** Moving to Shipped or Delivered needs a tracking ID, so the customer can follow the parcel. */
 export function needsTracking(target: FulfilmentStatus): boolean {

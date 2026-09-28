@@ -9,12 +9,13 @@ export const metadata: Metadata = {
   description: "What personal data Astaad Sports collects, why, who it is shared with, and your rights.",
 };
 
-const UPDATED = "24 September 2026";
+const UPDATED = "28 September 2026";
 
 /**
  * Privacy policy. Describes what the site actually does: Firebase sign-in,
- * orders in our database, Razorpay payments, courier hand-off, one sign-in
- * cookie and a cart in local storage, with no analytics or advertising.
+ * orders in our database, Razorpay payments, order emails through Resend,
+ * courier hand-off, one sign-in cookie and a cart in local storage, with no
+ * analytics or advertising.
  * Update it when any of that changes.
  */
 export default async function PrivacyPage() {
@@ -69,6 +70,10 @@ export default async function PrivacyPage() {
           <p>We use your data only to:</p>
           <ul>
             <li>take payment for, prepare, engrave and deliver your orders;</li>
+            <li>
+              email you when your order is confirmed, packed, shipped, delivered or cancelled, or when its tracking
+              details change;
+            </li>
             <li>show your orders and their tracking in your account;</li>
             <li>answer your questions and handle returns, refunds and complaints;</li>
             <li>prevent fraud and keep the website and your account secure;</li>
@@ -91,6 +96,10 @@ export default async function PrivacyPage() {
             <li>
               <strong>Razorpay</strong> processes payments, and receives your name, email address, mobile number
               and the order amount.
+            </li>
+            <li>
+              <strong>Resend</strong> sends our order emails, and receives your name, email address, mobile number,
+              order details and delivery address.
             </li>
             <li>
               <strong>Couriers</strong> such as Trackon Couriers and Delhivery receive your name, mobile number

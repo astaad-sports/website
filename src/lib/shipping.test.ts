@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { isAdmin } from "./auth/admin";
+import { adminEmails, isAdmin } from "./auth/admin";
 import { safeRedirectPath } from "./auth/redirect";
-import { formatMobile, formatShortDate, mobileHref, parseOrderNumber } from "./format";
+import { formatMobile, formatOrderDate, formatShortDate, mobileHref, parseOrderNumber } from "./format";
 import { carrierName, normaliseTrackingNumber, orderTimeline, shipOrderSchema, trackingNumberSchema } from "./shipping";
 
 describe("AWB numbers", () => {
@@ -55,6 +55,12 @@ describe("isAdmin", () => {
     expect(isAdmin({ email: "owner@astaad.in", emailVerified: true }, undefined)).toBe(false);
     expect(isAdmin({ email: "", emailVerified: true }, ",")).toBe(false);
   });
+
+  test("the list is trimmed, lower-cased and deduped, without blanks", () => {
+    expect(adminEmails(`${list}, owner@ASTAAD.in`)).toEqual(["owner@astaad.in", "ops@astaad.in"]);
+    expect(adminEmails(" , ")).toEqual([]);
+    expect(adminEmails(undefined)).toEqual([]);
+  });
 });
 
 test("order numbers parse with or without the AST- prefix", () => {
@@ -79,6 +85,12 @@ test("short dates drop the year only within the same year, in Indian time", () =
   // 31 Dec 2025, 20:00 UTC is already 1 Jan 2026 in India.
   expect(formatShortDate(new Date("2025-12-31T20:00:00Z"), now)).toBe("1 Jan");
   expect(formatShortDate(new Date("2025-06-01T06:00:00Z"), now)).toBe("1 Jun 2025");
+});
+
+test("order dates are Indian time, whatever the server's time zone", () => {
+  // 24 Sep, 20:00 UTC is 01:30 on 25 Sep in India. Engines spell the month "Sep" or "Sept".
+  expect(formatOrderDate(new Date("2026-09-24T20:00:00Z"))).toMatch(/^25 Sept? 2026$/);
+  expect(formatOrderDate(new Date("2026-09-24T18:00:00Z"))).toMatch(/^24 Sept? 2026$/);
 });
 
 test("sign-in only returns to paths on this site", () => {

@@ -4,6 +4,7 @@ import { startTransition, useActionState, useEffect, useRef, useState, type Form
 import { CircleAlert, LoaderCircle, LogOut } from "lucide-react";
 
 import { signOut } from "@/lib/auth/actions";
+import type { EmailStatus } from "@/lib/email/config";
 import type { RazorpayStatus } from "@/lib/payments/razorpay";
 import { saveSettings } from "@/lib/settings/admin-actions";
 import { defaultCarrier, SETTINGS_LIMITS, type Settings, type SettingsField } from "@/lib/settings/model";
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { FieldHelp, SelectField, TextField } from "./product-editor-fields";
 import { safeAction } from "./safe-action";
+import { EmailSettings } from "./settings-email";
 import { SETTINGS_SECTIONS, SettingsNav, type SettingsSectionId } from "./settings-nav";
 import { RazorpaySettings } from "./settings-payment";
 import { BUTTON_PRIMARY, FIELD, FIELD_LABEL, PAGE, SECTION_LABEL } from "./styles";
@@ -147,22 +149,25 @@ function SaveLabel({ saving }: { saving: boolean }) {
 }
 
 /**
- * The Settings page: store details, shipping, payment status and the
- * admin's own account, saved together with one button. It keeps what the
- * admin typed when a save fails and moves focus to the first field that
- * needs attention.
+ * The Settings page: store details (with whether order emails go out),
+ * shipping, payment status and the admin's own account, saved together
+ * with one button. It keeps what the admin typed when a save fails and
+ * moves focus to the first field that needs attention.
  */
 export function SettingsForm({
   settings,
   adminName,
   adminEmail,
   razorpay,
+  email,
 }: {
   /** As saved, or the defaults before the first save. */
   settings: Settings;
   adminName: string;
   adminEmail: string;
   razorpay: RazorpayStatus;
+  /** Resend's status, for the Order emails block under the support details. */
+  email: EmailStatus;
 }) {
   const [state, save, saving] = useActionState(saveOrReport, {});
   const saved = valuesFor(settings, adminName);
@@ -260,7 +265,7 @@ export function SettingsForm({
                 maxLength={SETTINGS_LIMITS.supportEmail}
                 value={values.supportEmail}
                 onValueChange={(value) => set("supportEmail", value)}
-                help="Shown in the footer so customers can write to you"
+                help="Shown in the footer, and where replies to order emails go"
                 error={errorFor("supportEmail")}
               />
               <TextField
@@ -277,6 +282,7 @@ export function SettingsForm({
                 error={errorFor("supportPhone")}
               />
             </div>
+            <EmailSettings status={email} />
             <TextField
               id="field-storeAddress"
               name="storeAddress"

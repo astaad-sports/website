@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -43,7 +44,8 @@ export type NewUser = typeof users.$inferInsert;
 /**
  * `pending_payment` until Razorpay confirms the payment, then `paid`. The
  * admin then moves it through `confirmed`, `packed`, `shipped` and
- * `delivered` (see src/lib/orders/fulfilment.ts). Nothing sets `cancelled` yet.
+ * `delivered` (see src/lib/orders/fulfilment.ts). The admin can cancel a
+ * paid order until it is delivered (cancelOrder in src/db/orders.ts).
  */
 export const orderStatus = pgEnum("order_status", [
   "pending_payment",
@@ -106,6 +108,8 @@ export const orders = pgTable(
     trackingNumber: text("tracking_number").unique(),
     shippedAt: timestamp("shipped_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** When the admin cancelled the order. */
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /**
      * Set when the payment arrived for more than was in stock (two customers
      * paying for the last one at once): the owner restocks or refunds.
@@ -174,6 +178,58 @@ export const orderItems = pgTable(
 );
 
 export type OrderItem = typeof orderItems.$inferSelect;
+
+/**
+ * `sending` from the moment a sender claims the email until Resend answers,
+ * then `sent` or `failed`. A failed email can be claimed again; so can one
+ * stuck in `sending` for ten minutes (see src/db/emails.ts).
+ */
+export const orderEmailStatus = pgEnum("order_email_status", ["sending", "sent", "failed"]);
+
+export type OrderEmailStatus = (typeof orderEmailStatus.enumValues)[number];
+
+/**
+ * An email about an order, sent through Resend. The unique (order, key) pair
+ * makes each email go at most once: `key` is the kind, or
+ * "tracking:<carrier>:<AWB>:after:<id>" for a tracking update (the id is the
+ * shipping or tracking email it follows), so moving an order back and forward again never
+ * sends a second copy.
+ */
+export const orderEmails = pgTable(
+  "order_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    kind: text("kind", {
+      enum: ["order_confirmation", "new_order_alert", "packed", "shipped", "tracking_updated", "delivered", "cancelled"],
+    }).notNull(),
+    key: text("key").notNull(),
+    /** The addresses it went to, comma-separated, as sent. */
+    recipients: text("recipients").notNull(),
+    status: orderEmailStatus("status").notNull().default("sending"),
+    /** The courier and AWB a shipping or tracking email gave, e.g. "trackon:AWB123". */
+    tracking: text("tracking"),
+    /** Resend's id for the email, once it is sent. */
+    resendId: text("resend_id"),
+    /** Why the last attempt failed: Resend's message, up to 500 characters. */
+    error: text("error"),
+    /** How many times the email has been claimed for sending. */
+    attempts: integer("attempts").notNull().default(1),
+    /**
+     * Sent as Resend's Idempotency-Key. Kept after a failure that may have
+     * sent the email anyway, so a retry within Resend's 24 hours is dropped
+     * as a repeat; cleared after a clear refusal, so the next try is new.
+     */
+    idempotencyKey: text("idempotency_key"),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("order_emails_order_id_key_idx").on(table.orderId, table.key)]
+);
+
+export type OrderEmail = typeof orderEmails.$inferSelect;
+export type OrderEmailKind = OrderEmail["kind"];
 
 /**
  * What the admin chose: on sale, shown but not for sale, or not shown at all.

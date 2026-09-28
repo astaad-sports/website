@@ -7,6 +7,7 @@ import type { PricedCart } from "@/lib/cart";
 import type { ShippingAddress } from "@/lib/checkout";
 import { normaliseTrackingNumber } from "@/lib/shipping";
 import {
+  CANCELLABLE_STEPS,
   filterStatuses,
   likePattern,
   needsTracking,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/orders/fulfilment";
 
 import { getDb } from "./index";
-import { takeOrderFromStock } from "./products";
+import { returnOrderToStock, takeOrderFromStock } from "./products";
 import { orderItems, orders, users, type Order, type OrderItem, type OrderStatus } from "./schema";
 
 export interface OrderWithItems extends Order {
@@ -311,17 +312,30 @@ export interface AdminOrder extends OrderWithItems {
   customer: { name: string | null; email: string | null };
 }
 
-/** Any order by its number, with the customer's account name and email. */
-export async function getOrderForAdmin(number: number): Promise<AdminOrder | undefined> {
+/** The order matching `condition`, with its lines and the customer's account name and email. */
+async function findAdminOrder(condition: SQL): Promise<AdminOrder | undefined> {
   const [row] = await getDb()
     .select({ order: orders, name: users.name, email: users.email })
     .from(orders)
     .innerJoin(users, eq(users.id, orders.userId))
-    .where(eq(orders.number, number))
+    .where(condition)
     .limit(1);
   if (!row) return undefined;
   const [withLines] = await withItems([row.order]);
   return { ...withLines, customer: { name: row.name, email: row.email } };
+}
+
+/** Any order by its number, with the customer's account name and email. */
+export async function getOrderForAdmin(number: number): Promise<AdminOrder | undefined> {
+  return findAdminOrder(eq(orders.number, number));
+}
+
+/**
+ * Any order by its id, read fresh for an order email: its lines, and the
+ * account name and email for when the order has no email of its own.
+ */
+export async function getOrderForEmail(orderId: string): Promise<AdminOrder | undefined> {
+  return findAdminOrder(eq(orders.id, orderId));
 }
 
 export type FulfilmentUpdate =
@@ -427,6 +441,32 @@ export async function removeOrderTracking(orderId: string, from: FulfilmentStatu
     .where(and(eq(orders.id, orderId), eq(orders.status, from)))
     .returning();
   return updated ? { ok: true, order: updated } : explainMiss(orderId);
+}
+
+/**
+ * Cancel a paid order that has not been delivered, from the status the admin
+ * saw, and put what it took back in stock (a test order took none). Returns
+ * the order and whether any stock count changed. The refund is the admin's to
+ * make in Razorpay.
+ */
+export async function cancelOrder(
+  orderId: string,
+  from: FulfilmentStatus
+): Promise<{ ok: true; order: Order; stockChanged: boolean } | { ok: false; reason: "not_found" | "wrong_status" }> {
+  if (!(CANCELLABLE_STEPS as readonly string[]).includes(from)) return { ok: false, reason: "wrong_status" };
+  const cancelled = await getDb().transaction(async (tx) => {
+    const [updated] = await tx
+      .update(orders)
+      .set({ status: "cancelled", cancelledAt: new Date() })
+      .where(and(eq(orders.id, orderId), eq(orders.status, from)))
+      .returning();
+    if (!updated) return undefined;
+    const stockChanged = updated.isTest ? false : await returnOrderToStock(tx, updated);
+    return { ok: true as const, order: updated, stockChanged };
+  });
+  if (cancelled) return cancelled;
+  const [existing] = await getDb().select({ id: orders.id }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  return { ok: false, reason: existing ? "wrong_status" : "not_found" };
 }
 
 async function explainMiss(orderId: string): Promise<FulfilmentUpdate> {

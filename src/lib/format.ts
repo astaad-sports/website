@@ -32,9 +32,17 @@ export function parseOrderNumber(value: string): number | null {
   return number > 0 && number <= MAX_ORDER_NUMBER ? number : null;
 }
 
-const orderDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const orderDate = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
 
-/** "24 Sept 2026" */
+/**
+ * "24 Sept 2026" in Indian time, so the server (UTC on Vercel), an email and
+ * every browser show the same day.
+ */
 export function formatOrderDate(date: Date): string {
   return orderDate.format(date);
 }

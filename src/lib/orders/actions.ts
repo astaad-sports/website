@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { isTestAccount } from "@/lib/auth/test-account";
 import { lineProblemText, priceCart } from "@/lib/cart";
 import { paymentResponseSchema, placeOrderSchema, type AddressField } from "@/lib/checkout";
+import { notifyLater, notifyOrderPaid } from "@/lib/email/notify";
 import { formatOrderNumber } from "@/lib/format";
 import { CODE_PATTERN, couponProblem, normaliseCode, toAppliedCoupon, type AppliedCoupon } from "@/lib/offers/model";
 import { getFreshStoreCatalogue, productsChanged } from "@/lib/products/catalogue";
@@ -139,8 +140,9 @@ export type ConfirmPaymentResult = { ok: true; orderNumber: number } | { ok: fal
 
 /**
  * Called with Razorpay Checkout's success response. The signature proves
- * Razorpay issued this payment for this order; only then is it marked paid.
- * The order.paid webhook does the same if the customer never returns here.
+ * Razorpay issued this payment for this order; only then is it marked paid
+ * and its emails sent. The order.paid webhook does the same if the customer
+ * never returns here.
  */
 export async function confirmPayment(input: unknown): Promise<ConfirmPaymentResult> {
   const user = await getCurrentUser();
@@ -166,6 +168,9 @@ export async function confirmPayment(input: unknown): Promise<ConfirmPaymentResu
 
   const { order, stockChanged } = await markOrderPaid({ razorpayOrderId, razorpayPaymentId });
   if (stockChanged) productsChanged();
+  // Emails go after the response, whoever is signed in: the payment is real either way.
+  // The webhook asks too; each email still goes once.
+  if (order && order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
   if (!order || order.userId !== user.id) {
     return { ok: false, error: "We could not find the order for this payment. Contact us with your payment ID." };
   }

@@ -17,12 +17,14 @@ import { offerHref } from "@/components/admin/offer-rows";
 import { OrderRow } from "@/components/admin/order-rows";
 import { byStoreOrder, matchesStockFilter, toProductListItem } from "@/components/admin/product-row";
 import { BUTTON_SECONDARY, PAGE, SECTION_LABEL } from "@/components/admin/styles";
+import { listOrdersWithUnsentEmails } from "@/db/emails";
 import { listActiveOffers } from "@/db/offers";
 import { listOrdersForAdmin, listStaleShipments } from "@/db/orders";
 import { listProductsWithImages } from "@/db/products";
 import { countNewReviews } from "@/db/reviews";
 import type { Order } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
+import { emailsToSendAgain, ORDER_EMAIL_LABEL } from "@/lib/email/kinds";
 import { formatOrderNumber } from "@/lib/format";
 import { daysLeft, offerNote } from "@/lib/offers/model";
 import { shortfallName } from "@/lib/products/variants";
@@ -142,18 +144,20 @@ function QuickActions({ className, tiles }: { className?: string; tiles?: boolea
 }
 
 /**
- * Home: what needs the admin now (orders to ship, products running out,
- * reviews to check, offers about to end), then the latest orders. Not a report.
+ * Home: what needs the admin now (orders to ship, emails to send again,
+ * products running out, reviews to check, offers about to end), then the
+ * latest orders. Not a report.
  */
 export default async function AdminHomePage() {
   await requireAdmin("/admin");
-  const [unshipped, stale, recent, products, offers, newReviews] = await Promise.all([
+  const [unshipped, stale, recent, products, offers, newReviews, unsentEmails] = await Promise.all([
     listOrdersForAdmin({ filter: "pending" }),
     listStaleShipments(STALE_SHIPMENT_DAYS),
     listOrdersForAdmin({ limit: 5 }),
     listProductsWithImages(),
     listActiveOffers(),
     countNewReviews(),
+    listOrdersWithUnsentEmails(),
   ]);
   const now = new Date();
   const toShip = unshipped.length;
@@ -188,6 +192,19 @@ export default async function AdminHomePage() {
       return { ...row, detail: `Paid while out of stock: ${short.map(shortfallName).join(", ")}`, action: "Check", icon: CircleAlert };
     }
   );
+  // An order email that did not go (or never finished): Send again is on the order page.
+  for (const { order, emails } of unsentEmails) {
+    for (const email of emailsToSendAgain(emails, order, now)) {
+      first.push({
+        key: email.id,
+        href: `/admin/orders/${order.number}`,
+        title: `#${formatOrderNumber(order.number)}`,
+        detail: `${ORDER_EMAIL_LABEL[email.kind]} ${email.status === "failed" ? "didn't send" : "didn't finish sending"}`,
+        action: "Send again",
+        icon: CircleAlert,
+      });
+    }
+  }
   const later: AttentionItem[] = [];
   if (moreStock > 0) {
     later.push({

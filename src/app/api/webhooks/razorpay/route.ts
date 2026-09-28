@@ -1,4 +1,5 @@
 import { markOrderPaid } from "@/db/orders";
+import { notifyLater, notifyOrderPaid } from "@/lib/email/notify";
 import { productsChanged } from "@/lib/products/catalogue";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay";
 
@@ -12,8 +13,9 @@ interface RazorpayWebhook {
 
 /**
  * Razorpay webhooks. Subscribe to `order.paid` in the Razorpay dashboard with
- * this URL and RAZORPAY_WEBHOOK_SECRET as the secret. It marks the order paid
- * even when the customer closes the tab before the checkout handler runs.
+ * this URL and RAZORPAY_WEBHOOK_SECRET as the secret. It marks the order paid,
+ * and sends its emails, even when the customer closes the tab before the
+ * checkout handler runs.
  */
 export async function POST(request: Request) {
   if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
@@ -39,8 +41,10 @@ export async function POST(request: Request) {
     event.event === "order.paid" ? event.payload?.order?.entity?.id : payment?.order_id;
 
   if ((event.event === "order.paid" || event.event === "payment.captured") && razorpayOrderId && payment?.id) {
-    const { stockChanged } = await markOrderPaid({ razorpayOrderId, razorpayPaymentId: payment.id });
+    const { order, stockChanged } = await markOrderPaid({ razorpayOrderId, razorpayPaymentId: payment.id });
     if (stockChanged) productsChanged();
+    // After the response; if the checkout page already sent the emails, nothing goes twice.
+    if (order && order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
   }
 
   // Acknowledge every verified event, handled or not, so Razorpay does not retry it.

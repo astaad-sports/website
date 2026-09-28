@@ -11,6 +11,7 @@ import {
   nextStep,
   normaliseSearch,
   parseOrderFilter,
+  stockShortfallNotice,
   timestampPlan,
 } from "./fulfilment";
 
@@ -57,6 +58,17 @@ describe("fulfilment steps", () => {
       clear: [],
     });
   });
+});
+
+test("an order paid while out of stock names each product and how many were missing", () => {
+  expect(
+    stockShortfallNotice([
+      { slug: "ew-pro-100", name: "Astaad EW Pro 100", missing: 1 },
+      { slug: "pro-helmet", name: "Astaad Pro Helmet", missing: 2 },
+    ])
+  ).toBe(
+    "Paid while out of stock: Astaad EW Pro 100 (1 more than you had), Astaad Pro Helmet (2 more than you had). Restock before shipping, or contact the customer about a refund."
+  );
 });
 
 describe("the orders list", () => {

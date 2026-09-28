@@ -15,6 +15,7 @@ import {
   sizeSoldOut,
   startingVariant,
   stockColumns,
+  returnToCounts,
   takeFromCounts,
   variantCounts,
   variantNote,
@@ -177,6 +178,26 @@ describe("prices by size", () => {
     const six = onOffer.variants.find((variant) => variant.size === "6")!;
     expect([six.regularPrice, six.price]).toEqual([6999, 6299]);
     expect(onOffer.regularPrice).toBe(plain.price);
+  });
+});
+
+describe("putting a cancelled order back in stock", () => {
+  test("it goes back to the size that was bought", () => {
+    const counts = { Medium: 0, Large: 1, XL: 3 };
+    expect(returnToCounts(counts, "Medium", 2)).toBe(true);
+    expect(counts).toEqual({ Medium: 2, Large: 1, XL: 3 });
+  });
+
+  test("an order that names no size goes back only to a product with a single count", () => {
+    const one = { SH: 0 };
+    expect(returnToCounts(one, null, 1)).toBe(true);
+    expect(returnToCounts(one, "Small", 1)).toBe(true);
+    expect(one).toEqual({ SH: 2 });
+    const several = { Medium: 1, Large: 0 };
+    expect(returnToCounts(several, null, 1)).toBe(false);
+    expect(returnToCounts(several, "Small", 1)).toBe(false);
+    expect(returnToCounts(several, "Large", 0)).toBe(false);
+    expect(several).toEqual({ Medium: 1, Large: 0 });
   });
 });
 
