@@ -16,6 +16,7 @@ import {
 import { type GearCategorySlug, type StoreCategory } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { gearLine, listInWords, type StoreGear } from "@/lib/products/model";
+import type { PublicReview } from "@/lib/reviews/model";
 import { midSentence } from "@/lib/words";
 
 import type { DeliveryTerms } from "./delivery";
@@ -24,6 +25,7 @@ import { GearGallery } from "./gear-gallery";
 import { GearOptions } from "./gear-options";
 import { OfferNote } from "./offer-note";
 import { ProductPromises } from "./product-promises";
+import { ProductRatingLink } from "./product-reviews";
 import { StockStatus } from "./stock-status";
 
 interface Highlight {
@@ -78,18 +80,21 @@ function highlightsFor(product: StoreGear): Highlight[] {
 }
 
 /**
- * The gear product hero: the stage on the left; name, stock, price (with any
- * running offer), delivery promises, options and highlights on the right.
- * From xl it is at least 760px tall, growing with the options beside the stage.
+ * The gear product hero: the stage on the left; name, rating (from the
+ * product's own published reviews), stock, price (with any running offer),
+ * delivery promises, options and highlights on the right. From xl it is at
+ * least 760px tall, growing with the options beside the stage.
  */
 export function GearHero({
   product,
   category,
   delivery,
+  reviews,
 }: {
   product: StoreGear;
   category: StoreCategory;
   delivery: DeliveryTerms;
+  reviews: PublicReview[];
 }) {
   // The % OFF chip and the saving show only while an offer runs; an MRP alone
   // is struck through as before. The struck price is then the MRP, or the
@@ -120,7 +125,13 @@ export function GearHero({
           </h1>
           <p className="text-lg leading-[26px] text-ink-muted">{gearLine(product)}</p>
         </div>
-        <div className="flex items-center gap-4 text-sm leading-5">
+        <div className="flex flex-wrap items-center gap-4 text-sm leading-5">
+          {reviews.length > 0 && (
+            <>
+              <ProductRatingLink reviews={reviews} />
+              <span aria-hidden="true" className="block h-4 w-px bg-border" />
+            </>
+          )}
           <StockStatus product={product} />
         </div>
         <div className="flex flex-col gap-1 border-y border-border py-4">

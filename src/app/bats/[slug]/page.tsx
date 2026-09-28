@@ -8,12 +8,15 @@ import { kitTilesForBat } from "@/components/storefront/kit-tiles";
 import { ProductBuilder } from "@/components/storefront/product-builder";
 import { ProductDetails } from "@/components/storefront/product-details";
 import { ProductHero } from "@/components/storefront/product-hero";
+import { ProductReviews } from "@/components/storefront/product-reviews";
 import { ProductStory } from "@/components/storefront/product-story";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { findStoreBat, listInWords, type StoreBat } from "@/lib/products/model";
+import { reviewsOfProduct } from "@/lib/reviews/model";
+import { getPublishedReviews } from "@/lib/reviews/store";
 import { getStoreSettings } from "@/lib/settings/store";
 
 // Bats added after the build still render on first visit (dynamicParams is on by default).
@@ -44,9 +47,10 @@ export async function generateMetadata({ params }: PageProps<"/bats/[slug]">): P
 
 export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
   const { slug } = await params;
-  const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
+  const [catalogue, settings, published] = await Promise.all([getStoreCatalogue(), getStoreSettings(), getPublishedReviews()]);
   const bat = findStoreBat(catalogue, slug);
   if (!bat) notFound();
+  const reviews = reviewsOfProduct(published, bat.id);
 
   const cta = bat.customization.enabled ? `Customize your ${bat.name}` : `Choose your ${bat.name}`;
   const delivery = deliveryTerms(settings);
@@ -55,10 +59,11 @@ export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
     <>
       <SiteHeader activeHref="/#collection" />
       <main className="flex-1">
-        <ProductHero bat={bat} delivery={delivery} />
+        <ProductHero bat={bat} delivery={delivery} reviews={reviews} />
         <ProductBuilder key={bat.slug} bat={bat} deliveryFeePaise={delivery.feePaise} />
         <ProductStory bat={bat} />
         <ProductDetails bat={bat} />
+        <ProductReviews productId={bat.id} productName={bat.name} reviews={reviews} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
         <CompleteYourKit eyebrow={`Pairs with the ${bat.name}`} items={kitTilesForBat(catalogue)} />
         <FinalCta

@@ -27,7 +27,7 @@ export const RATING_WORDS = ["", "Poor", "Fair", "Good", "Very good", "Excellent
 
 /** "4 out of 5 stars", for screen readers. */
 export function ratingLabel(rating: number): string {
-  return `${rating} out of 5 stars`;
+  return `${Number.isInteger(rating) ? rating : rating.toFixed(1)} out of 5 stars`;
 }
 
 /** A published review as the store shows it. Plain values, so it can be cached as JSON. */
@@ -38,8 +38,13 @@ export interface PublicReview {
   rating: number | null;
   body: string | null;
   /** What they bought, linked to its page while it is on sale. */
-  product: { name: string; href: string | null } | null;
+  product: { id: string; name: string; href: string | null } | null;
   photo: { src: string; width: number; height: number; alt: string } | null;
+}
+
+/** The reviews of one product, as its page shows them. */
+export function reviewsOfProduct<T extends Pick<PublicReview, "product">>(reviews: readonly T[], productId: string): T[] {
+  return reviews.filter((review) => review.product?.id === productId);
 }
 
 export interface ReviewSummary {
@@ -58,6 +63,16 @@ export function summariseReviews(reviews: readonly Pick<PublicReview, "rating">[
 /** 4.86 → "4.9". */
 export function formatAverage(average: number): string {
   return average.toFixed(1);
+}
+
+/** How many reviews gave each star rating, five stars first. Reviews without stars aren't counted. */
+export function ratingBreakdown(reviews: readonly Pick<PublicReview, "rating">[]): { stars: number; count: number }[] {
+  return [5, 4, 3, 2, 1].map((stars) => ({ stars, count: reviews.filter((review) => review.rating === stars).length }));
+}
+
+/** "1 review", "3 reviews". */
+export function reviewCount(count: number): string {
+  return `${count} ${count === 1 ? "review" : "reviews"}`;
 }
 
 /** "Rohit S. · Mumbai Warriors", "Rohit S.", or null when neither is known. */

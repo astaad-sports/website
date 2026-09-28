@@ -317,11 +317,12 @@ const EMPTY: Values = { rating: 0, body: "", productId: "", name: "", place: "",
  * name and team, a way to reach them (only the store sees it), and "Keep this
  * private" for feedback that isn't for the site. Keeps what was typed when
  * sending fails and moves focus to the first field that needs attention.
+ * `productId` starts the product list on one, for a link from its page.
  */
-export function ReviewForm({ products }: { products: ReviewProductOption[] }) {
+export function ReviewForm({ products, productId = "" }: { products: ReviewProductOption[]; productId?: string }) {
   const id = useId();
   const [state, sendReview, pending] = useActionState(send, {});
-  const [values, setValues] = useState<Values>(EMPTY);
+  const [values, setValues] = useState<Values>(() => ({ ...EMPTY, productId }));
   // Fields changed since the last send: their old errors are hidden.
   const [edited, setEdited] = useState<ReadonlySet<ReviewField>>(() => new Set());
   const photo = useReviewPhoto();

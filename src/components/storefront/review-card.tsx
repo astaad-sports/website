@@ -146,7 +146,7 @@ export function RatingSummary({ summary, className }: { summary: ReviewSummary; 
         {average}
       </span>
       <span aria-hidden="true" className="flex flex-col gap-1">
-        <Stars rating={Math.round(summary.average)} />
+        <Stars rating={summary.average} />
         <span className="text-[13px] leading-[18px] text-ink-muted tabular-nums">{count}</span>
       </span>
     </p>

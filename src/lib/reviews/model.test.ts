@@ -6,7 +6,11 @@ import {
   parseAdminReview,
   parseCustomerReview,
   photoAltText,
+  ratingBreakdown,
+  ratingLabel,
   reviewByline,
+  reviewCount,
+  reviewsOfProduct,
   summariseReviews,
 } from "./model";
 
@@ -119,5 +123,41 @@ describe("showing reviews", () => {
     expect(photoAltText("A batter at the crease", "Rohit")).toBe("A batter at the crease");
     expect(photoAltText(null, "Rohit")).toBe("Photo from Rohit");
     expect(photoAltText(null, null)).toBe("Photo from a customer");
+  });
+});
+
+describe("a product's reviews", () => {
+  const product = (id: string) => ({ id, name: id, href: null });
+  const reviews = [
+    { id: "a", rating: 5, product: product("run-machine") },
+    { id: "b", rating: 4, product: product("goat") },
+    { id: "c", rating: 5, product: product("run-machine") },
+    { id: "d", rating: null, product: product("run-machine") },
+    { id: "e", rating: 3, product: null },
+  ];
+
+  test("only the reviews that name the product", () => {
+    expect(reviewsOfProduct(reviews, "run-machine").map((review) => review.id)).toEqual(["a", "c", "d"]);
+    expect(reviewsOfProduct(reviews, "legacy-one")).toEqual([]);
+  });
+
+  test("the stars are counted five first, leaving out reviews without stars", () => {
+    expect(ratingBreakdown(reviewsOfProduct(reviews, "run-machine"))).toEqual([
+      { stars: 5, count: 2 },
+      { stars: 4, count: 0 },
+      { stars: 3, count: 0 },
+      { stars: 2, count: 0 },
+      { stars: 1, count: 0 },
+    ]);
+  });
+
+  test("the count reads as words", () => {
+    expect(reviewCount(1)).toBe("1 review");
+    expect(reviewCount(3)).toBe("3 reviews");
+  });
+
+  test("an average is read out to one decimal", () => {
+    expect(ratingLabel(14 / 3)).toBe("4.7 out of 5 stars");
+    expect(ratingLabel(4)).toBe("4 out of 5 stars");
   });
 });

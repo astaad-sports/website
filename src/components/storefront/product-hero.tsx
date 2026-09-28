@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Leaf, Scale, ShoppingCart, Star, Target, Zap } from "lucide-react";
+import { ArrowRight, Leaf, Scale, ShoppingCart, Target, Zap } from "lucide-react";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
@@ -7,20 +7,31 @@ import { batCartItem } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
 import { otherPrices, startingVariant } from "@/lib/products/variants";
+import type { PublicReview } from "@/lib/reviews/model";
 
 import type { DeliveryTerms } from "./delivery";
 import { Eyebrow } from "./eyebrow";
 import { OfferNote } from "./offer-note";
 import { ProductGallery } from "./product-gallery";
 import { ProductPromises } from "./product-promises";
+import { ProductRatingLink } from "./product-reviews";
 import { StockStatus } from "./stock-status";
 
 /**
- * The product hero: the gallery on the left; name, stock, price (with any
- * running offer), delivery promises and actions on the right. From xl it is
- * 760px tall, growing when an offer or a dispatch time needs the room.
+ * The product hero: the gallery on the left; name, rating (from the bat's own
+ * published reviews), stock, price (with any running offer), delivery
+ * promises and actions on the right. From xl it is 760px tall, growing when
+ * an offer or a dispatch time needs the room.
  */
-export function ProductHero({ bat, delivery }: { bat: StoreBat; delivery: DeliveryTerms }) {
+export function ProductHero({
+  bat,
+  delivery,
+  reviews,
+}: {
+  bat: StoreBat;
+  delivery: DeliveryTerms;
+  reviews: PublicReview[];
+}) {
   const highlights = [
     { icon: Leaf, label: bat.grade },
     { icon: Scale, label: "Balanced Pickup" },
@@ -51,17 +62,9 @@ export function ProductHero({ bat, delivery }: { bat: StoreBat; delivery: Delive
           <p className="text-lg leading-[26px] text-ink-muted">{bat.grade} Cricket Bat</p>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-sm leading-5">
-          {bat.rating != null && (
+          {reviews.length > 0 && (
             <>
-              <span className="inline-flex items-center gap-1.5 font-bold">
-                <Star className="size-4 fill-rating stroke-rating" aria-hidden="true" />
-                {bat.rating.toFixed(1)}
-              </span>
-              {bat.reviews != null && (
-                <span className="text-ink-muted underline underline-offset-[3px]">
-                  {bat.reviews} Reviews
-                </span>
-              )}
+              <ProductRatingLink reviews={reviews} />
               <span aria-hidden="true" className="block h-4 w-px bg-border" />
             </>
           )}

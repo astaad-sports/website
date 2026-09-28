@@ -26,7 +26,9 @@ export function toPublicReview(review: ReviewWithProduct): PublicReview {
     rating: review.rating,
     body: review.body,
     // A hidden product keeps its name on the review, without a link to a page that is gone.
-    product: product ? { name: product.name, href: product.availability === "hidden" ? null : productHref(product) } : null,
+    product: product
+      ? { id: product.id, name: product.name, href: product.availability === "hidden" ? null : productHref(product) }
+      : null,
     photo: review.photoUrl
       ? {
           src: review.photoUrl,
@@ -67,7 +69,8 @@ async function loadPublished(): Promise<PublicReview[]> {
   }
 }
 
-const getCachedReviews = unstable_cache(loadPublished, ["published-reviews"], {
+// The key names the cached shape: a new one (v2 added the product's id) never reads entries of the old.
+const getCachedReviews = unstable_cache(loadPublished, ["published-reviews-v2"], {
   tags: [REVIEWS_TAG],
   revalidate: REVIEWS_REVALIDATE,
 });

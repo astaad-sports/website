@@ -264,7 +264,11 @@ function chipPercent(price: number, mrp: number, offer: StoreOffer | null, hasMr
   return percentOff(price, mrp);
 }
 
-export interface StoreBat extends Bat, OfferPricing, StoreOffered {
+/**
+ * The Bat's `rating` and `reviews` were placeholders from the design and are
+ * left out: a bat's rating comes from its published reviews (see ProductReviews).
+ */
+export interface StoreBat extends Omit<Bat, "rating" | "reviews">, OfferPricing, StoreOffered {
   id: string;
   subcategory: BatSubcategory;
   stockStatus: Exclude<StockStatus, "hidden">;
@@ -377,8 +381,6 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     off,
     badges: row.badges.length ? row.badges : undefined,
     dark: seeded?.dark,
-    rating: seeded?.rating,
-    reviews: seeded?.reviews,
     details: row.description ?? `${row.name} · ${grade}`,
     willow: row.shortDescription ?? grade,
     subcategory: (isBatSubcategory(row.subcategory) ? row.subcategory : "english-willow"),

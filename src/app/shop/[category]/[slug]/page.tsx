@@ -7,12 +7,15 @@ import { FinalCta } from "@/components/storefront/final-cta";
 import { GearDetails } from "@/components/storefront/gear-details";
 import { GearHero } from "@/components/storefront/gear-hero";
 import { kitTilesForGear } from "@/components/storefront/kit-tiles";
+import { ProductReviews } from "@/components/storefront/product-reviews";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { GEAR_CATEGORY_CONTENT, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { findStoreGear, gearLine, gearOffered } from "@/lib/products/model";
+import { reviewsOfProduct } from "@/lib/reviews/model";
+import { getPublishedReviews } from "@/lib/reviews/store";
 import { getStoreSettings } from "@/lib/settings/store";
 
 // Products added after the build still render on first visit (dynamicParams is on by default).
@@ -36,10 +39,11 @@ export async function generateMetadata({
 
 export default async function GearPage({ params }: PageProps<"/shop/[category]/[slug]">) {
   const { category: categorySlug, slug } = await params;
-  const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
+  const [catalogue, settings, published] = await Promise.all([getStoreCatalogue(), getStoreSettings(), getPublishedReviews()]);
   const product = findStoreGear(catalogue, categorySlug, slug);
   const category = getCategory(categorySlug);
   if (!product || !category) notFound();
+  const reviews = reviewsOfProduct(published, product.id);
 
   const content = GEAR_CATEGORY_CONTENT[product.categorySlug];
   const delivery = deliveryTerms(settings);
@@ -48,8 +52,9 @@ export default async function GearPage({ params }: PageProps<"/shop/[category]/[
     <>
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
-        <GearHero product={product} category={category} delivery={delivery} />
+        <GearHero product={product} category={category} delivery={delivery} reviews={reviews} />
         <GearDetails product={product} content={content} deliveryFeePaise={delivery.feePaise} />
+        <ProductReviews productId={product.id} productName={product.name} reviews={reviews} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
         <CompleteYourKit
           eyebrow={`Pairs with the ${product.name}`}

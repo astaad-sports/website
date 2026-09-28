@@ -17,9 +17,10 @@ export const metadata: Metadata = {
  * The customer's review form. Anyone can send one, signed in or not; it goes
  * on the site once the admin has checked it, or stays with the store when
  * the customer keeps it private. A link to share with customers after delivery.
+ * `?product=<id>` (from a product page's Write a review) chooses that product.
  */
-export default async function WriteReviewPage() {
-  const catalogue = await getStoreCatalogue();
+export default async function WriteReviewPage({ searchParams }: PageProps<"/reviews/write">) {
+  const [catalogue, { product: wanted }] = await Promise.all([getStoreCatalogue(), searchParams]);
   // "English Willow Bats", "Tennis Bats".
   const batGroup = (subcategory: string) => {
     const name = subcategoryName(subcategory) ?? "Bats";
@@ -29,6 +30,8 @@ export default async function WriteReviewPage() {
     ...catalogue.bats.map((bat) => ({ id: bat.id, name: bat.name, group: batGroup(bat.subcategory) })),
     ...catalogue.gear.map((gear) => ({ id: gear.id, name: gear.name, group: categoryName(gear.categorySlug) })),
   ];
+  // Only a product on the list; anything else starts the list on "Choose a product".
+  const productId = products.find((product) => product.id === wanted)?.id;
 
   return (
     <>
@@ -52,7 +55,7 @@ export default async function WriteReviewPage() {
             </p>
           </div>
           <div className="max-w-[720px]">
-            <ReviewForm products={products} />
+            <ReviewForm products={products} productId={productId} />
           </div>
         </div>
       </main>
