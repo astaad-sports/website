@@ -108,10 +108,13 @@ export function GearHero({
             {category.name}
           </Link>
         </Eyebrow>
-        <div className="flex flex-col gap-1.5">
+        {/* A container, so the title can size to its column: "Godfather" is
+            about 6.44em wide, and at 64px it pushed the column past a 1024px
+            screen. With room to spare the title keeps its size. */}
+        <div className="@container flex flex-col gap-1.5">
           <h1
             id="pdp-title"
-            className="type-display text-[44px] leading-[0.92] tracking-[-0.03em] md:text-[64px]"
+            className="type-display text-[length:min(44px,100cqw/6.5)] leading-[0.92] tracking-[-0.03em] md:text-[length:min(64px,100cqw/6.5)]"
           >
             {product.name}
           </h1>
