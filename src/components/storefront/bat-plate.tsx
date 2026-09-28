@@ -10,6 +10,7 @@ import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { CardCover } from "./card-cover";
 import { CardRating } from "./card-rating";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
@@ -33,7 +34,7 @@ export function BatCard({ bat }: { bat: StoreBat }) {
           bat.dark ? "bg-surface-dark-sunken" : "bg-surface-sunken"
         )}
       >
-        <span className="absolute top-2.5 left-2.5 z-10 flex max-w-[140px] flex-wrap gap-1">
+        <span className="pointer-events-none absolute top-2.5 left-2.5 z-10 flex max-w-[140px] flex-wrap gap-1">
           {bat.soldOut && <OutOfStockChip onDark={bat.dark} />}
           {discounted && (
             <span className="h-[22px] rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold tracking-[0.04em] text-on-yellow">
@@ -50,21 +51,19 @@ export function BatCard({ bat }: { bat: StoreBat }) {
           ))}
         </span>
         <WishlistButton name={bat.name} onDark={bat.dark} className="absolute top-0.5 right-0.5 z-10" />
-        <Link href={href} aria-label={`View ${bat.name}`} className="block">
-          <Image
-            src={image}
-            alt={`Astaad ${bat.name} bat`}
-            width={84}
-            height={212}
-            sizes="84px"
-            className={cn(
-              "h-[212px] w-[84px] object-contain",
-              darkBlade
-                ? "brightness-[0.62] contrast-[1.15] grayscale drop-shadow-[0_18px_18px_rgba(0,0,0,0.7)]"
-                : "drop-shadow-[0_18px_18px_rgba(14,14,14,0.28)]"
-            )}
-          />
-        </Link>
+        <Image
+          src={image}
+          alt={`Astaad ${bat.name} bat`}
+          width={84}
+          height={212}
+          sizes="84px"
+          className={cn(
+            "h-[212px] w-[84px] object-contain",
+            darkBlade
+              ? "brightness-[0.62] contrast-[1.15] grayscale drop-shadow-[0_18px_18px_rgba(0,0,0,0.7)]"
+              : "drop-shadow-[0_18px_18px_rgba(14,14,14,0.28)]"
+          )}
+        />
       </div>
       <div className="mt-3 flex items-baseline justify-between gap-2">
         <h3 className="min-w-0 text-base leading-[22px] font-semibold">
@@ -88,7 +87,7 @@ export function BatCard({ bat }: { bat: StoreBat }) {
         <Button
           render={<Link href={href} />}
           nativeButton={false}
-          className="h-11 flex-1 rounded-xs text-[13px] font-bold tracking-[0.08em] uppercase"
+          className="relative z-10 h-11 flex-1 rounded-xs text-[13px] font-bold tracking-[0.08em] uppercase"
         >
           View bat
         </Button>
@@ -99,11 +98,12 @@ export function BatCard({ bat }: { bat: StoreBat }) {
           variant="secondary"
           size="icon"
           aria-label={`Add ${bat.name} to cart`}
-          className="size-11 shrink-0 rounded-xs border border-border-strong bg-surface-raised hover:bg-surface-sunken"
+          className="relative z-10 size-11 shrink-0 rounded-xs border border-border-strong bg-surface-raised hover:bg-surface-sunken"
         >
           <ShoppingCart className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
         </AddToCartButton>
       </div>
+      <CardCover href={href} />
     </article>
   );
 }
@@ -120,7 +120,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
   const darkBlade = bat.dark && image === BAT_IMAGE;
   const discounted = bat.mrp > bat.price;
   return (
-    <article className="group flex flex-col gap-4">
+    <article className="group relative flex flex-col gap-4">
       <div
         className={cn(
           "relative flex h-[320px] items-center justify-center overflow-hidden rounded-xs",
@@ -143,21 +143,19 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
             </span>
           ))}
         </span>
-        <WishlistButton name={bat.name} onDark={bat.dark} className="absolute top-2 right-2" />
-        <Link href={href} aria-label={`View ${bat.name}`} className="block">
-          <Image
-            src={image}
-            alt={`Astaad ${bat.name} bat`}
-            width={112}
-            height={284}
-            className={cn(
-              "h-[284px] w-[112px] object-contain transition-transform duration-300 group-hover:-translate-y-2 group-hover:-rotate-6",
-              darkBlade
-                ? "brightness-[0.62] contrast-[1.15] grayscale drop-shadow-[0_24px_24px_rgba(0,0,0,0.7)]"
-                : "drop-shadow-[0_24px_24px_rgba(14,14,14,0.28)]"
-            )}
-          />
-        </Link>
+        <WishlistButton name={bat.name} onDark={bat.dark} className="absolute top-2 right-2 z-10" />
+        <Image
+          src={image}
+          alt={`Astaad ${bat.name} bat`}
+          width={112}
+          height={284}
+          className={cn(
+            "h-[284px] w-[112px] object-contain transition-transform duration-300 group-hover:-translate-y-2 group-hover:-rotate-6",
+            darkBlade
+              ? "brightness-[0.62] contrast-[1.15] grayscale drop-shadow-[0_24px_24px_rgba(0,0,0,0.7)]"
+              : "drop-shadow-[0_24px_24px_rgba(14,14,14,0.28)]"
+          )}
+        />
       </div>
       <div className="flex flex-col gap-0.5">
         <h3 className="text-2xl leading-8 font-bold tracking-[-0.01em]">
@@ -191,7 +189,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
           item={batCartItem(bat)}
           productName={`Astaad ${bat.name}`}
           soldOut={bat.soldOut}
-          className="h-12 flex-1 rounded-xs font-bold"
+          className="relative z-10 h-12 flex-1 rounded-xs font-bold"
         >
           Add to Cart
         </AddToCartButton>
@@ -199,11 +197,12 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
           variant="secondary"
           render={<Link href={href} />}
           nativeButton={false}
-          className="h-12 rounded-xs border border-border px-5 hover:border-border-strong hover:bg-transparent"
+          className="relative z-10 h-12 rounded-xs border border-border px-5 hover:border-border-strong hover:bg-transparent"
         >
           View Product
         </Button>
       </div>
+      <CardCover href={href} />
     </article>
   );
 }

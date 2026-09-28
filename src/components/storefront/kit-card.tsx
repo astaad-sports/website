@@ -6,6 +6,7 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+import { CardCover } from "./card-cover";
 import { CardRating } from "./card-rating";
 import type { KitTile } from "./kit-tiles";
 import { OfferNote } from "./offer-note";
@@ -45,11 +46,7 @@ export function KitMiniCard({
   const height = Math.round(imageHeight * scale);
   return (
     <article className="relative flex w-[164px] flex-col">
-      <Link
-        href={href}
-        aria-label={name}
-        className="relative flex h-[172px] items-center justify-center overflow-hidden rounded-xs bg-surface-sunken"
-      >
+      <div className="relative flex h-[172px] items-center justify-center overflow-hidden rounded-xs bg-surface-sunken">
         <Image
           src={image}
           alt=""
@@ -59,7 +56,7 @@ export function KitMiniCard({
           style={{ width, height }}
           className="object-contain drop-shadow-[0_14px_14px_rgba(14,14,14,0.25)]"
         />
-      </Link>
+      </div>
       {(badge || soldOut) && (
         <span className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
           {soldOut && <OutOfStockChip />}
@@ -82,11 +79,12 @@ export function KitMiniCard({
           soldOut={soldOut}
           size="icon"
           aria-label={`Add ${name} to cart`}
-          className="size-11 shrink-0 rounded-full"
+          className="relative z-10 size-11 shrink-0 rounded-full"
         >
           <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
         </AddToCartButton>
       </div>
+      <CardCover href={href} />
     </article>
   );
 }
@@ -124,28 +122,19 @@ export function KitCard({
       )}
     >
       {(badge || soldOut) && (
-        <span className="absolute top-5 left-5 z-10 flex gap-1.5">
+        <span className="pointer-events-none absolute top-5 left-5 z-10 flex gap-1.5">
           {soldOut && <OutOfStockChip />}
           {badge && <span className={CHIP}>{badge}</span>}
         </span>
       )}
-      {/* The name below is the one link a keyboard or screen reader meets; the cut-out is a second target for the pointer. */}
-      <Link
-        href={href}
-        tabIndex={-1}
-        aria-hidden="true"
+      <Image
+        src={image}
+        alt={name}
+        width={imageWidth}
+        height={imageHeight}
         style={{ top: imageTop, marginLeft: -imageWidth / 2, width: imageWidth, height: imageHeight }}
-        className="absolute left-1/2 block"
-      >
-        <Image
-          src={image}
-          alt=""
-          width={imageWidth}
-          height={imageHeight}
-          style={{ width: imageWidth, height: imageHeight }}
-          className="object-contain drop-shadow-[0_20px_20px_rgba(14,14,14,0.28)] transition-transform duration-300 group-hover:-translate-y-2"
-        />
-      </Link>
+        className="absolute left-1/2 object-contain drop-shadow-[0_20px_20px_rgba(14,14,14,0.28)] transition-transform duration-300 group-hover:-translate-y-2"
+      />
       <div className="absolute inset-x-6 bottom-6 flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           {eyebrow && (
@@ -180,11 +169,12 @@ export function KitCard({
           soldOut={soldOut}
           size="icon"
           aria-label={`Add ${name} to cart`}
-          className="size-11 shrink-0 rounded-full"
+          className="relative z-10 size-11 shrink-0 rounded-full"
         >
           <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
         </AddToCartButton>
       </div>
+      <CardCover href={href} />
     </article>
   );
 }

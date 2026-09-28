@@ -9,6 +9,7 @@ import { gearHref } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { gearLine, type StoreGear } from "@/lib/products/model";
 
+import { CardCover } from "./card-cover";
 import { CardRating } from "./card-rating";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
@@ -24,7 +25,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
   // Gear gets a % OFF chip only while an offer runs; an MRP alone is shown as before.
   const off = product.off;
   return (
-    <article className="group flex flex-col gap-4">
+    <article className="group relative flex flex-col gap-4">
       <div className="relative flex h-[320px] items-center justify-center overflow-hidden rounded-xs bg-surface-sunken">
         {(product.badge || product.soldOut || off > 0) && (
           <span className="absolute top-4 left-4 flex gap-1.5">
@@ -39,17 +40,15 @@ export function GearPlate({ product }: { product: StoreGear }) {
             )}
           </span>
         )}
-        <WishlistButton name={product.name} className="absolute top-2 right-2" />
-        <Link href={href} aria-label={`View ${product.name}`} className="block">
-          <Image
-            src={product.images[0]}
-            alt={`Astaad ${product.name}`}
-            width={product.imageWidth}
-            height={product.imageHeight}
-            style={{ width: product.imageWidth, height: product.imageHeight }}
-            className="object-contain drop-shadow-[0_24px_24px_rgba(14,14,14,0.28)] transition-transform duration-300 group-hover:-translate-y-2"
-          />
-        </Link>
+        <WishlistButton name={product.name} className="absolute top-2 right-2 z-10" />
+        <Image
+          src={product.images[0]}
+          alt={`Astaad ${product.name}`}
+          width={product.imageWidth}
+          height={product.imageHeight}
+          style={{ width: product.imageWidth, height: product.imageHeight }}
+          className="object-contain drop-shadow-[0_24px_24px_rgba(14,14,14,0.28)] transition-transform duration-300 group-hover:-translate-y-2"
+        />
       </div>
       <div className="flex flex-col gap-0.5">
         <h3 className="text-2xl leading-8 font-bold tracking-[-0.01em]">
@@ -78,7 +77,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
           item={gearCartItem(product)}
           productName={`Astaad ${product.name}`}
           soldOut={product.soldOut}
-          className="h-12 flex-1 rounded-xs font-bold"
+          className="relative z-10 h-12 flex-1 rounded-xs font-bold"
         >
           Add to Cart
         </AddToCartButton>
@@ -86,11 +85,12 @@ export function GearPlate({ product }: { product: StoreGear }) {
           variant="secondary"
           render={<Link href={href} />}
           nativeButton={false}
-          className="h-12 rounded-xs border border-border px-5 hover:border-border-strong hover:bg-transparent"
+          className="relative z-10 h-12 rounded-xs border border-border px-5 hover:border-border-strong hover:bg-transparent"
         >
           View Product
         </Button>
       </div>
+      <CardCover href={href} />
     </article>
   );
 }
