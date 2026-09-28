@@ -15,7 +15,7 @@ export interface LegalSection {
 }
 
 /**
- * The terms, privacy and returns pages: title, date and introduction, a
+ * The terms, privacy, returns and warranty pages: title, date and introduction, a
  * contents list (beside the text on desktop, above it on phones) and
  * numbered sections.
  */

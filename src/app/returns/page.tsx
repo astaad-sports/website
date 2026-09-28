@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "How to return an Astaad Sports order, what can be returned, and when refunds arrive.",
 };
 
-const UPDATED = "24 September 2026";
+const UPDATED = "28 September 2026";
 
 /** The three promises at the top of the page. */
 const PROMISES = [
@@ -90,7 +90,8 @@ export default async function ReturnsPage() {
           </ul>
           <p>
             Knocking in done by us doesn’t stop a bat being returned. Cracks and marks from play are{" "}
-            <Link href="/terms#wear">normal wear</Link>, not defects.
+            <Link href="/terms#wear">normal wear</Link>, not defects. A fault that shows up after you start playing
+            is covered by our <Link href="/warranty">warranty</Link>.
           </p>
         </>
       ),

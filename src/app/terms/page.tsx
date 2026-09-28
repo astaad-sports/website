@@ -11,11 +11,11 @@ export const metadata: Metadata = {
   description: "The terms for buying from Astaad Sports: orders, payment, delivery, custom bats, returns and refunds.",
 };
 
-const UPDATED = "24 September 2026";
+const UPDATED = "28 September 2026";
 
 /**
- * Terms of service. The full returns policy is its own page (/returns);
- * this summarises it. Store details, the delivery charge and the dispatch
+ * Terms of service. The full returns policy and warranty are their own
+ * pages (/returns, /warranty); this summarises them. Store details, the delivery charge and the dispatch
  * time come from Settings.
  */
 export default async function TermsPage() {
@@ -157,7 +157,7 @@ export default async function TermsPage() {
     },
     {
       id: "returns",
-      title: "Cancellations, returns and refunds",
+      title: "Cancellations, returns, refunds and warranty",
       body: (
         <>
           <p>
@@ -175,6 +175,10 @@ export default async function TermsPage() {
             </li>
             <li>Engraved bats can only be returned if they are damaged, defective or wrong.</li>
             <li>Refunds go back to the payment method you used, within 7 working days.</li>
+            <li>
+              Faults that show up later are covered by our <Link href="/warranty">warranty</Link>: 12 months on
+              bat handles, 6 months on bat blades and 30 days on gear.
+            </li>
           </ul>
         </>
       ),
@@ -187,8 +191,8 @@ export default async function TermsPage() {
           A cricket bat is made from natural willow and is shaped by use. Surface cracks, marks on the face and
           edges, and changes in colour from play are normal wear, not defects. A new bat needs knocking in
           before it faces a hard ball (we do it for free if you choose it), and care while you use it. A
-          fault in how a bat was made is a defect, and is covered by our{" "}
-          <Link href="/returns">returns policy</Link>.
+          fault in how a bat was made is a defect: our <Link href="/returns">returns policy</Link> covers one
+          you find on delivery, and our <Link href="/warranty">warranty</Link> one that shows up later.
         </p>
       ),
     },

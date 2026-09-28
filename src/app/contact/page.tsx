@@ -18,8 +18,10 @@ export const metadata: Metadata = {
 const QUICK_LINKS = [
   { href: "/track-order", title: "Track your order", detail: "See where your parcel is" },
   { href: "/returns", title: "Returns and refunds", detail: "Send something back" },
+  { href: "/warranty", title: "Warranty", detail: "Repairs and replacements" },
   { href: "/size-guide", title: "Size guide", detail: "Bats, pads, gloves and helmets" },
   { href: "/terms", title: "Terms of service", detail: "Orders, delivery and payment" },
+  { href: "/privacy", title: "Privacy policy", detail: "What we keep and why" },
 ];
 
 const ACTION = "type-body-sm inline-flex min-h-11 items-center gap-1.5 font-semibold underline underline-offset-4";
@@ -102,7 +104,7 @@ export default async function ContactPage() {
             <h2 id="quick-answers" className="type-heading-md">
               Quick answers
             </h2>
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {QUICK_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
