@@ -20,24 +20,18 @@ export interface SizeOption {
   label: string;
   /** Under the label in a bat size picker: who it suits, or how long it is. */
   hint?: string;
-  /** Bats: the silhouette's height, relative to the longest. */
-  scale?: number;
-  longHandle?: boolean;
 }
 
 const WILLOW_SIZES: SizeOption[] = BAT_SIZES.map((size) => ({
   code: size.code,
   label: size.label,
   hint: `${size.age.replace(" years", " yrs")} · ${size.height.replace(/ /g, "")}`,
-  scale: size.scale,
-  longHandle: size.longHandle,
 }));
 
 const TENNIS_SIZES: SizeOption[] = TENNIS_BAT_SIZES.map((size) => ({
   code: size.code,
   label: size.label,
   hint: `${size.length.replace('"', "")} inches long`,
-  scale: size.scale,
 }));
 
 function gearContent(category: string) {
