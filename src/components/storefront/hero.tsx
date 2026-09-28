@@ -9,12 +9,12 @@ import { Eyebrow } from "./eyebrow";
 
 const PROMISES = ["Premium Quality", "Made for Players", "Built to Perform"];
 
-const POSTER = siteImage("home/hero-your-time-is-now");
+const POSTER = siteImage("home/hero-astaad-sports");
 
 /**
- * The hero: the "Your time is now" poster of Astaad players on the right, the
- * headline on the left. On phones the poster fills the top of the screen,
- * whole, and the headline and buttons follow under it.
+ * The hero: the Astaad Sports poster of players with their Astaad kit on the
+ * right, the headline on the left. On phones the poster fills the top of the
+ * screen, whole, and the headline and buttons follow under it.
  */
 export function HomeHero() {
   return (
@@ -78,7 +78,9 @@ export function HomeHero() {
         </ul>
 
         {/* The poster, with its own embers glowing out from behind it and the yellow ring.
-            Up to 440px wide it runs edge to edge; from there it keeps that width. */}
+            Up to 440px wide it runs edge to edge; from there it keeps that width. From md
+            its width keeps it as tall as the 2:3 poster it replaced (it is 9:16), so the
+            hero keeps its height. */}
         <div className="relative isolate -mx-4 flex justify-center max-md:order-first min-[441px]:max-md:mt-6 md:col-start-2 md:row-start-1 md:mx-0 md:self-center xl:row-span-2">
           <div
             aria-hidden="true"
@@ -90,12 +92,12 @@ export function HomeHero() {
           />
           <Image
             src={POSTER.src}
-            alt="Astaad Sports players with their bats, gloves and pads, under the line: Your time is now."
+            alt="Astaad Sports: players in their team colours with their Astaad bats, gloves and helmets."
             width={POSTER.width}
             height={POSTER.height}
             preload
-            sizes="(min-width: 1440px) 440px, (min-width: 1280px) 420px, (min-width: 1024px) 380px, (min-width: 768px) 280px, min(100vw, 440px)"
-            className="h-auto w-full max-w-[440px] min-[441px]:rounded-xs min-[441px]:shadow-[0_40px_80px_rgba(0,0,0,0.65)] min-[441px]:ring-1 min-[441px]:ring-white/10 md:w-[280px] lg:w-[380px] xl:w-[420px] min-[1440px]:w-[440px]"
+            sizes="(min-width: 1440px) 372px, (min-width: 1280px) 356px, (min-width: 1024px) 320px, (min-width: 768px) 236px, min(100vw, 440px)"
+            className="h-auto w-full max-w-[440px] min-[441px]:rounded-xs min-[441px]:shadow-[0_40px_80px_rgba(0,0,0,0.65)] min-[441px]:ring-1 min-[441px]:ring-white/10 md:w-[236px] lg:w-[320px] xl:w-[356px] min-[1440px]:w-[372px]"
           />
         </div>
       </div>
