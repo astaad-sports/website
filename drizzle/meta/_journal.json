@@ -92,6 +92,13 @@
       "when": 1790590964211,
       "tag": "0012_sizes_and_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790593396363,
+      "tag": "0013_pads_mens_only",
+      "breakpoints": true
     }
   ]
 }

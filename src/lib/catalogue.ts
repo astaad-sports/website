@@ -332,6 +332,7 @@ export const GEAR_CATEGORY_CONTENT: Record<GearCategorySlug, GearCategoryContent
   "batting-pads": {
     sizes: ["Boys", "Youth", "Men\u2019s"],
     defaultSize: "Men\u2019s",
+    newSizes: ["Men\u2019s"],
     hands: true,
     summary: ({ sizes, hands }) =>
       [

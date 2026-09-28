@@ -41,6 +41,7 @@ describe("what a product is sold in", () => {
     expect(defaultOffered("bats", "kashmir-willow")).toEqual({ sizes: ["SH"], hands: false });
     expect(defaultOffered("bats", "tennis-bats")).toEqual({ sizes: ["FS", "SH"], hands: false });
     expect(defaultOffered("batting-gloves", null)).toEqual({ sizes: ["Men’s"], hands: true });
+    expect(defaultOffered("batting-pads", null)).toEqual({ sizes: ["Men’s"], hands: true });
     expect(defaultOffered("helmets", null)).toEqual({ sizes: ["Medium", "Large", "XL"], hands: false });
     expect(defaultOffered("cricket-kitbags", null)).toEqual({ sizes: [], hands: false });
   });
@@ -49,7 +50,8 @@ describe("what a product is sold in", () => {
     const gloves = row("elite-batting-gloves");
     expect(keys(gloves)).toEqual(["Men’s|Right hand", "Men’s|Left hand"]);
     expect(labels(gloves)).toEqual(["Right hand", "Left hand"]);
-    const pads = row("pro-batting-pads");
+    expect(labels(row("pro-batting-pads"))).toEqual(["Right hand", "Left hand"]);
+    const pads = row("pro-batting-pads", { sizes: ["Boys", "Youth", "Men’s"] });
     expect(labels(pads)).toEqual([
       "Boys · Right hand",
       "Boys · Left hand",
@@ -152,7 +154,11 @@ describe("on the store", () => {
     const catalogue = catalogueWith({
       goat: { stock: 1, variantStock: { LH: 1 } },
       "club-cricket-helmet": { stock: 3, variantStock: { XL: 3 } },
-      "pro-batting-pads": { stock: 1, variantStock: { "Men’s|Left hand": 1, "Boys|Right hand": 0 } },
+      "pro-batting-pads": {
+        sizes: ["Boys", "Youth", "Men’s"],
+        stock: 3,
+        variantStock: { "Boys|Right hand": 2, "Men’s|Left hand": 1 },
+      },
     });
     const goat = findStoreBat(catalogue, "goat")!;
     expect(startingVariant(goat).key).toBe("LH");
