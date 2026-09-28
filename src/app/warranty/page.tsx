@@ -11,11 +11,11 @@ export const metadata: Metadata = {
 
 const UPDATED = "28 September 2026";
 
-/** The three periods at the top of the page. */
+/** The warranty in brief, at the top of the page. */
 const PROMISES = [
-  { figure: "12 months", detail: "on bat handles, if one comes loose or breaks" },
-  { figure: "6 months", detail: "on bat blades, if a hidden fault in the willow breaks one" },
+  { figure: "3 months", detail: "on bats, if the handle comes loose or a fault in the willow breaks the blade" },
   { figure: "30 days", detail: "on pads, gloves, helmets and kitbags, for faults in how they were made" },
+  { figure: "Free", detail: "repair or replacement, sent back to you at our cost" },
 ];
 
 /**
@@ -32,17 +32,17 @@ export default async function WarrantyPage() {
       body: (
         <>
           <p>
-            Every Astaad bat, English willow, Kashmir willow or tennis, is covered against faults in how it was
-            made, from the day it is delivered:
+            Every Astaad bat, English willow, Kashmir willow or tennis, is covered for 3 months from the day it
+            is delivered against faults in how it was made:
           </p>
           <ul>
             <li>
-              <strong>Handle, 12 months.</strong> The handle comes loose in the blade, or breaks, and the shoulders
-              of the blade are not broken.
+              <strong>Handle.</strong> The handle comes loose in the blade, or breaks, and the shoulders of the
+              blade are not broken.
             </li>
             <li>
-              <strong>Blade, 6 months.</strong> The blade breaks through because of a hidden fault in the willow,
-              not a mishit. We inspect the bat to tell the two apart.
+              <strong>Blade.</strong> The blade breaks through because of a hidden fault in the willow, not a
+              mishit. We inspect the bat to tell the two apart.
             </li>
           </ul>
         </>

@@ -176,8 +176,8 @@ export default async function TermsPage() {
             <li>Engraved bats can only be returned if they are damaged, defective or wrong.</li>
             <li>Refunds go back to the payment method you used, within 7 working days.</li>
             <li>
-              Faults that show up later are covered by our <Link href="/warranty">warranty</Link>: 12 months on
-              bat handles, 6 months on bat blades and 30 days on gear.
+              Faults that show up later are covered by our <Link href="/warranty">warranty</Link>: 3 months on
+              bats and 30 days on gear.
             </li>
           </ul>
         </>
