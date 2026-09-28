@@ -8,7 +8,9 @@ import { BAT_IMAGE } from "@/lib/catalogue";
 import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { PhotoTrack } from "./photo-track";
 import { PhotoThumbnails, StageRail, StageThumb } from "./stage-thumbnails";
+import { useSwipe } from "./use-swipe";
 
 interface View {
   id: string;
@@ -99,23 +101,30 @@ function Stage({ caption, children }: { caption: string; children: ReactNode }) 
   );
 }
 
-/** The standard cut-out, shown from six angles. */
+/** The standard cut-out, shown from six angles; swipe on a touch screen to turn it. */
 function StudioViews({ bat }: { bat: StoreBat }) {
   const views = buildViews(bat.grade);
   const [active, setActive] = useState(0);
+  const swipe = useSwipe({ count: views.length, active, onChange: setActive });
   const view = views[active];
 
   return (
     <Stage caption={view.label}>
-      <div className="absolute inset-x-0 top-10 bottom-16 flex items-center justify-center overflow-hidden md:bottom-10">
+      <div
+        className="absolute inset-x-0 top-10 bottom-16 flex touch-pan-y touch-pinch-zoom items-center justify-center overflow-hidden md:bottom-10"
+        {...swipe.handlers}
+      >
         <Image
           src={BAT_IMAGE}
           alt={`Astaad ${bat.name}, ${bat.grade} bat`}
           width={224}
           height={568}
           preload
-          style={{ transform: view.transform }}
-          className="h-[420px] w-auto drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)] transition-[transform,filter] duration-500 ease-out md:h-[568px]"
+          style={{ transform: view.transform, translate: `${swipe.offset}px` }}
+          className={cn(
+            "h-[420px] w-auto drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)] transition-[transform,translate,filter] duration-500 ease-out md:h-[568px]",
+            swipe.dragging && "transition-none"
+          )}
         />
       </div>
       <StageRail label="Product views">
@@ -130,23 +139,31 @@ function StudioViews({ bat }: { bat: StoreBat }) {
   );
 }
 
-/** The bat's own photos, primary first, with thumbnails when there is more than one. */
+/**
+ * The bat's own photos, primary first, with thumbnails when there is more than
+ * one. On a touch screen, swipe left or right between them.
+ */
 function Photos({ bat }: { bat: StoreBat }) {
   const [active, setActive] = useState(0);
   const count = bat.images.length;
 
   return (
     <Stage caption={count > 1 ? `${bat.grade} · ${active + 1} of ${count}` : bat.grade}>
-      <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
-        <Image
-          src={bat.images[active]}
-          alt={count > 1 ? `Astaad ${bat.name}, photo ${active + 1} of ${count}` : `Astaad ${bat.name}, ${bat.grade} bat`}
-          fill
-          preload={active === 0}
-          sizes="(min-width: 1024px) 40vw, 80vw"
-          className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
-        />
-      </div>
+      <PhotoTrack count={count} active={active} onChange={setActive}>
+        {(index, near) => (
+          <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
+            <Image
+              src={bat.images[index]}
+              alt={count > 1 ? `Astaad ${bat.name}, photo ${index + 1} of ${count}` : `Astaad ${bat.name}, ${bat.grade} bat`}
+              fill
+              preload={index === 0}
+              loading={index === 0 ? undefined : near ? "eager" : "lazy"}
+              sizes="(min-width: 1024px) 40vw, 80vw"
+              className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
+            />
+          </div>
+        )}
+      </PhotoTrack>
       <PhotoThumbnails images={bat.images} active={active} onSelect={setActive} />
     </Stage>
   );

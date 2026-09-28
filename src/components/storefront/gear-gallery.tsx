@@ -6,12 +6,14 @@ import { useState } from "react";
 import type { StoreGear } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { PhotoTrack } from "./photo-track";
 import { PhotoThumbnails } from "./stage-thumbnails";
 
 /**
  * The dark product stage for gear: the photo under the floodlight glow, with
- * thumbnails when there are several. From xl it stretches to the hero's
- * height, which grows past 760px when the details beside it need more room.
+ * thumbnails when there are several (and, on a touch screen, a swipe left or
+ * right between them). From xl it stretches to the hero's height, which grows
+ * past 760px when the details beside it need more room.
  */
 export function GearGallery({ product }: { product: StoreGear }) {
   const [active, setActive] = useState(0);
@@ -33,20 +35,27 @@ export function GearGallery({ product }: { product: StoreGear }) {
         aria-hidden="true"
         className="absolute bottom-[90px] left-1/2 hidden h-[60px] w-[380px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0)_70%)] md:block"
       />
-      <div
-        // Leave room for the thumbnails on a phone.
-        className={cn("relative max-w-[560px]", count > 1 ? "w-[60%] md:w-[70%]" : "w-[70%]")}
-        style={{ maxWidth: width, aspectRatio: `${width} / ${height}` }}
-      >
-        <Image
-          src={product.images[active]}
-          alt={count > 1 ? `Astaad ${product.name}, photo ${active + 1} of ${count}` : `Astaad ${product.name}`}
-          fill
-          preload={active === 0}
-          sizes={`${width}px`}
-          className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
-        />
-      </div>
+      <PhotoTrack count={count} active={active} onChange={setActive}>
+        {(index, near) => (
+          <div className="flex size-full items-center justify-center">
+            <div
+              // Leave room for the thumbnails on a phone.
+              className={cn("relative max-w-[560px]", count > 1 ? "w-[60%] md:w-[70%]" : "w-[70%]")}
+              style={{ maxWidth: width, aspectRatio: `${width} / ${height}` }}
+            >
+              <Image
+                src={product.images[index]}
+                alt={count > 1 ? `Astaad ${product.name}, photo ${index + 1} of ${count}` : `Astaad ${product.name}`}
+                fill
+                preload={index === 0}
+                loading={index === 0 ? undefined : near ? "eager" : "lazy"}
+                sizes={`${width}px`}
+                className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
+              />
+            </div>
+          </div>
+        )}
+      </PhotoTrack>
       <PhotoThumbnails images={product.images} active={active} onSelect={setActive} />
       <p className="type-eyebrow absolute bottom-4 left-4 text-on-dark-subtle md:bottom-9 md:left-10">
         {count > 1 ? `${caption} · ${active + 1} of ${count}` : caption}
