@@ -439,23 +439,21 @@ export interface BatSize {
   age: string;
   height: string;
   length: string;
-  /** Silhouette height in the size picker, relative to Long Handle. */
-  scale: number;
   longHandle?: boolean;
 }
 
 /** The sizes English and Kashmir willow bats can come in; each bat is sold in the ones ticked for it in the admin. */
 export const BAT_SIZES: BatSize[] = [
-  { code: "6", label: "Size 6", age: "10–12 years", height: "4'6\" – 5'0\"", length: "31.5\"", scale: 0.8 },
-  { code: "H", label: "H / Harrow", age: "12–14 years", height: "5'0\" – 5'4\"", length: "32.75\"", scale: 0.89 },
-  { code: "SH", label: "SH / Full Size", age: "15+ years", height: "5'4\" – 5'10\"", length: "33.5\"", scale: 1 },
-  { code: "LH", label: "LH / Long Handle", age: "15+ years", height: "5'10\"+", length: "34.5\"", scale: 1, longHandle: true },
+  { code: "6", label: "Size 6", age: "10–12 years", height: "4'6\" – 5'0\"", length: "31.5\"" },
+  { code: "H", label: "H / Harrow", age: "12–14 years", height: "5'0\" – 5'4\"", length: "32.75\"" },
+  { code: "SH", label: "SH / Full Size", age: "15+ years", height: "5'4\" – 5'10\"", length: "33.5\"" },
+  { code: "LH", label: "LH / Long Handle", age: "15+ years", height: "5'10\"+", length: "34.5\"", longHandle: true },
 ];
 
 /** Tennis bats come in two lengths, at one price. They go by length, not by age or height. */
-export const TENNIS_BAT_SIZES: Pick<BatSize, "code" | "label" | "length" | "scale">[] = [
-  { code: "FS", label: "Full Size", length: "35\"", scale: 1 },
-  { code: "SH", label: "SH / Standard", length: "33.5\"", scale: 0.96 },
+export const TENNIS_BAT_SIZES: Pick<BatSize, "code" | "label" | "length">[] = [
+  { code: "FS", label: "Full Size", length: "35\"" },
+  { code: "SH", label: "SH / Standard", length: "33.5\"" },
 ];
 
 /** The usual bat size: what a size picker starts on when the bat has it. */
