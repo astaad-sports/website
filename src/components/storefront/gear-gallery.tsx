@@ -7,6 +7,7 @@ import type { StoreGear } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { PhotoTrack } from "./photo-track";
+import { StageCaption } from "./stage-caption";
 import { PhotoThumbnails } from "./stage-thumbnails";
 
 /**
@@ -20,7 +21,8 @@ export function GearGallery({ product }: { product: StoreGear }) {
   const count = product.images.length;
   const width = product.imageWidth * 2;
   const height = product.imageHeight * 2;
-  const caption = [product.category, product.line].filter(Boolean).join(" · ");
+  // The breadcrumb beside the stage already names the category.
+  const caption = product.line || product.category;
   return (
     <div className="relative flex h-[480px] items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#161616_0%,#0e0e0e_70%)] text-on-dark md:h-[760px] xl:h-auto">
       <div
@@ -57,15 +59,7 @@ export function GearGallery({ product }: { product: StoreGear }) {
         )}
       </PhotoTrack>
       <PhotoThumbnails images={product.images} active={active} onSelect={setActive} />
-      <p className="type-eyebrow absolute bottom-4 left-4 text-on-dark-subtle md:bottom-9 md:left-10">
-        {count > 1 ? `${caption} · ${active + 1} of ${count}` : caption}
-      </p>
-      <p
-        aria-hidden="true"
-        className="type-script-accent absolute right-10 bottom-[30px] hidden text-[36px] text-brand-yellow md:block"
-      >
-        Built for Greatness
-      </p>
+      <StageCaption label={caption} count={count > 1 ? `${active + 1} of ${count}` : undefined} />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { PhotoTrack } from "./photo-track";
+import { StageCaption } from "./stage-caption";
 import { PhotoThumbnails, StageRail, StageThumb } from "./stage-thumbnails";
 import { useSwipe } from "./use-swipe";
 
@@ -74,7 +75,7 @@ function buildViews(grade: string): View[] {
  * line. From xl it stretches to the hero's height, which grows past 760px
  * when the details beside it need more room.
  */
-function Stage({ caption, children }: { caption: string; children: ReactNode }) {
+function Stage({ caption, count, children }: { caption: string; count?: string; children: ReactNode }) {
   return (
     <div className="relative h-[560px] overflow-hidden bg-[linear-gradient(180deg,#161616_0%,#0e0e0e_70%)] text-on-dark md:h-[760px] xl:h-auto">
       <div
@@ -90,13 +91,7 @@ function Stage({ caption, children }: { caption: string; children: ReactNode }) 
         className="absolute top-[640px] left-1/2 hidden h-[60px] w-[380px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0)_70%)] md:block"
       />
       {children}
-      <p className="type-eyebrow absolute bottom-4 left-4 text-on-dark-subtle md:bottom-9 md:left-10">{caption}</p>
-      <p
-        aria-hidden="true"
-        className="type-script-accent absolute right-10 bottom-[30px] hidden text-[36px] text-brand-yellow md:block"
-      >
-        Built for Greatness
-      </p>
+      <StageCaption label={caption} count={count} />
     </div>
   );
 }
@@ -148,7 +143,7 @@ function Photos({ bat }: { bat: StoreBat }) {
   const count = bat.images.length;
 
   return (
-    <Stage caption={count > 1 ? `${bat.grade} · ${active + 1} of ${count}` : bat.grade}>
+    <Stage caption={bat.grade} count={count > 1 ? `${active + 1} of ${count}` : undefined}>
       <PhotoTrack count={count} active={active} onChange={setActive}>
         {(index, near) => (
           <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
