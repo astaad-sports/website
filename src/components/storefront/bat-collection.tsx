@@ -20,16 +20,17 @@ function SmallTile({ range, models }: { range: BatRange; models: number }) {
       className="group @container relative flex min-h-[190px] flex-col overflow-hidden rounded-xs bg-surface-dark-sunken px-8 pt-8 pb-7 text-on-dark transition-transform duration-200 hover:-translate-y-1"
     >
       {/* The bat runs diagonally, so on a narrower tile it shrinks into the
-          bottom-right corner to keep its blade clear of the note. It is full
-          size from a 421px tile (the 1440 design) and hidden below 300px; the
-          container query measures inside the 32px side padding, hence 236px. */}
+          bottom-right corner to keep its blade clear of the note; a photo
+          narrower than its box sits in that corner too. It is full size from
+          a 421px tile (the 1440 design) and hidden below 300px; the container
+          query measures inside the 32px side padding, hence 236px. */}
       <Image
         src={range.image}
         alt=""
         width={190}
         height={134}
         className={cn(
-          "absolute right-4 bottom-[22px] aspect-[190/134] h-auto w-[min(190px,89%_-_185px)] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)] @max-[236px]:hidden",
+          "absolute right-4 bottom-[22px] aspect-[190/134] h-auto w-[min(190px,89%_-_185px)] object-contain object-[100%_100%] drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)] @max-[236px]:hidden",
           range.grayscale && "grayscale-[0.4]"
         )}
       />
@@ -109,6 +110,11 @@ function CollectionRow({ models }: { models: Record<BatSubcategory, number> }) {
                 "absolute top-7 right-[-18px] h-auto w-[210px] rotate-[-38deg] object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.6)]",
                 range.grayscale && "grayscale-[0.4]"
               )}
+            />
+            {/* The bats run behind the text: they fade into the card under it, as the photo does on the first card. */}
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,22,22,0)_20%,rgba(22,22,22,0.85)_58%,#161616_78%)]"
             />
             <span className="relative flex flex-col gap-2.5">
               <span className={cn(MODELS_CHIP, "border border-on-dark-muted leading-5 text-on-dark")}>

@@ -10,9 +10,14 @@
     "height": 765
   },
   "bats/kashmir-diagonal": {
-    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bats/kashmir-diagonal-733d46b843.webp",
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bats/kashmir-diagonal-3d5dfb0027.webp",
+    "width": 980,
+    "height": 1000
+  },
+  "bats/tennis-diagonal": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/bats/tennis-diagonal-b3112404fc.webp",
     "width": 1000,
-    "height": 727
+    "height": 712
   },
   "categories/bats": {
     "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/categories/bats-52f038dbb7.webp",

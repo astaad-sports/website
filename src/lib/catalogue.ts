@@ -197,9 +197,9 @@ export interface BatRange {
   href: string;
   /** One sentence, on the home page tile and the range hero. */
   tagline: string;
-  /** The bat lying diagonally, on the home page tile and the range hero. */
+  /** The range's bats lying diagonally, on the home page tile and the range hero. */
   image: string;
-  /** Tennis bats show the bat cut-out partly desaturated. */
+  /** Shows the bat cut-out partly desaturated, for a range that borrows another's photo. */
   grayscale?: boolean;
 }
 
@@ -221,8 +221,7 @@ export const BAT_RANGES: BatRange[] = [
     noun: "tennis bats",
     href: "/shop/tennis-bats",
     tagline: "Light, fast and made for the gully.",
-    image: siteImage("bats/scoop-master-diagonal").src,
-    grayscale: true,
+    image: siteImage("bats/tennis-diagonal").src,
   },
 ];
 
