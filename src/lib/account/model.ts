@@ -40,8 +40,8 @@ export function parseProfileForm(form: FormData): ParsedProfile {
   return { ok: true, values: { name, phone: typed ? phone : null } };
 }
 
-/** "98765 43210" from the ten digits on the account; anything else is shown as it is. */
-export function formatMobile(phone: string): string {
+/** "98765 43210", as the customer would type it in a field, from the ten digits on the account; anything else as it is. */
+export function mobileAsTyped(phone: string): string {
   const digits = normalisePhone(phone);
   return /^\d{10}$/.test(digits) ? `${digits.slice(0, 5)} ${digits.slice(5)}` : phone;
 }

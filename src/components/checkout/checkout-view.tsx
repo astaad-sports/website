@@ -14,8 +14,9 @@ import { useCart } from "@/components/cart/use-cart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { addressSummary, type SavedAddress } from "@/lib/addresses/model";
 import { lineProblemText } from "@/lib/cart";
-import { INDIAN_STATES, type AddressField, type ShippingAddress } from "@/lib/checkout";
+import { ADDRESS_FIELDS, INDIAN_STATES, type AddressField, type ShippingAddress } from "@/lib/checkout";
 import { formatOrderNumber, formatPaise } from "@/lib/format";
 import { confirmPayment, placeOrder, type CheckoutPayment } from "@/lib/orders/actions";
 import { cn } from "@/lib/utils";
@@ -41,40 +42,30 @@ declare global {
 
 type Stage = "form" | "confirming" | "confirmed";
 
-const FIELDS: {
-  name: AddressField;
-  label: string;
-  autoComplete: string;
-  optional?: boolean;
-  type?: string;
-  inputMode?: "numeric" | "tel";
-  maxLength?: number;
-  span?: boolean;
-}[] = [
-  { name: "name", label: "Full name", autoComplete: "shipping name", span: true },
-  { name: "phone", label: "Mobile number", autoComplete: "shipping tel-national", type: "tel", inputMode: "tel", span: true },
-  { name: "line1", label: "House number, building and street", autoComplete: "shipping address-line1", span: true },
-  { name: "line2", label: "Area and landmark", autoComplete: "shipping address-line2", optional: true, span: true },
-  { name: "city", label: "Town or city", autoComplete: "shipping address-level2" },
-  { name: "pincode", label: "PIN code", autoComplete: "shipping postal-code", inputMode: "numeric", maxLength: 6 },
-];
+/** The address fields, marked as the shipping address for the browser's autofill. */
+const FIELDS = ADDRESS_FIELDS.map((field) => ({ ...field, autoComplete: `shipping ${field.autoComplete}` }));
 
 /**
  * The checkout page body: the delivery address beside the order and the Pay
  * button. Paying places the order on the server, opens Razorpay Checkout,
  * then confirms the payment and opens the order. The page hands down a
  * catalogue read fresh from the database and the coupon is checked again, so
- * the total shown is the total placeOrder charges.
+ * the total shown is the total placeOrder charges. The form starts on the
+ * customer's default saved address; choosing another of theirs fills it in.
  */
 export function CheckoutView({
   email,
   defaults,
+  addresses,
   paymentsReady,
   testAccount,
   storeName,
 }: {
   email: string | null;
+  /** What the form starts with when the customer has no saved address. */
   defaults: Partial<ShippingAddress>;
+  /** The customer's saved addresses, their default first. */
+  addresses: SavedAddress[];
   paymentsReady: boolean;
   /** A test account: Razorpay opens in test mode and the order is a test order. */
   testAccount: boolean;
@@ -89,6 +80,15 @@ export function CheckoutView({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<AddressField, string>>>({});
   const [pending, startTransition] = useTransition();
+  // The saved address the form was last filled from, how many times it has
+  // been filled (each one starts the fields afresh), and whether the customer
+  // has typed over it since.
+  const [filled, setFilled] = useState<{ from: SavedAddress | null; times: number; edited: boolean }>(() => ({
+    from: addresses.find((address) => address.isDefault) ?? addresses[0] ?? null,
+    times: 0,
+    edited: false,
+  }));
+  const starting: Partial<ShippingAddress> = filled.from ?? defaults;
   const recheckCoupon = useCouponRecheck(setError);
   // A placed order is reused while the cart, address and total are unchanged
   // (say the payment window failed to load). Closing the window forgets it,
@@ -163,6 +163,7 @@ export function CheckoutView({
     const address = Object.fromEntries(
       [...FIELDS.map((field) => field.name), "state"].map((name) => [name, String(form.get(name) ?? "")])
     );
+    const saveAddress = form.get("saveAddress") === "on";
     setError(null);
     setFieldErrors({});
 
@@ -171,7 +172,7 @@ export function CheckoutView({
       const fingerprint = JSON.stringify({ items, address, shownTotal, couponCode });
       let payment = placed.current?.fingerprint === fingerprint ? placed.current.payment : null;
       if (!payment) {
-        const result = await placeOrder({ items, address, expectedTotalPaise: shownTotal, couponCode });
+        const result = await placeOrder({ items, address, expectedTotalPaise: shownTotal, couponCode, saveAddress });
         if (!result.ok) {
           setError(result.error);
           setFieldErrors(result.fieldErrors ?? {});
@@ -216,7 +217,45 @@ export function CheckoutView({
             {email && <p className="type-body-sm text-ink-muted">Signed in as {email}</p>}
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          {addresses.length > 0 && (
+            <div role="group" aria-labelledby={`${id}-saved`} className="flex flex-col gap-3">
+              <p id={`${id}-saved`} className="type-body-sm font-semibold">
+                Your saved addresses
+              </p>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {addresses.map((address) => (
+                  <li key={address.id} className="flex">
+                    <button
+                      type="button"
+                      aria-pressed={filled.from?.id === address.id && !filled.edited}
+                      onClick={() => {
+                        setFilled((current) => ({ from: address, times: current.times + 1, edited: false }));
+                        setFieldErrors({});
+                      }}
+                      className="flex min-h-11 w-full cursor-pointer flex-col items-start gap-0.5 rounded-md border border-border p-4 text-left transition-colors hover:border-border-strong aria-pressed:border-foreground aria-pressed:bg-surface-sunken"
+                    >
+                      <span className="type-body-sm font-semibold">
+                        {addressSummary(address)}
+                        {address.isDefault && <span className="font-normal text-ink-muted"> · Default</span>}
+                      </span>
+                      {/* An address with no name of its own goes by the person's, so it is not said twice. */}
+                      <span className="type-body-sm text-ink-muted">
+                        {address.label ? `${address.name}, ${address.line1}` : address.line1}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="type-body-sm text-ink-muted">Choose one to fill in the form, or type another address below.</p>
+            </div>
+          )}
+
+          {/* Filled afresh each time a saved address is chosen; typing over it takes the mark off the address. */}
+          <div
+            key={filled.times}
+            onChange={() => setFilled((current) => (current.edited ? current : { ...current, edited: true }))}
+            className="grid gap-5 sm:grid-cols-2"
+          >
             {FIELDS.map((field) => (
               <div key={field.name} className={cn("flex flex-col gap-2", field.span && "sm:col-span-2")}>
                 <Label htmlFor={`${id}-${field.name}`}>
@@ -230,7 +269,7 @@ export function CheckoutView({
                   inputMode={field.inputMode}
                   maxLength={field.maxLength}
                   autoComplete={field.autoComplete}
-                  defaultValue={defaults[field.name] ?? ""}
+                  defaultValue={starting[field.name] ?? ""}
                   required={!field.optional}
                   aria-invalid={fieldErrors[field.name] ? true : undefined}
                   aria-describedby={fieldErrors[field.name] ? errorId(field.name) : undefined}
@@ -248,7 +287,7 @@ export function CheckoutView({
                 id={`${id}-state`}
                 name="state"
                 autoComplete="shipping address-level1"
-                defaultValue={defaults.state ?? ""}
+                defaultValue={starting.state ?? ""}
                 required
                 aria-invalid={fieldErrors.state ? true : undefined}
                 aria-describedby={fieldErrors.state ? errorId("state") : undefined}
@@ -270,6 +309,12 @@ export function CheckoutView({
               )}
             </div>
           </div>
+
+          {/* An address already on the account is not saved twice. */}
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start type-body">
+            <input type="checkbox" name="saveAddress" defaultChecked className="size-5 shrink-0 accent-foreground" />
+            Save this address to my account
+          </label>
         </section>
 
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">

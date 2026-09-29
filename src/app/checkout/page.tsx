@@ -5,6 +5,7 @@ import { CheckoutView } from "@/components/checkout/checkout-view";
 import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { listAddresses } from "@/db/addresses";
 import { getLastShippingAddress } from "@/db/orders";
 import { requireUser } from "@/lib/auth/session";
 import { isTestAccount } from "@/lib/auth/test-account";
@@ -21,12 +22,13 @@ export const metadata: Metadata = {
 export default async function CheckoutPage() {
   const user = await requireUser("/checkout");
   const test = isTestAccount(user);
-  const [lastAddress, catalogue, settings] = await Promise.all([
+  const [addresses, lastAddress, catalogue, settings] = await Promise.all([
+    listAddresses(user.id),
     getLastShippingAddress(user.id),
     getFreshStoreCatalogue(),
     getStoreSettings(),
   ]);
-  // Prefill from the last order, or at least the name and phone on the account.
+  // With no saved address to start on: the last order's, or at least the name and phone on the account.
   const defaults: Partial<ShippingAddress> = lastAddress ?? {
     name: user.name ?? undefined,
     phone: user.phone ?? undefined,
@@ -47,6 +49,7 @@ export default async function CheckoutPage() {
             <CheckoutView
               email={user.email}
               defaults={defaults}
+              addresses={addresses}
               paymentsReady={razorpayConfigured({ test })}
               testAccount={test}
               storeName={settings.storeName}

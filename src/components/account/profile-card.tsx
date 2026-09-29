@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateProfile, type ProfileState } from "@/lib/account/actions";
-import { formatMobile, PROFILE_LIMITS, type ProfileFieldErrors } from "@/lib/account/model";
+import { mobileAsTyped, PROFILE_LIMITS, type ProfileFieldErrors } from "@/lib/account/model";
+import { formatMobile } from "@/lib/format";
 
 export interface ProfileDetails {
   name: string | null;
@@ -34,7 +35,7 @@ function ProfileFields({
   fieldErrors: ProfileFieldErrors;
 }) {
   const [name, setName] = useState(savedName ?? "");
-  const [phone, setPhone] = useState(savedPhone ? formatMobile(savedPhone) : "");
+  const [phone, setPhone] = useState(savedPhone ? mobileAsTyped(savedPhone) : "");
   return (
     <>
       <div className="flex flex-col gap-2">

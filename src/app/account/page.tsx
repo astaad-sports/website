@@ -5,20 +5,22 @@ import { ChevronRight } from "lucide-react";
 import { ChangePassword } from "@/components/account/change-password";
 import { ProfileCard } from "@/components/account/profile-card";
 import { AccountQuickLinks } from "@/components/account/quick-links";
+import { AddressBook } from "@/components/addresses/address-book";
 import { OrderProgress } from "@/components/orders/order-progress";
 import { Eyebrow } from "@/components/storefront/eyebrow";
 import { MobileTabBar } from "@/components/storefront/mobile-tab-bar";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { Button } from "@/components/ui/button";
-import { getLastShippingAddress, listOrdersForUser, type OrderWithItems } from "@/db/orders";
-import { formatMobile, signInMethods } from "@/lib/account/model";
+import { listAddresses } from "@/db/addresses";
+import { listOrdersForUser, type OrderWithItems } from "@/db/orders";
+import { signInMethods } from "@/lib/account/model";
+import { makeDefaultAddress, removeAddress, saveAddress } from "@/lib/addresses/actions";
 import { getSignInProviders } from "@/lib/account/sign-in";
 import { signOut, signOutEverywhere } from "@/lib/auth/actions";
 import { isAdmin } from "@/lib/auth/admin";
 import { requireUser } from "@/lib/auth/session";
 import { isTestAccount } from "@/lib/auth/test-account";
-import type { ShippingAddress } from "@/lib/checkout";
 import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
 import { listInWords } from "@/lib/words";
@@ -92,37 +94,6 @@ function OrdersList({ orders }: { orders: OrderWithItems[] }) {
   );
 }
 
-/** Where the last order went, which is where checkout starts. */
-function AddressCard({ address }: { address: ShippingAddress | null }) {
-  return (
-    <section aria-labelledby="account-address" className={cn(CARD, "gap-3 p-6")}>
-      <h2 id="account-address" className="type-heading-sm">
-        Delivery address
-      </h2>
-      {address ? (
-        <>
-          <address className="flex flex-col type-body not-italic">
-            <span className="font-semibold">{address.name}</span>
-            <span>{address.line1}</span>
-            {address.line2 && <span>{address.line2}</span>}
-            <span>
-              {address.city}, {address.state} {address.pincode}
-            </span>
-            <span className="text-ink-muted tabular-nums">+91 {formatMobile(address.phone)}</span>
-          </address>
-          <p className="type-body-sm text-ink-muted">
-            From your last order. Checkout starts with this address, and you can change it there.
-          </p>
-        </>
-      ) : (
-        <p className="type-body text-ink-muted">
-          No address yet. You will add one at checkout, and we will keep it for your next order.
-        </p>
-      )}
-    </section>
-  );
-}
-
 /** How the customer signs in, a new password for those who have one, and signing out here or everywhere. */
 function SignInCard({ email, providers }: { email: string | null; providers: string[] }) {
   const methods = signInMethods(providers);
@@ -151,9 +122,9 @@ function SignInCard({ email, providers }: { email: string | null; providers: str
 
 export default async function AccountPage() {
   const user = await requireUser("/account");
-  const [orders, address, providers] = await Promise.all([
+  const [orders, addresses, providers] = await Promise.all([
     listOrdersForUser(user.id),
-    getLastShippingAddress(user.id),
+    listAddresses(user.id),
     getSignInProviders(user.firebaseUid),
   ]);
   const firstName = user.name?.split(" ")[0];
@@ -198,6 +169,13 @@ export default async function AccountPage() {
                 />
               )}
               <OrdersList orders={orders} />
+              <AddressBook
+                skin="store"
+                addresses={addresses}
+                actions={{ save: saveAddress, remove: removeAddress, makeDefault: makeDefaultAddress }}
+                starting={{ name: user.name ?? undefined, phone: user.phone ?? undefined }}
+                empty="No saved addresses yet. Add one and checkout will start with it."
+              />
             </div>
 
             <div className="flex flex-col gap-4">
@@ -210,7 +188,6 @@ export default async function AccountPage() {
                   memberSince: memberSince.format(user.createdAt),
                 }}
               />
-              <AddressCard address={address} />
               <SignInCard email={user.email} providers={providers} />
             </div>
           </div>

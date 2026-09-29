@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 
+import { isMissingTable } from "./errors";
 import { getDb } from "./index";
 import { products, reviews, type NewReview, type Product, type Review, type ReviewStatus } from "./schema";
 
@@ -19,16 +20,8 @@ const productColumns = {
   availability: products.availability,
 };
 
-/**
- * Whether the reviews table isn't there yet: code that reads it can reach a
- * server before `bun run db:migrate` has run against its database.
- */
-export function isMissingReviewsTable(error: unknown): boolean {
-  for (let current = error; current; current = (current as { cause?: unknown }).cause) {
-    if ((current as { code?: string }).code === "42P01") return true;
-  }
-  return false;
-}
+/** Whether the reviews table isn't there yet (see isMissingTable). */
+export const isMissingReviewsTable = isMissingTable;
 
 function withProduct(rows: { review: Review; product: ReviewProduct | null }[]): ReviewWithProduct[] {
   return rows.map(({ review, product }) => ({ ...review, product }));

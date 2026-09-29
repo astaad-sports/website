@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatMobile, parseProfileForm, signInMethods } from "./model";
+import { mobileAsTyped, parseProfileForm, signInMethods } from "./model";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -53,17 +53,17 @@ describe("parseProfileForm", () => {
   });
 });
 
-describe("formatMobile", () => {
+describe("mobileAsTyped", () => {
   test("splits ten digits in two", () => {
-    expect(formatMobile("9876543210")).toBe("98765 43210");
+    expect(mobileAsTyped("9876543210")).toBe("98765 43210");
   });
 
   test("drops the country code Firebase keeps", () => {
-    expect(formatMobile("+919876543210")).toBe("98765 43210");
+    expect(mobileAsTyped("+919876543210")).toBe("98765 43210");
   });
 
   test("leaves anything else as it is", () => {
-    expect(formatMobile("+1 415 555 0100")).toBe("+1 415 555 0100");
+    expect(mobileAsTyped("+1 415 555 0100")).toBe("+1 415 555 0100");
   });
 });
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { keepCheckoutAddress } from "@/db/addresses";
 import { findOfferByCode } from "@/db/offers";
 import { attachRazorpayOrder, createOrder, isTestRazorpayOrder, markOrderPaid } from "@/db/orders";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -73,7 +74,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
       : { ok: false, error: "Your cart could not be read. Refresh the page and try again." };
   }
 
-  const { items, address, expectedTotalPaise, couponCode } = parsed.data;
+  const { items, address, expectedTotalPaise, couponCode, saveAddress } = parsed.data;
   let coupon: AppliedCoupon | null = null;
   if (couponCode) {
     const checked = await couponFor(couponCode);
@@ -109,6 +110,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   }
 
   const order = await createOrder({ userId: user.id, email: user.email, address, cart, test });
+  if (saveAddress) await keepCheckoutAddress(user.id, address);
 
   let razorpayOrder;
   try {

@@ -75,6 +75,27 @@ export const addressSchema = z.object({
 export type ShippingAddress = z.infer<typeof addressSchema>;
 export type AddressField = keyof ShippingAddress;
 
+/** An address form's text fields, in order; the state is a list to choose from, after them. */
+export const ADDRESS_FIELDS: {
+  name: Exclude<AddressField, "state">;
+  label: string;
+  /** Without the "shipping" section checkout puts before it. */
+  autoComplete: string;
+  optional?: boolean;
+  type?: string;
+  inputMode?: "numeric" | "tel";
+  maxLength?: number;
+  /** Takes the whole row; the others sit two to a row. */
+  span?: boolean;
+}[] = [
+  { name: "name", label: "Full name", autoComplete: "name", span: true },
+  { name: "phone", label: "Mobile number", autoComplete: "tel-national", type: "tel", inputMode: "tel", span: true },
+  { name: "line1", label: "House number, building and street", autoComplete: "address-line1", span: true },
+  { name: "line2", label: "Area and landmark", autoComplete: "address-line2", optional: true, span: true },
+  { name: "city", label: "Town or city", autoComplete: "address-level2" },
+  { name: "pincode", label: "PIN code", autoComplete: "postal-code", inputMode: "numeric", maxLength: 6 },
+];
+
 export const placeOrderSchema = z.object({
   items: z.array(cartItemSchema).min(1).max(MAX_LINES),
   address: addressSchema,
@@ -82,6 +103,8 @@ export const placeOrderSchema = z.object({
   expectedTotalPaise: z.number().int().nonnegative().optional(),
   /** The coupon code in the cart, checked again here. */
   couponCode: z.string().max(40).optional(),
+  /** Keep the address on the account, unless it is there already. */
+  saveAddress: z.boolean().optional(),
 });
 
 export const paymentResponseSchema = z.object({
