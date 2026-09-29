@@ -13,8 +13,8 @@ const POSTER = siteImage("home/hero-astaad-sports");
 
 /**
  * The hero: the Astaad Sports poster of players with their Astaad kit on the
- * right, the headline on the left. On phones the poster fills the top of the
- * screen, whole, and the headline and buttons follow under it.
+ * right, the headline on the left. On phones the poster runs across the top
+ * of the screen and the headline and buttons follow under it.
  */
 export function HomeHero() {
   return (
@@ -78,9 +78,10 @@ export function HomeHero() {
         </ul>
 
         {/* The poster, with its own embers glowing out from behind it and the yellow ring.
-            Up to 440px wide it runs edge to edge; from there it keeps that width. From md
-            its width keeps it as tall as the 2:3 poster it replaced (it is 9:16), so the
-            hero keeps its height. */}
+            It is cut to 3:4, from the title to the players' feet, so on phones the headline
+            starts higher up. Up to 440px wide it runs edge to edge; from there it keeps
+            that width. From md it is as wide as the headline and the two buttons beside it
+            allow. */}
         <div className="relative isolate -mx-4 flex justify-center max-md:order-first min-[441px]:max-md:mt-6 md:col-start-2 md:row-start-1 md:mx-0 md:self-center xl:row-span-2">
           <div
             aria-hidden="true"
@@ -88,7 +89,7 @@ export function HomeHero() {
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-1/2 -z-10 hidden aspect-square w-[138%] -translate-1/2 rounded-full border border-brand-yellow/[0.38] lg:block"
+            className="pointer-events-none absolute top-1/2 left-1/2 -z-10 hidden aspect-square w-[128%] -translate-1/2 rounded-full border border-brand-yellow/[0.38] lg:block"
           />
           <Image
             src={POSTER.src}
@@ -96,8 +97,8 @@ export function HomeHero() {
             width={POSTER.width}
             height={POSTER.height}
             preload
-            sizes="(min-width: 1440px) 372px, (min-width: 1280px) 356px, (min-width: 1024px) 320px, (min-width: 768px) 236px, min(100vw, 440px)"
-            className="h-auto w-full max-w-[440px] min-[441px]:rounded-xs min-[441px]:shadow-[0_40px_80px_rgba(0,0,0,0.65)] min-[441px]:ring-1 min-[441px]:ring-white/10 md:w-[236px] lg:w-[320px] xl:w-[356px] min-[1440px]:w-[372px]"
+            sizes="(min-width: 1280px) 440px, (min-width: 1024px) 400px, (min-width: 768px) 280px, min(100vw, 440px)"
+            className="h-auto w-full max-w-[440px] min-[441px]:rounded-xs min-[441px]:shadow-[0_40px_80px_rgba(0,0,0,0.65)] min-[441px]:ring-1 min-[441px]:ring-white/10 md:w-[280px] lg:w-[400px] xl:w-[440px]"
           />
         </div>
       </div>
