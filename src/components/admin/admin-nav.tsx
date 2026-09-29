@@ -14,6 +14,7 @@ import {
   Search,
   Settings,
   ShoppingBag,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,12 @@ const ORDERS: Section = {
   label: "Orders",
   icon: ShoppingBag,
   matches: (path) => path.startsWith("/admin/orders"),
+};
+const CUSTOMERS: Section = {
+  href: "/admin/customers",
+  label: "Customers",
+  icon: Users,
+  matches: (path) => path.startsWith("/admin/customers"),
 };
 const PRODUCTS: Section = {
   href: "/admin/products",
@@ -72,9 +79,11 @@ const MORE: Section = {
   href: "/admin/more",
   label: "More",
   icon: Menu,
-  // Offers, Inventory, Reviews and Settings live under More on phones.
+  // Customers, Offers, Inventory, Reviews and Settings live under More on phones.
   matches: (path) =>
-    ["/admin/more", OFFERS.href, INVENTORY.href, REVIEWS.href, SETTINGS.href].some((href) => path.startsWith(href)),
+    ["/admin/more", CUSTOMERS.href, OFFERS.href, INVENTORY.href, REVIEWS.href, SETTINGS.href].some((href) =>
+      path.startsWith(href)
+    ),
 };
 
 function CountBadge({ count, className }: { count: number; className?: string }) {
@@ -113,7 +122,7 @@ export function AdminSidebar({
   email: string | null;
 }) {
   const path = usePathname();
-  const sections = [DASHBOARD, ORDERS, PRODUCTS, OFFERS, INVENTORY, REVIEWS, SETTINGS];
+  const sections = [DASHBOARD, ORDERS, CUSTOMERS, PRODUCTS, OFFERS, INVENTORY, REVIEWS, SETTINGS];
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-58 shrink-0 flex-col bg-surface-dark text-on-dark lg:flex">

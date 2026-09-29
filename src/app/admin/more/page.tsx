@@ -8,11 +8,13 @@ import {
   LogOut,
   MessageSquareQuote,
   Settings,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
 import { matchesStockFilter } from "@/components/admin/product-row";
 import { PAGE } from "@/components/admin/styles";
+import { countCustomers } from "@/db/customers";
 import { listOffers } from "@/db/offers";
 import { listProductsWithImages } from "@/db/products";
 import { listReviewsForAdmin } from "@/db/reviews";
@@ -44,11 +46,16 @@ function SectionRow({ href, icon: Icon, title, detail }: { href: string; icon: L
   );
 }
 
-/** The rest of the admin on phones: Offers, Inventory, Reviews and Settings, then the admin's account. */
+/** The rest of the admin on phones: Customers, Offers, Inventory, Reviews and Settings, then the admin's account. */
 export default async function AdminMorePage() {
   const user = await requireAdmin("/admin/more");
   const name = user.name?.trim() || "Admin";
-  const [offers, products, reviews] = await Promise.all([listOffers(), listProductsWithImages(), listReviewsForAdmin()]);
+  const [offers, products, reviews, customers] = await Promise.all([
+    listOffers(),
+    listProductsWithImages(),
+    listReviewsForAdmin(),
+    countCustomers(),
+  ]);
 
   const now = new Date();
   const offersRunning = offers.filter((offer) => offerStatus(offer, now) === "active").length;
@@ -63,6 +70,12 @@ export default async function AdminMorePage() {
       <h1 className="type-heading-lg">More</h1>
 
       <nav aria-label="More sections" className="flex flex-col border-t border-border">
+        <SectionRow
+          href="/admin/customers"
+          icon={Users}
+          title="Customers"
+          detail={counts([[customers, customers === 1 ? "customer" : "customers"]], "Accounts and saved addresses")}
+        />
         <SectionRow
           href="/admin/offers"
           icon={BadgePercent}

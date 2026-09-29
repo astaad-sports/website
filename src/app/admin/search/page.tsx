@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, Search } from "lucide-react";
 
+import { CustomerRow } from "@/components/admin/customer-rows";
 import { OrderRow } from "@/components/admin/order-rows";
 import { byStoreOrder, matchesProductSearch, ProductResultRow, toProductListItem } from "@/components/admin/product-row";
 import { PAGE, SEARCH_FIELD, SECTION_LABEL } from "@/components/admin/styles";
+import { listCustomers } from "@/db/customers";
 import { listOrdersForAdmin } from "@/db/orders";
 import { listProductsWithImages } from "@/db/products";
 import { requireAdmin } from "@/lib/auth/session";
@@ -25,12 +27,14 @@ async function findProducts(query: string) {
 /**
  * One search box for the whole admin: orders by order ID, customer name,
  * phone or email, product, or tracking ID; products by name, SKU, grade or
- * range, each opening its editor. Customers are found through their orders.
+ * range, each opening its editor; customers by name, email or mobile number.
  */
 export default async function AdminSearchPage({ searchParams }: PageProps<"/admin/search">) {
   const query = normaliseSearch((await searchParams).q);
   await requireAdmin(query ? `/admin/search?q=${encodeURIComponent(query)}` : "/admin/search");
-  const [orders, productHits] = query ? await Promise.all([listOrdersForAdmin({ query, limit: 50 }), findProducts(query)]) : [[], []];
+  const [orders, productHits, customers] = query
+    ? await Promise.all([listOrdersForAdmin({ query, limit: 50 }), findProducts(query), listCustomers({ query, limit: 20 })])
+    : [[], [], []];
 
   return (
     <main className={PAGE}>
@@ -80,7 +84,7 @@ export default async function AdminSearchPage({ searchParams }: PageProps<"/admi
             Try an order number like 10024, a customer’s name or phone, a product, or a tracking ID.
           </p>
         </div>
-      ) : orders.length === 0 && productHits.length === 0 ? (
+      ) : orders.length === 0 && productHits.length === 0 && customers.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
           <Search className="size-10 text-ink-subtle" strokeWidth={1.5} aria-hidden="true" />
           <p className="text-base leading-[22px] font-semibold break-all">No results for “{query}”</p>
@@ -101,6 +105,21 @@ export default async function AdminSearchPage({ searchParams }: PageProps<"/admi
               <ul className="flex flex-col border-t border-border">
                 {orders.map((order) => (
                   <OrderRow key={order.id} order={order} />
+                ))}
+              </ul>
+            </section>
+          )}
+          {customers.length > 0 && (
+            <section aria-labelledby="customers-found" className="flex flex-col">
+              <div className="flex min-h-11 items-center justify-between">
+                <h2 id="customers-found" className={SECTION_LABEL}>
+                  Customers
+                </h2>
+                <span className="text-xs leading-4 font-semibold text-ink-muted tabular-nums">{customers.length}</span>
+              </div>
+              <ul className="flex flex-col border-t border-border">
+                {customers.map((customer) => (
+                  <CustomerRow key={customer.id} customer={customer} />
                 ))}
               </ul>
             </section>
