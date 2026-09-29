@@ -13,6 +13,7 @@ import { ProductStory } from "@/components/storefront/product-story";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
+import { getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { findStoreBat, listInWords, type StoreBat } from "@/lib/products/model";
 import { reviewsOfProduct } from "@/lib/reviews/model";
@@ -57,7 +58,7 @@ export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
 
   return (
     <>
-      <SiteHeader activeHref="/#collection" />
+      <SiteHeader activeHref={getCategory("bats")?.href} />
       <main className="flex-1">
         <ProductHero bat={bat} delivery={delivery} reviews={reviews} />
         <ProductBuilder key={bat.slug} bat={bat} deliveryFeePaise={delivery.feePaise} />

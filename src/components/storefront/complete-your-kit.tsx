@@ -9,7 +9,7 @@ import { SectionHeading } from "./section-heading";
 export function CompleteYourKit({
   eyebrow,
   items,
-  href = "/#categories",
+  href = "/shop",
 }: {
   eyebrow: string;
   items: KitTile[];

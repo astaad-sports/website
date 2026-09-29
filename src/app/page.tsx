@@ -54,7 +54,7 @@ export default async function Home() {
           label="Shop Astaad"
           title="Ready for your"
           highlight="bigger innings?"
-          primary={{ label: "Shop Astaad", href: "/#collection" }}
+          primary={{ label: "Shop Astaad", href: "/shop" }}
           secondary={{ label: "Build your bat", href: "/#build" }}
           backdrop={siteImage("home/bats-on-the-rock").src}
         />

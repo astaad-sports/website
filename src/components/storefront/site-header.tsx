@@ -6,6 +6,7 @@ import { CartLink } from "@/components/cart/cart-link";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -81,13 +82,20 @@ export function SiteHeader({ activeHref, sticky }: { activeHref?: string; sticky
                 <ul className="flex flex-col">
                   {links.map((link) => (
                     <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        aria-current={link.href === activeHref ? "page" : undefined}
-                        className="flex min-h-11 items-center px-4 text-sm leading-5 font-semibold text-on-dark aria-[current=page]:text-brand-yellow"
+                      {/* Closes the menu too: a link to the page you are on would otherwise leave it open. */}
+                      <SheetClose
+                        data-slot="sheet-link"
+                        nativeButton={false}
+                        render={
+                          <Link
+                            href={link.href}
+                            aria-current={link.href === activeHref ? "page" : undefined}
+                            className="flex min-h-11 items-center px-4 text-sm leading-5 font-semibold text-on-dark aria-[current=page]:text-brand-yellow"
+                          />
+                        }
                       >
                         {link.label}
-                      </Link>
+                      </SheetClose>
                     </li>
                   ))}
                 </ul>

@@ -558,6 +558,11 @@ export function batsInSubcategory(catalogue: StoreCatalogue, subcategory: BatSub
   return catalogue.bats.filter((bat) => bat.subcategory === subcategory);
 }
 
+/** Every bat, range by range as BAT_SUBCATEGORIES has them (English willow first), each range in catalogue order. */
+export function batsByRange(catalogue: StoreCatalogue): StoreBat[] {
+  return BAT_SUBCATEGORIES.flatMap(({ slug }) => batsInSubcategory(catalogue, slug));
+}
+
 /** A home page category tile's count and starting price; `from` is null while nothing is on sale. */
 export interface CategoryStats {
   models: number;

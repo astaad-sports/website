@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { label: "Home", href: "/", icon: House, match: (path: string) => path === "/" },
-  { label: "Shop", href: "/#categories", icon: LayoutGrid, match: (path: string) => path.startsWith("/shop") || path.startsWith("/bats") },
+  { label: "Shop", href: "/shop", icon: LayoutGrid, match: (path: string) => path.startsWith("/shop") || path.startsWith("/bats") },
   { label: "Cart", href: "/cart", icon: ShoppingCart, match: (path: string) => path === "/cart" },
   { label: "Account", href: "/account", icon: User, match: (path: string) => path.startsWith("/account") },
 ];

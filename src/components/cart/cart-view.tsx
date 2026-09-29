@@ -36,7 +36,7 @@ export function EmptyCart() {
         <h2 className="type-heading-lg">Your cart is empty</h2>
         <p className="type-body text-ink-muted">Pick your willow, then kit up for the season.</p>
       </div>
-      <Button size="lg" render={<Link href="/#collection" />} nativeButton={false}>
+      <Button size="lg" render={<Link href="/shop/bats" />} nativeButton={false}>
         Shop bats
         <ArrowRight aria-hidden="true" />
       </Button>

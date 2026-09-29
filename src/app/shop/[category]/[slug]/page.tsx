@@ -64,7 +64,7 @@ export default async function GearPage({ params }: PageProps<"/shop/[category]/[
           label="Shop Astaad"
           title="Ready for your"
           highlight="bigger innings?"
-          primary={{ label: "Shop bats", href: "/#collection" }}
+          primary={{ label: "Shop bats", href: "/shop/bats" }}
           secondary={{ label: "Build your bat", href: "/#build" }}
         />
       </main>

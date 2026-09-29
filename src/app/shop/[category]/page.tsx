@@ -12,18 +12,19 @@ import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import {
   BAT_RANGES,
   DIAGONAL_BAT_TILE,
-  GEAR_CATEGORY_SLUGS,
+  STORE_CATEGORIES,
   getBatRange,
   getCategory,
   type BatRange,
+  type StoreCategory,
 } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
-import { batsInSubcategory, gearInCategory } from "@/lib/products/model";
+import { batsByRange, batsInSubcategory, gearInCategory } from "@/lib/products/model";
 import { deliveryFeePaise } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
 
 export function generateStaticParams() {
-  return [...GEAR_CATEGORY_SLUGS, ...BAT_RANGES.map((range) => range.slug)].map((category) => ({ category }));
+  return [...STORE_CATEGORIES, ...BAT_RANGES].map(({ slug }) => ({ category: slug }));
 }
 
 export async function generateMetadata({
@@ -35,7 +36,7 @@ export async function generateMetadata({
     return { title: range.name, description: `Astaad ${range.noun}: ${range.tagline}` };
   }
   const category = getCategory(slug);
-  if (!category || category.kind !== "gear") return {};
+  if (!category) return {};
   return {
     title: category.name,
     description: `Astaad ${category.name.toLowerCase()}: ${category.tagline}`,
@@ -47,7 +48,8 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
   const range = getBatRange(slug);
   if (range) return <BatRangePage range={range} />;
   const category = getCategory(slug);
-  if (!category || category.kind !== "gear") notFound();
+  if (!category) notFound();
+  if (category.kind === "bats") return <BatsPage category={category} />;
 
   const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
   const products = gearInCategory(catalogue, slug);
@@ -74,7 +76,7 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
           label="Shop Astaad"
           title="Ready for your"
           highlight="bigger innings?"
-          primary={{ label: "Shop bats", href: "/#collection" }}
+          primary={{ label: "Shop bats", href: "/shop/bats" }}
           secondary={{ label: "Build your bat", href: "/#build" }}
         />
       </main>
@@ -108,8 +110,39 @@ async function BatRangePage({ range }: { range: BatRange }) {
           label="Shop Astaad"
           title="Ready for your"
           highlight="bigger innings?"
-          primary={{ label: "Shop bats", href: "/#collection" }}
+          primary={{ label: "Shop bats", href: "/shop/bats" }}
           secondary={{ label: "Build your bat", href: "/#build" }}
+        />
+      </main>
+      <SiteFooter />
+    </>
+  );
+}
+
+/** Every bat on the store, range by range; the tabs narrow them to one range. */
+async function BatsPage({ category }: { category: StoreCategory }) {
+  const [catalogue, settings] = await Promise.all([getStoreCatalogue(), getStoreSettings()]);
+  const bats = batsByRange(catalogue);
+
+  return (
+    <>
+      <SiteHeader activeHref={category.href} />
+      <main className="flex-1">
+        <CategoryHero
+          category={category}
+          count={bats.length}
+          from={bats.length ? Math.min(...bats.map((bat) => bat.price)) : null}
+          deliveryFeePaise={deliveryFeePaise(settings)}
+        />
+        <BatGrid bats={bats} noun="bats" ranges />
+        <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
+        <CompleteYourKit eyebrow="Pairs with your bat" items={kitTilesForBat(catalogue)} />
+        <FinalCta
+          label="Shop Astaad"
+          title="Ready for your"
+          highlight="bigger innings?"
+          primary={{ label: "Build your bat", href: "/#build" }}
+          secondary={{ label: "Shop all gear", href: "/shop" }}
         />
       </main>
       <SiteFooter />

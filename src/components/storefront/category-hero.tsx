@@ -13,51 +13,66 @@ import { Eyebrow } from "./eyebrow";
  * starting price and delivery (as Settings have it), and the cut-out under
  * the floodlight. `from` is the lowest price on sale, offers included, or
  * null while the category has nothing on sale; the stats then say it is
- * coming soon.
+ * coming soon. With no picture (the Shop page) there is no floodlight either,
+ * and the stage is as tall as its words.
  */
 export function CategoryHero({
   category,
   count,
   from,
   deliveryFeePaise,
-  parent = { label: "Shop", href: "/#categories" },
+  parent = { label: "Shop", href: "/shop" },
   imageClassName,
 }: {
-  category: Pick<StoreCategory, "name" | "tagline" | "image" | "tile">;
+  category: Pick<StoreCategory, "name" | "tagline"> & Partial<Pick<StoreCategory, "image" | "tile">>;
   count: number;
   from: number | null;
   deliveryFeePaise: number;
-  /** The breadcrumb step between Home and this category. */
-  parent?: { label: string; href: string };
+  /** The breadcrumb step between Home and this category; null when there is none. */
+  parent?: { label: string; href: string } | null;
   imageClassName?: string;
 }) {
-  const width = category.tile.width * 2;
-  const height = category.tile.height * 2;
+  const picture = category.image && category.tile
+    ? { src: category.image, width: category.tile.width * 2, height: category.tile.height * 2 }
+    : null;
 
   return (
     <section
       aria-labelledby="category-title"
       className="relative overflow-hidden bg-surface-dark text-on-dark"
     >
+      {picture && (
+        <>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 right-[6%] hidden size-[560px] -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.22)_0%,rgba(254,197,2,0)_66%)] lg:block"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 right-[9%] hidden size-[440px] -translate-y-1/2 rounded-full border border-brand-yellow/30 lg:block"
+          />
+        </>
+      )}
       <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 right-[6%] hidden size-[560px] -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.22)_0%,rgba(254,197,2,0)_66%)] lg:block"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 right-[9%] hidden size-[440px] -translate-y-1/2 rounded-full border border-brand-yellow/30 lg:block"
-      />
-      <div className="site-shell relative flex flex-col gap-10 py-14 lg:min-h-[520px] lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:py-16">
+        className={cn(
+          "site-shell relative flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:py-16",
+          picture ? "py-14 lg:min-h-[520px]" : "py-10 md:py-14"
+        )}
+      >
         <div className="flex max-w-[640px] flex-col gap-6">
           <Eyebrow bar className="text-on-dark-muted">
             <Link href="/" className="transition-colors hover:text-brand-yellow">
               Home
             </Link>
             <span aria-hidden="true">·</span>
-            <Link href={parent.href} className="transition-colors hover:text-brand-yellow">
-              {parent.label}
-            </Link>
-            <span aria-hidden="true">·</span>
+            {parent && (
+              <>
+                <Link href={parent.href} className="transition-colors hover:text-brand-yellow">
+                  {parent.label}
+                </Link>
+                <span aria-hidden="true">·</span>
+              </>
+            )}
             <span className="text-on-dark">{category.name}</span>
           </Eyebrow>
           <h1
@@ -83,19 +98,21 @@ export function CategoryHero({
             <li className="sm:border-l sm:border-border-on-dark sm:px-7">{deliveryPromise(deliveryFeePaise)}</li>
           </ul>
         </div>
-        <div
-          className="relative mx-auto w-full shrink-0 lg:mx-0"
-          style={{ maxWidth: width, aspectRatio: `${width} / ${height}` }}
-        >
-          <Image
-            src={category.image}
-            alt=""
-            fill
-            priority
-            sizes={`${width}px`}
-            className={cn("object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.75)]", imageClassName)}
-          />
-        </div>
+        {picture && (
+          <div
+            className="relative mx-auto w-full shrink-0 lg:mx-0"
+            style={{ maxWidth: picture.width, aspectRatio: `${picture.width} / ${picture.height}` }}
+          >
+            <Image
+              src={picture.src}
+              alt=""
+              fill
+              priority
+              sizes={`${picture.width}px`}
+              className={cn("object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.75)]", imageClassName)}
+            />
+          </div>
+        )}
       </div>
     </section>
   );

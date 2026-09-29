@@ -24,7 +24,7 @@ const CHIP = "h-6 rounded-xs bg-surface-dark px-2.5 text-xs leading-6 font-bold 
 /**
  * The phone's 164px product card for a row that scrolls sideways: the cut-out
  * on grey, the name on two lines, its rating once reviewed, the price and a
- * round add-to-cart button.
+ * round add-to-cart button. In a grid, `className` sets its width instead.
  */
 export function KitMiniCard({
   name,
@@ -39,13 +39,14 @@ export function KitMiniCard({
   soldOut,
   offer,
   rating,
-}: KitTile) {
+  className,
+}: KitTile & { className?: string }) {
   // The cut-out keeps its shape inside a 136 × 148 box.
   const scale = Math.min(136 / imageWidth, 148 / imageHeight);
   const width = Math.round(imageWidth * scale);
   const height = Math.round(imageHeight * scale);
   return (
-    <article className="relative flex w-[164px] flex-col">
+    <article className={cn("relative flex w-[164px] flex-col", className)}>
       <div className="relative flex h-[172px] items-center justify-center overflow-hidden rounded-xs bg-surface-sunken">
         <Image
           src={image}

@@ -28,7 +28,7 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     kind: "bats",
     tagline: "Choose your willow. Build your game.",
     name: "Bats",
-    href: "/#collection",
+    href: "/shop/bats",
     number: "01",
     image: siteImage("categories/bats").src,
     tile: { width: 88, height: 216, top: 4, shadowWidth: 140, shadowTop: 198 },
@@ -186,7 +186,7 @@ export const GEAR_CATEGORY_SLUGS = STORE_CATEGORIES.filter(
 /**
  * The bat ranges with their own page at /shop/[slug]; English willow is listed
  * on the home page instead. Each page lists the catalogue's bats in the
- * subcategory of the same slug.
+ * subcategory of the same slug. /shop/bats lists every range's bats together.
  */
 export interface BatRange {
   slug: "kashmir-willow" | "tennis-bats";

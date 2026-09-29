@@ -46,7 +46,7 @@ export function HomeHero() {
           <div className="mt-1 flex flex-wrap items-center gap-2.5 md:mt-3 md:gap-4">
             <Button
               size="lg"
-              render={<Link href="/#collection" />}
+              render={<Link href="/shop/bats" />}
               nativeButton={false}
               className="h-13 flex-1 rounded-xs px-4 text-[15px] font-bold tracking-[0.02em] md:h-14 md:flex-none md:px-8"
             >

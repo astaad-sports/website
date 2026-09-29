@@ -29,7 +29,7 @@ function EmptyWishlist() {
         <h2 className="type-heading-lg">Your wishlist is empty</h2>
         <p className="type-body text-ink-muted">Tap the heart on any bat or piece of gear to keep it here for later.</p>
       </div>
-      <Button size="lg" render={<Link href="/#collection" />} nativeButton={false}>
+      <Button size="lg" render={<Link href="/shop/bats" />} nativeButton={false}>
         Shop bats
         <ArrowRight aria-hidden="true" />
       </Button>
