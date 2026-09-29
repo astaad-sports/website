@@ -547,3 +547,35 @@ export const reviews = pgTable(
 
 export type Review = typeof reviews.$inferSelect;
 export type NewReview = typeof reviews.$inferInsert;
+
+/**
+ * How a review and a customer were put together: the `customer` was signed in
+ * when they sent it, the `admin` chose them, or the review's `contact`
+ * matched the account's email or mobile when this table was made. A contact
+ * is only what the sender typed, so it proves nothing until the admin confirms it.
+ */
+export const REVIEW_LINK_SOURCES = ["customer", "admin", "contact"] as const;
+
+export type ReviewLinkSource = (typeof REVIEW_LINK_SOURCES)[number];
+
+/**
+ * Which customer wrote a review, for the ones that are known. Kept apart from
+ * `reviews` so the store's review queries read the same before and after
+ * this table reaches a database.
+ */
+export const reviewCustomers = pgTable(
+  "review_customers",
+  {
+    reviewId: uuid("review_id")
+      .primaryKey()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    linkedBy: text("linked_by", { enum: REVIEW_LINK_SOURCES }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("review_customers_user_id_idx").on(table.userId)]
+);
+
+export type ReviewCustomer = typeof reviewCustomers.$inferSelect;

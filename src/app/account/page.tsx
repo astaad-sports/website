@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { ChangePassword } from "@/components/account/change-password";
 import { ProfileCard } from "@/components/account/profile-card";
 import { AccountQuickLinks } from "@/components/account/quick-links";
+import { ReviewsCard, type ReviewPrompt } from "@/components/account/reviews-card";
 import { AddressBook } from "@/components/addresses/address-book";
 import { OrderProgress } from "@/components/orders/order-progress";
 import { Eyebrow } from "@/components/storefront/eyebrow";
@@ -14,6 +15,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { Button } from "@/components/ui/button";
 import { listAddresses } from "@/db/addresses";
 import { listOrdersForUser, type OrderWithItems } from "@/db/orders";
+import { listPurchases, listReviewsOfCustomer } from "@/db/review-customers";
 import { signInMethods } from "@/lib/account/model";
 import { makeDefaultAddress, removeAddress, saveAddress } from "@/lib/addresses/actions";
 import { getSignInProviders } from "@/lib/account/sign-in";
@@ -23,6 +25,8 @@ import { requireUser } from "@/lib/auth/session";
 import { isTestAccount } from "@/lib/auth/test-account";
 import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
+import { getStoreCatalogue } from "@/lib/products/catalogue";
+import { productsToReview } from "@/lib/reviews/customers";
 import { listInWords } from "@/lib/words";
 import { cn } from "@/lib/utils";
 
@@ -122,13 +126,23 @@ function SignInCard({ email, providers }: { email: string | null; providers: str
 
 export default async function AccountPage() {
   const user = await requireUser("/account");
-  const [orders, addresses, providers] = await Promise.all([
+  const [orders, addresses, providers, reviews, purchases, catalogue] = await Promise.all([
     listOrdersForUser(user.id),
     listAddresses(user.id),
     getSignInProviders(user.firebaseUid),
+    listReviewsOfCustomer(user.id),
+    listPurchases(user.id),
+    getStoreCatalogue(),
   ]);
   const firstName = user.name?.split(" ")[0];
   const [latest] = orders;
+  // What has arrived and is still on the store, without what they have reviewed already.
+  const onStore = new Map([...catalogue.bats, ...catalogue.gear].map((product) => [product.slug, product]));
+  const reviewed = reviews.flatMap((review) => (review.product ? [review.product.slug] : []));
+  const prompts: ReviewPrompt[] = productsToReview(purchases, reviewed).flatMap(({ productSlug }) => {
+    const product = onStore.get(productSlug);
+    return product ? [{ productId: product.id, productName: product.name }] : [];
+  });
 
   return (
     <>
@@ -169,6 +183,7 @@ export default async function AccountPage() {
                 />
               )}
               <OrdersList orders={orders} />
+              <ReviewsCard reviews={reviews} prompts={prompts} />
               <AddressBook
                 skin="store"
                 addresses={addresses}

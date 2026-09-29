@@ -17,6 +17,7 @@ import {
 
 import { Eyebrow } from "./eyebrow";
 import { Stars } from "./stars";
+import { VerifiedBuyer } from "./verified-buyer";
 
 /** The review form, with this product already chosen. */
 export function writeReviewHref(productId: string): string {
@@ -86,7 +87,12 @@ function ProductReviewItem({ review }: { review: PublicReview }) {
         <div className="flex min-w-0 flex-1 flex-col gap-2.5">
           {review.rating ? <Stars rating={review.rating} /> : null}
           {review.body && <blockquote className="type-body whitespace-pre-line">{review.body}</blockquote>}
-          {byline && <figcaption className="text-sm leading-5 font-semibold">{byline}</figcaption>}
+          {(byline || review.verified) && (
+            <figcaption className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm leading-5 font-semibold">
+              {byline}
+              {review.verified && <VerifiedBuyer />}
+            </figcaption>
+          )}
         </div>
         {photo && (
           <Image

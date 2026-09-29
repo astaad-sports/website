@@ -2,6 +2,7 @@ import "server-only";
 
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
+import { listVerifiedReviewIds } from "@/db/review-customers";
 import { isMissingReviewsTable, listPublishedReviews, type ReviewWithProduct } from "@/db/reviews";
 import { CUSTOMER_PHOTOS } from "@/lib/customer-photos";
 import { productHref } from "@/lib/products/model";
@@ -17,10 +18,11 @@ const REVIEWS_REVALIDATE = 300;
 /** A photo saved before its size was known is drawn at 4:5, the usual phone portrait crop. */
 const DEFAULT_PHOTO = { width: 1120, height: 1400 };
 
-export function toPublicReview(review: ReviewWithProduct): PublicReview {
+export function toPublicReview(review: ReviewWithProduct, verified = false): PublicReview {
   const product = review.product;
   return {
     id: review.id,
+    verified,
     name: review.name,
     place: review.place,
     rating: review.rating,
@@ -50,6 +52,7 @@ function photoReviews(): PublicReview[] {
     body: null,
     product: null,
     photo: { ...photo, alt },
+    verified: false,
   }));
 }
 
@@ -61,7 +64,8 @@ function photoReviews(): PublicReview[] {
 async function loadPublished(): Promise<PublicReview[]> {
   if (!process.env.DATABASE_URL) return photoReviews();
   try {
-    return (await listPublishedReviews()).map(toPublicReview);
+    const [published, verified] = await Promise.all([listPublishedReviews(), listVerifiedReviewIds()]);
+    return published.map((review) => toPublicReview(review, verified.has(review.id)));
   } catch (error) {
     if (!isMissingReviewsTable(error)) throw error;
     console.error("The reviews table is missing: run `bun run db:migrate`. Showing the site's customer photos meanwhile.");
@@ -69,8 +73,8 @@ async function loadPublished(): Promise<PublicReview[]> {
   }
 }
 
-// The key names the cached shape: a new one (v2 added the product's id) never reads entries of the old.
-const getCachedReviews = unstable_cache(loadPublished, ["published-reviews-v2"], {
+// The key names the cached shape: a new one (v2 added the product's id, v3 `verified`) never reads entries of the old.
+const getCachedReviews = unstable_cache(loadPublished, ["published-reviews-v3"], {
   tags: [REVIEWS_TAG],
   revalidate: REVIEWS_REVALIDATE,
 });

@@ -8,6 +8,7 @@ import { formatAverage, reviewByline, type PublicReview, type ReviewSummary } fr
 import { cn } from "@/lib/utils";
 
 import { Stars } from "./stars";
+import { VerifiedBuyer } from "./verified-buyer";
 
 /** The home row's card height: 300px on phones, 440px from md. Widths follow each photo's shape. */
 export const ROW_CARD = "relative h-[300px] shrink-0 snap-start overflow-hidden rounded-xs md:h-[440px]";
@@ -32,7 +33,7 @@ function ProductLine({ product, tone }: { product: NonNullable<PublicReview["pro
   );
 }
 
-/** The name and team, then what they bought. Nothing when the review has neither. */
+/** The name and team, then what they bought, marked when the store knows they did. Nothing when the review has neither. */
 function Byline({ review, tone }: { review: PublicReview; tone: "light" | "dark" }) {
   const byline = reviewByline(review);
   if (!byline && !review.product) return null;
@@ -42,6 +43,7 @@ function Byline({ review, tone }: { review: PublicReview; tone: "light" | "dark"
         <span className={cn("text-sm leading-5 font-semibold", tone === "dark" ? "text-on-dark" : "text-foreground")}>{byline}</span>
       )}
       {review.product && <ProductLine product={review.product} tone={tone} />}
+      {review.verified && <VerifiedBuyer tone={tone} className="mt-0.5" />}
     </figcaption>
   );
 }

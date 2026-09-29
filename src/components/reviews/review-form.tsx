@@ -270,8 +270,15 @@ function ProductSelect({
   );
 }
 
+/** The customer sending the review, when they are signed in: what the form starts with. */
+export interface ReviewAccount {
+  name: string;
+  /** Their email, or their mobile number when the account has no email; empty when it has neither. */
+  contact: string;
+}
+
 /** What shows once the review is in. It takes focus, so screen readers hear it. */
-function Sent({ name, isPrivate }: { name: string; isPrivate: boolean }) {
+function Sent({ name, isPrivate, signedIn }: { name: string; isPrivate: boolean; signedIn: boolean }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const first = name.split(" ")[0];
@@ -286,9 +293,15 @@ function Sent({ name, isPrivate }: { name: string; isPrivate: boolean }) {
           {isPrivate
             ? "Your feedback went straight to the Astaad team. If you left an email or mobile number, we may get back to you."
             : "We read every review, and yours will be on the site once we've checked it."}
+          {signedIn && " You can find it under Your reviews on your account."}
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
+        {signedIn && (
+          <Button render={<Link href="/account" />} nativeButton={false}>
+            Your account
+          </Button>
+        )}
         <Button render={<Link href="/reviews" />} nativeButton={false} variant="secondary">
           Read reviews
         </Button>
@@ -318,11 +331,28 @@ const EMPTY: Values = { rating: 0, body: "", productId: "", name: "", place: "",
  * private" for feedback that isn't for the site. Keeps what was typed when
  * sending fails and moves focus to the first field that needs attention.
  * `productId` starts the product list on one, for a link from its page.
+ * A signed-in customer (`account`) starts with their name and email, and
+ * their review is kept on their account; `signInHref` invites everyone else.
  */
-export function ReviewForm({ products, productId = "" }: { products: ReviewProductOption[]; productId?: string }) {
+export function ReviewForm({
+  products,
+  productId = "",
+  account = null,
+  signInHref,
+}: {
+  products: ReviewProductOption[];
+  productId?: string;
+  account?: ReviewAccount | null;
+  signInHref: string;
+}) {
   const id = useId();
   const [state, sendReview, pending] = useActionState(send, {});
-  const [values, setValues] = useState<Values>(() => ({ ...EMPTY, productId }));
+  const [values, setValues] = useState<Values>(() => ({
+    ...EMPTY,
+    productId,
+    name: account?.name ?? "",
+    contact: account?.contact ?? "",
+  }));
   // Fields changed since the last send: their old errors are hidden.
   const [edited, setEdited] = useState<ReadonlySet<ReviewField>>(() => new Set());
   const photo = useReviewPhoto();
@@ -336,7 +366,7 @@ export function ReviewForm({ products, productId = "" }: { products: ReviewProdu
     field?.focus({ preventScroll: true });
   }, [state]);
 
-  if (state.sent && !pending) return <Sent {...state.sent} />;
+  if (state.sent && !pending) return <Sent {...state.sent} signedIn={account !== null} />;
 
   function set<K extends keyof Values>(key: K, value: Values[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -364,6 +394,24 @@ export function ReviewForm({ products, productId = "" }: { products: ReviewProdu
       noValidate
       className="relative flex flex-col gap-6 rounded-md border border-border bg-surface-raised p-6 shadow-card md:p-8"
     >
+      <p className="rounded-sm bg-surface-sunken p-3 type-body-sm">
+        {account ? (
+          <>
+            <span className="font-semibold">Signed in{account.contact && ` as ${account.contact}`}.</span> Your review is
+            kept on your account,
+            and marked as a verified buyer&apos;s when it is for something you bought from us.
+          </>
+        ) : (
+          <>
+            <Link href={signInHref} className="font-semibold underline underline-offset-4">
+              Sign in
+            </Link>{" "}
+            to keep your reviews on your account, and to have them marked as a verified buyer&apos;s. You can also
+            send one without signing in.
+          </>
+        )}
+      </p>
+
       <StarPicker id={field("rating")} value={values.rating} onChange={(value) => set("rating", value)} error={errorFor("rating")} />
 
       <Field

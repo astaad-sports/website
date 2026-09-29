@@ -120,6 +120,13 @@
       "when": 1790672729834,
       "tag": "0016_saved_addresses",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790674418973,
+      "tag": "0017_review_customers",
+      "breakpoints": true
     }
   ]
 }

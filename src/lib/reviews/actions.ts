@@ -5,7 +5,9 @@ import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 
 import { getProductById } from "@/db/products";
+import { linkReview } from "@/db/review-customers";
 import { countReviewsFrom, createReview } from "@/db/reviews";
+import { getCurrentUser } from "@/lib/auth/session";
 import { removeStoredImage, storeImage } from "@/lib/products/storage";
 
 import { parseCustomerReview, type ReviewFieldErrors } from "./model";
@@ -33,9 +35,9 @@ async function senderHash(): Promise<string | null> {
 /**
  * A customer's review from /reviews/write (see parseCustomerReview for the
  * fields; `photo` is an optional file the browser has already shrunk). It
- * waits as New until the admin publishes it. Works signed out. `website` is
- * a field people never see: a form that fills it in is a bot, and is thanked
- * without anything being saved.
+ * waits as New until the admin publishes it. Works signed out; signed in, it
+ * is kept on the customer's account. `website` is a field people never see:
+ * a form that fills it in is a bot, and is thanked without anything being saved.
  */
 export async function submitReview(_previous: ReviewFormState, form: FormData): Promise<ReviewFormState> {
   const parsed = parseCustomerReview(form);
@@ -67,8 +69,9 @@ export async function submitReview(_previous: ReviewFormState, form: FormData): 
     photo = stored.image;
   }
 
+  let review;
   try {
-    await createReview({
+    review = await createReview({
       source: "customer",
       status: "new",
       ...values,
@@ -81,6 +84,14 @@ export async function submitReview(_previous: ReviewFormState, form: FormData): 
   } catch (error) {
     if (photo) await removeStoredImage(photo);
     throw error;
+  }
+
+  // The review is in either way; the admin can still put the two together.
+  const user = await getCurrentUser();
+  if (user) {
+    await linkReview(review.id, user.id, "customer").catch((error) =>
+      console.error("Could not keep the review on the customer's account", error)
+    );
   }
   return { sent };
 }

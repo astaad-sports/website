@@ -40,6 +40,8 @@ export interface PublicReview {
   /** What they bought, linked to its page while it is on sale. */
   product: { id: string; name: string; href: string | null } | null;
   photo: { src: string; width: number; height: number; alt: string } | null;
+  /** Written from a customer's account that has a paid order with this product in it. */
+  verified: boolean;
 }
 
 /** The reviews of one product, as its page shows them. */
