@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { upsertUser } from "@/db/users";
 import { adminAuth } from "@/lib/firebase/admin";
 
-import { safeRedirectPath, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "./session";
+import { getCurrentUser, safeRedirectPath, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "./session";
 
 /** Firebase's guidance: only mint a session cookie from a sign-in made in the last five minutes. */
 const RECENT_SIGN_IN_SECONDS = 5 * 60;
@@ -63,6 +63,18 @@ export async function createSession(idToken: string, next?: string): Promise<Sig
 
 /** Sign out on this device by dropping the session cookie. */
 export async function signOut(): Promise<void> {
+  (await cookies()).delete(SESSION_COOKIE);
+  redirect("/");
+}
+
+/**
+ * Sign out on every device: Firebase revokes the account's sessions, which
+ * each device's next page load finds (see getCurrentUser), and this device
+ * drops its cookie.
+ */
+export async function signOutEverywhere(): Promise<void> {
+  const user = await getCurrentUser();
+  if (user) await adminAuth().revokeRefreshTokens(user.firebaseUid);
   (await cookies()).delete(SESSION_COOKIE);
   redirect("/");
 }

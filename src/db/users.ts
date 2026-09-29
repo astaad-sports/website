@@ -61,3 +61,8 @@ export async function getUserByFirebaseUid(firebaseUid: string): Promise<User | 
 export async function setUserName(id: string, name: string): Promise<void> {
   await getDb().update(users).set({ name }).where(eq(users.id, id));
 }
+
+/** The name and mobile number the customer gives on their account page. Sign-ins keep both (see upsertUser). */
+export async function updateUserProfile(id: string, profile: { name: string; phone: string | null }): Promise<void> {
+  await getDb().update(users).set(profile).where(eq(users.id, id));
+}

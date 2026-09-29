@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Check, ExternalLink } from "lucide-react";
 
 import type { Order } from "@/db/schema";
@@ -45,8 +46,22 @@ export function TrackingDetails({ order }: { order: ProgressOrder }) {
   );
 }
 
-/** Placed, paid, packed, shipped, delivered, with dates, and the tracking details once shipped. */
-export function OrderProgress({ order, className }: { order: ProgressOrder; className?: string }) {
+/**
+ * Placed, paid, packed, shipped, delivered, with dates, and the tracking
+ * details once shipped. `title` renames the card and `action` sits beside it,
+ * for the account page's latest order.
+ */
+export function OrderProgress({
+  order,
+  title = "Delivery progress",
+  action,
+  className,
+}: {
+  order: ProgressOrder;
+  title?: string;
+  action?: ReactNode;
+  className?: string;
+}) {
   if (order.status === "cancelled") return null;
   const steps = orderTimeline(order);
   const current = steps.findLastIndex((step) => step.date !== null);
@@ -59,9 +74,12 @@ export function OrderProgress({ order, className }: { order: ProgressOrder; clas
         className
       )}
     >
-      <h2 id="order-progress" className="type-heading-sm">
-        Delivery progress
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 id="order-progress" className="type-heading-sm">
+          {title}
+        </h2>
+        {action}
+      </div>
       <ol className="grid gap-4 md:grid-cols-5 md:gap-3">
         {steps.map((step, index) => {
           const done = step.date !== null;
@@ -71,7 +89,7 @@ export function OrderProgress({ order, className }: { order: ProgressOrder; clas
               aria-current={index === current ? "step" : undefined}
               className="flex items-center gap-3 md:flex-col md:items-start md:gap-2"
             >
-              <span className="flex w-full items-center gap-3 md:gap-2">
+              <span className="flex items-center gap-3 md:w-full md:gap-2">
                 <span
                   className={cn(
                     "flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px]",
