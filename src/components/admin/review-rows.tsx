@@ -80,8 +80,9 @@ function ReviewThumb({ review }: { review: ReviewWithProduct }) {
 /**
  * One review: photo, who sent it, stars, the start of the words, and when it
  * came in (Private when it is feedback only). The whole row opens it.
+ * `showStatus` adds New, Published or Hidden, for a list that is not one tab.
  */
-export function ReviewRow({ review, now }: { review: ReviewWithProduct; now: Date }) {
+export function ReviewRow({ review, now, showStatus }: { review: ReviewWithProduct; now: Date; showStatus?: boolean }) {
   const byline = reviewByline(review);
   return (
     <li className="border-b border-border">
@@ -98,6 +99,7 @@ export function ReviewRow({ review, now }: { review: ReviewWithProduct; now: Dat
             {review.body ?? (review.photoAlt ? `Photo: ${review.photoAlt}` : "Photo only")}
           </span>
           <span className="flex flex-wrap items-center gap-2 text-xs leading-4 text-ink-muted tabular-nums">
+            {showStatus && <ReviewStatusLabel status={review.status} />}
             {review.isPrivate && <PrivateLabel />}
             <span>
               {review.source === "customer" ? "Sent" : "Added"} {formatShortDate(review.createdAt, now)}

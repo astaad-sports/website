@@ -7,10 +7,12 @@ import { z } from "zod";
 import { AddressBook } from "@/components/addresses/address-book";
 import { customerName } from "@/components/admin/customer-rows";
 import { OrderRow } from "@/components/admin/order-rows";
+import { ReviewRow } from "@/components/admin/review-rows";
 import { PAGE, SECTION_LABEL } from "@/components/admin/styles";
 import { listAddresses } from "@/db/addresses";
 import { getCustomer } from "@/db/customers";
 import { listOrdersForUser } from "@/db/orders";
+import { listReviewsOfCustomer } from "@/db/review-customers";
 import { makeDefaultCustomerAddress, removeCustomerAddress, saveCustomerAddress } from "@/lib/addresses/admin-actions";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatMobile, formatOrderDate, mobileHref } from "@/lib/format";
@@ -23,13 +25,18 @@ async function findCustomer(id: string) {
 // The same for everyone: the customer's name would tell a visitor who is not an admin that the account exists.
 export const metadata: Metadata = { title: "Customer" };
 
-/** One customer: how to reach them, the addresses they have saved (which the admin can change) and their orders. */
+/** One customer: how to reach them, the addresses they have saved (which the admin can change), their orders and their reviews. */
 export default async function AdminCustomerPage({ params }: PageProps<"/admin/customers/[id]">) {
   const { id } = await params;
   await requireAdmin(`/admin/customers/${id}`);
   const customer = await findCustomer(id);
   if (!customer) notFound();
-  const [addresses, orders] = await Promise.all([listAddresses(customer.id), listOrdersForUser(customer.id)]);
+  const [addresses, orders, reviews] = await Promise.all([
+    listAddresses(customer.id),
+    listOrdersForUser(customer.id),
+    listReviewsOfCustomer(customer.id),
+  ]);
+  const now = new Date();
 
   return (
     <main className={cn(PAGE, "gap-4 pt-1 lg:gap-6 lg:pt-6")}>
@@ -86,23 +93,45 @@ export default async function AdminCustomerPage({ params }: PageProps<"/admin/cu
           />
         </div>
 
-        <section aria-labelledby="orders-title" className="flex flex-col border-t border-border pt-5 max-lg:mt-5">
-          <div className="flex min-h-11 items-center justify-between pb-3">
-            <h2 id="orders-title" className={SECTION_LABEL}>
-              Orders
-            </h2>
-            <span className="text-xs leading-4 font-semibold text-ink-muted tabular-nums">{orders.length}</span>
-          </div>
-          {orders.length === 0 ? (
-            <p className="border-t border-border py-4 text-[15px] leading-[22px] text-ink-muted">No orders yet.</p>
-          ) : (
-            <ul className="flex flex-col border-t border-border">
-              {orders.map((order) => (
-                <OrderRow key={order.id} order={order} />
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="flex flex-col gap-5 max-lg:mt-5 lg:gap-8">
+          <section aria-labelledby="orders-title" className="flex flex-col border-t border-border pt-5">
+            <div className="flex min-h-11 items-center justify-between pb-3">
+              <h2 id="orders-title" className={SECTION_LABEL}>
+                Orders
+              </h2>
+              <span className="text-xs leading-4 font-semibold text-ink-muted tabular-nums">{orders.length}</span>
+            </div>
+            {orders.length === 0 ? (
+              <p className="border-t border-border py-4 text-[15px] leading-[22px] text-ink-muted">No orders yet.</p>
+            ) : (
+              <ul className="flex flex-col border-t border-border">
+                {orders.map((order) => (
+                  <OrderRow key={order.id} order={order} />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-labelledby="reviews-title" className="flex flex-col border-t border-border pt-5">
+            <div className="flex min-h-11 items-center justify-between pb-3">
+              <h2 id="reviews-title" className={SECTION_LABEL}>
+                Reviews
+              </h2>
+              <span className="text-xs leading-4 font-semibold text-ink-muted tabular-nums">{reviews.length}</span>
+            </div>
+            {reviews.length === 0 ? (
+              <p className="border-t border-border py-4 text-[15px] leading-[22px] text-ink-muted">
+                No reviews from this customer. To give them one, open the review and link it to them.
+              </p>
+            ) : (
+              <ul className="flex flex-col border-t border-border">
+                {reviews.map((review) => (
+                  <ReviewRow key={review.id} review={review} now={now} showStatus />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
     </main>
   );

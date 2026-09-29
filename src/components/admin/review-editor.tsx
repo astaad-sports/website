@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronLeft, ImagePlus, LoaderCircle, Mail, Phone, RefreshCw, Star, Trash2 } from "lucide-react";
 
@@ -286,8 +286,17 @@ function SaveLabel({ saving, label }: { saving: boolean; label: string }) {
  * An existing review also shows its status with Publish or Hide, who sent it
  * (with their contact, only for the admin), and Delete review. The words of a
  * customer's review are theirs: fix a typo, never what they meant.
+ * `customer` is the section that says whose account the review is on (see ReviewCustomer).
  */
-export function ReviewEditor({ review = null, products }: { review?: ReviewEditorReview | null; products: ReviewEditorProduct[] }) {
+export function ReviewEditor({
+  review = null,
+  products,
+  customer,
+}: {
+  review?: ReviewEditorReview | null;
+  products: ReviewEditorProduct[];
+  customer?: ReactNode;
+}) {
   const [state, save, saving] = useActionState(saveOrReport, {});
   const [base, setBase] = useState(review);
   const [values, setValues] = useState(() => valuesFor(review));
@@ -531,6 +540,8 @@ export function ReviewEditor({ review = null, products }: { review?: ReviewEdito
               </EditorSection>
             </div>
           )}
+
+          {base && customer && <div className="order-4">{customer}</div>}
         </div>
       </div>
 

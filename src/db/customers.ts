@@ -4,6 +4,7 @@ import { count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm"
 
 import { isMissingTable } from "./errors";
 import { getDb } from "./index";
+import { countReviewsByCustomer } from "./review-customers";
 import { addresses, users, type User } from "./schema";
 
 /** A customer in the admin's list: who they are, and how much they have with the store. */
@@ -11,6 +12,8 @@ export interface CustomerSummary extends Pick<User, "id" | "name" | "email" | "p
   /** Paid orders, test orders left out. */
   orders: number;
   addresses: number;
+  /** Reviews on their account, whatever their status. */
+  reviews: number;
 }
 
 function likePattern(query: string): string {
@@ -65,8 +68,9 @@ export async function listCustomers({ query, limit = 200 }: { query?: string | n
     .where(query ? searchCondition(query) : undefined)
     .orderBy(desc(users.createdAt))
     .limit(limit);
-  const saved = await addressCounts(rows.map((row) => row.id));
-  return rows.map((row) => ({ ...row, addresses: saved.get(row.id) ?? 0 }));
+  const ids = rows.map((row) => row.id);
+  const [saved, written] = await Promise.all([addressCounts(ids), countReviewsByCustomer(ids)]);
+  return rows.map((row) => ({ ...row, addresses: saved.get(row.id) ?? 0, reviews: written.get(row.id) ?? 0 }));
 }
 
 export async function countCustomers(): Promise<number> {

@@ -14,11 +14,12 @@ export function customerName(customer: Pick<CustomerSummary, "name" | "email" | 
   return customer.name?.trim() || customer.email || (customer.phone ? formatMobile(customer.phone) : "No name");
 }
 
-/** "2 orders · 1 address", "No orders · 1 address". */
-function holdings({ orders, addresses }: Pick<CustomerSummary, "orders" | "addresses">): string {
+/** "2 orders · 1 address · 1 review", "No orders · 1 address"; reviews only when there are some. */
+function holdings({ orders, addresses, reviews }: Pick<CustomerSummary, "orders" | "addresses" | "reviews">): string {
   const placed = orders ? `${orders} ${orders === 1 ? "order" : "orders"}` : "No orders";
   const saved = addresses ? `${addresses} ${addresses === 1 ? "address" : "addresses"}` : "No addresses";
-  return `${placed} · ${saved}`;
+  const written = reviews ? [`${reviews} ${reviews === 1 ? "review" : "reviews"}`] : [];
+  return [placed, saved, ...written].join(" · ");
 }
 
 /** One customer as a list row: who they are, how to reach them, and what they have with the store. */
@@ -67,6 +68,9 @@ export function CustomersTable({ customers, className }: { customers: CustomerSu
           <th scope="col" className={cn(TH, "w-28 text-right")}>
             Addresses
           </th>
+          <th scope="col" className={cn(TH, "w-24 text-right")}>
+            Reviews
+          </th>
           <th scope="col" className={cn(TH, "w-32 pl-8")}>
             Joined
           </th>
@@ -89,6 +93,7 @@ export function CustomersTable({ customers, className }: { customers: CustomerSu
             </td>
             <td className={cn(TD, "text-right tabular-nums")}>{customer.orders}</td>
             <td className={cn(TD, "text-right tabular-nums")}>{customer.addresses}</td>
+            <td className={cn(TD, "text-right tabular-nums")}>{customer.reviews}</td>
             <td className={cn(TD, "pl-8 whitespace-nowrap text-ink-muted tabular-nums")}>{formatShortDate(customer.createdAt)}</td>
             <td className={cn(TD, "pr-0")}>
               <Link
