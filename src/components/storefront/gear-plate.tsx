@@ -54,7 +54,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
         <h3 className="text-2xl leading-8 font-bold tracking-[-0.01em]">
           <Link href={href}>{product.name}</Link>
         </h3>
-        <p className="text-[13px] leading-[18px] text-ink-muted">{gearLine(product)}</p>
+        <p className="line-clamp-2 text-[13px] leading-[18px] text-ink-muted">{gearLine(product)}</p>
       </div>
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">

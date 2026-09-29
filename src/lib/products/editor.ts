@@ -31,7 +31,7 @@ export const PRODUCT_LIMITS = {
   tagline: 40,
   line: 30,
   grade: 60,
-  shortDescription: 160,
+  shortDescription: 500,
   description: 600,
   sku: 32,
   maxPriceRupees: 1_000_000,

@@ -196,6 +196,12 @@ describe("the product editor's fields", () => {
     expect(!parsed.ok && parsed.fieldErrors.mrp).toBe("The MRP can't be lower than the price.");
   });
 
+  test("the short description takes a few sentences, up to 500 characters", () => {
+    expect(parseProductForm(form({ ...BAT, shortDescription: "a".repeat(500) })).ok).toBe(true);
+    const tooLong = parseProductForm(form({ ...BAT, shortDescription: "a".repeat(501) }));
+    expect(!tooLong.ok && tooLong.fieldErrors.shortDescription).toBe("Keep this under 500 characters.");
+  });
+
   test("a bat needs its willow type; gear has none and keeps its short note as `note`", () => {
     const bat = parseProductForm(form({ ...BAT, subcategory: "" }));
     expect(!bat.ok && bat.fieldErrors.subcategory).toBe("Choose the willow type.");

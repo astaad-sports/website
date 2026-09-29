@@ -149,7 +149,7 @@ export function KitCard({
           {offer ? (
             <OfferNote offer={offer} truncate />
           ) : (
-            note && <span className="text-[13px] leading-[18px] text-ink-muted">{note}</span>
+            note && <span className="truncate text-[13px] leading-[18px] text-ink-muted">{note}</span>
           )}
           <span className="mt-1 flex flex-wrap items-baseline gap-x-2.5">
             <span className="text-base leading-[22px] font-bold">

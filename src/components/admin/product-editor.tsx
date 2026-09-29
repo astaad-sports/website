@@ -725,7 +725,7 @@ export function ProductEditor({
               name="shortDescription"
               label="Short description"
               optional
-              rows={3}
+              rows={4}
               maxLength={PRODUCT_LIMITS.shortDescription}
               value={values.shortDescription}
               onValueChange={(value) => set("shortDescription", value)}
