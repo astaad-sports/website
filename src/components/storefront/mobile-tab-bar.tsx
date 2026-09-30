@@ -17,7 +17,8 @@ const TABS = [
 /**
  * The phone's bottom tab bar: Home, Shop, Cart (with the live count) and
  * Account, fixed to the foot of the screen below md. A spacer the bar's
- * height keeps it from covering the end of the page.
+ * height keeps it from covering the end of the page, and `data-tab-bar`
+ * tells the WhatsApp button to float above it (see globals.css).
  */
 export function MobileTabBar() {
   const path = usePathname();
@@ -28,6 +29,7 @@ export function MobileTabBar() {
       <div aria-hidden="true" className="h-[calc(64px+env(safe-area-inset-bottom))] bg-surface-dark-sunken md:hidden" />
       <nav
         aria-label="Primary"
+        data-tab-bar
         className="fixed inset-x-0 bottom-0 z-40 border-t border-surface-dark-raised bg-surface-dark pb-[env(safe-area-inset-bottom)] text-on-dark md:hidden"
       >
         <ul className="grid h-16 grid-cols-4 px-2">

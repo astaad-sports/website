@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { adminEmails, isAdmin } from "./auth/admin";
 import { safeRedirectPath } from "./auth/redirect";
-import { formatMobile, formatOrderDate, formatShortDate, mobileHref, parseOrderNumber } from "./format";
+import { formatMobile, formatOrderDate, formatShortDate, mobileHref, parseOrderNumber, whatsappHref } from "./format";
 import { carrierName, normaliseTrackingNumber, orderTimeline, shipOrderSchema, trackingNumberSchema } from "./shipping";
 
 describe("AWB numbers", () => {
@@ -77,6 +77,13 @@ test("mobiles read +91 98765 43210 and dial as +919876543210", () => {
   expect(formatMobile("+91 98765-43210")).toBe("+91 98765 43210");
   expect(mobileHref("9876543210")).toBe("tel:+919876543210");
   expect(formatMobile("12345")).toBe("12345");
+});
+
+test("a mobile opens a WhatsApp chat; a landline does not", () => {
+  expect(whatsappHref("+91 88820 74750")).toBe("https://wa.me/918882074750");
+  expect(whatsappHref("08882074750")).toBe("https://wa.me/918882074750");
+  expect(whatsappHref("011 2345 6789")).toBeNull();
+  expect(whatsappHref("")).toBeNull();
 });
 
 test("short dates drop the year only within the same year, in Indian time", () => {

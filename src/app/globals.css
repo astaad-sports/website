@@ -386,3 +386,10 @@
     padding-inline: 64px;
   }
 }
+
+/* The phone tab bar's height (see MobileTabBar), for what floats above it: the WhatsApp button. */
+@media (width < 48rem) {
+  body:has([data-tab-bar]) {
+    --tab-bar-height: calc(64px + env(safe-area-inset-bottom));
+  }
+}

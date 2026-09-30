@@ -9,6 +9,7 @@ import { getStoreSettings } from "@/lib/settings/store";
 import { cn } from "@/lib/utils";
 
 import { InstagramGlyph } from "./instagram-glyph";
+import { WhatsAppButton } from "./whatsapp-button";
 
 const SUPPORT_LINKS = [
   { label: "Track Order", href: "/track-order" },
@@ -106,7 +107,8 @@ function FooterContact({
 /**
  * The near-black footer: crest and blurb, Shop and Support columns (with the
  * store's contact details), and the legal line with the store's name and GSTIN.
- * On phones the two columns fold away under their headings.
+ * On phones the two columns fold away under their headings. It also carries
+ * the WhatsApp button pinned to the corner of every page that has a footer.
  */
 export async function SiteFooter() {
   const settings = await getStoreSettings();
@@ -167,6 +169,7 @@ export async function SiteFooter() {
           </span>
         </div>
       </div>
+      <WhatsAppButton phone={settings.supportPhone} />
     </footer>
   );
 }

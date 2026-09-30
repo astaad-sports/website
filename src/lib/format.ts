@@ -76,3 +76,12 @@ export function mobileHref(phone: string): string {
   const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
   return /^\d{10}$/.test(digits) ? `tel:+91${digits}` : `tel:${digits}`;
 }
+
+/**
+ * An Indian mobile as a WhatsApp chat link: "https://wa.me/919876543210".
+ * Null for anything else, such as a landline, which has no WhatsApp.
+ */
+export function whatsappHref(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
+  return /^[6-9]\d{9}$/.test(digits) ? `https://wa.me/91${digits}` : null;
+}
