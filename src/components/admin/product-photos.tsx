@@ -364,7 +364,10 @@ export function ProductPhotos({
             </button>
           </p>
         </div>
-        <FieldHelp>JPG, PNG or WebP. Recommended: front, back, side, close-up and detail.</FieldHelp>
+        <FieldHelp>
+          JPG, PNG or WebP. Cards show the first photo. On an English willow bat the builder engraves the second, so
+          make that a straight front view, handle to toe.
+        </FieldHelp>
         <p role="status" className={cn("flex items-center gap-2 text-[13px] leading-[18px] font-semibold", !working && "sr-only")}>
           {working && <LoaderCircle className="size-4 shrink-0 animate-spin" strokeWidth={2} aria-hidden="true" />}
           {working}

@@ -695,6 +695,15 @@ export function startingBatConfig(customization: BatCustomization, base: BatConf
   };
 }
 
+/**
+ * The photo a builder engraves: the second, which for the English willow bats
+ * is the straight front view from handle to toe that BladeEngraving is drawn
+ * for (the first is the angled hero shot cards show), or the only one.
+ */
+export function builderImage(bat: Pick<StoreBat, "images">): string {
+  return bat.images[1] ?? bat.images[0];
+}
+
 /** "Only 2 left" on a product page when a counted product is running low; null otherwise. */
 export function stockNote(product: Pick<StoreGear, "stockStatus" | "stockLeft">): string | null {
   return product.stockStatus === "low" && product.stockLeft !== null ? `Only ${product.stockLeft} left` : null;

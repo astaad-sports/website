@@ -17,6 +17,7 @@ import {
   kitGear,
   listInWords,
   NO_CUSTOMIZATION,
+  builderImage,
   normaliseCustomization,
   offeredWeightGroups,
   seedProductRows,
@@ -274,5 +275,13 @@ describe("words on the page", () => {
     expect(listInWords(["a", "b"])).toBe("a and b");
     expect(listInWords(["a"])).toBe("a");
     expect(listInWords([])).toBe("");
+  });
+});
+
+describe("the builder's photo", () => {
+  test("the second photo is engraved, or the only one", () => {
+    const photos = [{ url: "/angled.webp", position: 0 }, { url: "/front.webp", position: 1 }];
+    expect(builderImage(findStoreBat(catalogueWith({ goat: { images: photos } }), "goat")!)).toBe("/front.webp");
+    expect(builderImage(findStoreBat(seeded, "goat")!)).toBe(findStoreBat(seeded, "goat")!.images[0]);
   });
 });
