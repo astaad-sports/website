@@ -3,11 +3,12 @@
 import { startTransition, useEffect, useOptimistic, useRef, useState, type DragEvent } from "react";
 import Image from "next/image";
 import { Dialog } from "@base-ui/react/dialog";
-import { ArrowDown, ArrowUp, CircleAlert, Ellipsis, ImagePlus, LoaderCircle, PenLine, RefreshCw, Star, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CircleAlert, Ellipsis, ImagePlus, LoaderCircle, RefreshCw, Star, Trash2 } from "lucide-react";
 
+import { BAT_SIDE_LABELS, BAT_SIDES, type BatSide } from "@/lib/catalogue";
 import {
   deletePhoto,
-  markFacePhoto,
+  markPhotoSide,
   movePhoto,
   replacePhoto,
   uploadPhoto,
@@ -17,14 +18,14 @@ import { PHOTO_ACCEPT, shrinkImage } from "@/lib/products/shrink-image";
 import { cn } from "@/lib/utils";
 
 import { FieldHelp } from "./product-editor-fields";
-import { BUTTON_BASE, BUTTON_SECONDARY, HAIRLINE_LIST } from "./styles";
+import { BUTTON_BASE, BUTTON_SECONDARY, CHIP, CHIP_OFF, CHIP_ON, HAIRLINE_LIST } from "./styles";
 
 /** A product photo as the editor shows it; the first is the primary one. */
 export interface EditorPhoto {
   id: string;
   url: string;
-  /** Bats: the photo the builders engrave a name on (see markFacePhoto). */
-  face: boolean;
+  /** Bats: the side of the bat a straight cut-out shows (see markPhotoSide). */
+  side: BatSide | null;
 }
 
 type PhotoAction = (previous: ProductActionState, form: FormData) => Promise<ProductActionState>;
@@ -32,14 +33,20 @@ type Move = "first" | "up" | "down";
 type PhotoChange =
   | { type: "move"; id: string; move: Move }
   | { type: "delete"; id: string }
-  | { type: "face"; id: string };
+  | { type: "side"; id: string; side: BatSide | null };
 type Control = "open" | "up" | "down";
 
 const SOMETHING_WRONG = "Something went wrong. Try again.";
 
-/** The photos with a move, delete or face change applied, as the server will have them. */
+/** The photos with a move, delete or side change applied, as the server will have them. */
 function applyChange(photos: EditorPhoto[], change: PhotoChange): EditorPhoto[] {
-  if (change.type === "face") return photos.map((photo) => ({ ...photo, face: photo.id === change.id }));
+  if (change.type === "side") {
+    // A side belongs to one photo: marking it here takes it off any other.
+    return photos.map((photo) => ({
+      ...photo,
+      side: photo.id === change.id ? change.side : photo.side === change.side ? null : photo.side,
+    }));
+  }
   const from = photos.findIndex((photo) => photo.id === change.id);
   if (from < 0) return photos;
   if (change.type === "delete") return photos.filter((photo) => photo.id !== change.id);
@@ -88,11 +95,11 @@ function PrimaryBadge() {
   );
 }
 
-/** On the photo the builders engrave a name on. */
-function FaceBadge() {
+/** On a photo marked with the side of the bat it shows. */
+function SideBadge({ side }: { side: BatSide }) {
   return (
     <span className="self-start rounded-xs border border-foreground px-1.5 text-[11px] leading-5 font-semibold tracking-[0.04em]">
-      Face
+      {BAT_SIDE_LABELS[side]}
     </span>
   );
 }
@@ -115,18 +122,21 @@ const ROW_ICON_BUTTON =
 /**
  * The product's photos, primary first. Add them from the gallery or camera
  * (or drop them on desktop); each is shrunk in the browser, then uploaded one
- * at a time. Tap a photo to set it as primary (or, with a builder, as the
- * face it engraves), replace or delete it; the arrows reorder. Changes show
- * at once. Success messages go to the editor's single toast through `onSaved`.
+ * at a time. Tap a photo to set it as primary, mark the side of a bat it
+ * shows, replace or delete it; the arrows reorder. Changes show at once.
+ * Success messages go to the editor's single toast through `onSaved`.
  */
 export function ProductPhotos({
   productId,
   photos,
+  bat,
   builder,
   onSaved,
 }: {
   productId: string;
   photos: EditorPhoto[];
+  /** Whether the product is a bat, whose straight cut-outs can be marked with the side they show (for the turn-around). */
+  bat?: boolean;
   /** Whether the store has a builder for this product (English willow bats), which engraves its face photo. */
   builder?: boolean;
   onSaved: (message: string) => void;
@@ -263,9 +273,9 @@ export function ProductPhotos({
     run(movePhoto, formOf({ imageId: photo.id, move: "first" }), { type: "move", id: photo.id, move: "first" });
   }
 
-  function setFace(photo: EditorPhoto) {
+  function setSide(photo: EditorPhoto, side: BatSide | null) {
     close();
-    run(markFacePhoto, formOf({ imageId: photo.id }), { type: "face", id: photo.id });
+    run(markPhotoSide, formOf({ imageId: photo.id, side: side ?? "" }), { type: "side", id: photo.id, side });
   }
 
   function chooseReplacement(photo: EditorPhoto) {
@@ -299,7 +309,7 @@ export function ProductPhotos({
                   id={controlId(photo.id, "open")}
                   type="button"
                   onClick={() => open(photo.id)}
-                  aria-label={[index === 0 ? "Primary photo" : "Photo", position, photo.face ? "face" : null, "actions"]
+                  aria-label={[index === 0 ? "Primary photo" : "Photo", position, photo.side && BAT_SIDE_LABELS[photo.side].toLowerCase(), "actions"]
                     .filter(Boolean)
                     .join(", ")}
                   className="-ml-1 flex min-h-16 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm pr-2 pl-1 text-left transition-colors hover:bg-surface-sunken/60"
@@ -312,7 +322,7 @@ export function ProductPhotos({
                       ) : (
                         <span className="text-[15px] leading-[22px] font-semibold">Photo {index + 1}</span>
                       )}
-                      {photo.face && <FaceBadge />}
+                      {photo.side && <SideBadge side={photo.side} />}
                     </span>
                     <span className="text-[13px] leading-[18px] text-ink-muted tabular-nums">{position}</span>
                   </span>
@@ -395,7 +405,8 @@ export function ProductPhotos({
         </div>
         <FieldHelp>
           JPG, PNG or WebP. Cards show the first photo.
-          {builder && " The builder engraves the face photo: mark the straight view of the face, handle to toe."}
+          {bat && " Mark the face, back and both edges on the straight cut-outs for the turn-around on the product page."}
+          {builder && " The builder engraves the face."}
         </FieldHelp>
         <p role="status" className={cn("flex items-center gap-2 text-[13px] leading-[18px] font-semibold", !working && "sr-only")}>
           {working && <LoaderCircle className="size-4 shrink-0 animate-spin" strokeWidth={2} aria-hidden="true" />}
@@ -483,24 +494,40 @@ export function ProductPhotos({
                       </Dialog.Title>
                       <Dialog.Description className="text-[13px] leading-[18px] text-ink-muted tabular-nums">
                         {selectedIndex + 1} of {shown.length}
-                        {selected.face && " · Face photo"}
+                        {selected.side && ` · ${BAT_SIDE_LABELS[selected.side]}`}
                       </Dialog.Description>
                     </span>
                   </div>
+                  {bat && (
+                    <div className="flex flex-col gap-2 border-b border-border py-3">
+                      <span id="photo-side-label" className="text-[13px] leading-[18px] font-semibold text-ink-muted">
+                        Shows the bat&apos;s
+                      </span>
+                      <div role="group" aria-labelledby="photo-side-label" className="flex flex-wrap gap-2">
+                        {BAT_SIDES.map((side) => {
+                          const on = selected.side === side;
+                          return (
+                            <button
+                              key={side}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() => setSide(selected, on ? null : side)}
+                              className={cn(CHIP, on ? CHIP_ON : CHIP_OFF, "cursor-pointer")}
+                            >
+                              {on && <Check className="size-4" strokeWidth={2} aria-hidden="true" />}
+                              {BAT_SIDE_LABELS[side]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <ul className="flex flex-col">
                     {selectedIndex > 0 && (
                       <li className="border-b border-border">
                         <button type="button" onClick={() => setPrimary(selected)} className={MENU_ITEM}>
                           <Star strokeWidth={1.5} aria-hidden="true" />
                           Set as primary photo
-                        </button>
-                      </li>
-                    )}
-                    {builder && !selected.face && (
-                      <li className="border-b border-border">
-                        <button type="button" onClick={() => setFace(selected)} className={MENU_ITEM}>
-                          <PenLine strokeWidth={1.5} aria-hidden="true" />
-                          Use as face photo
                         </button>
                       </li>
                     )}

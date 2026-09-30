@@ -50,19 +50,26 @@ export function StageThumb({
   );
 }
 
-/** Thumbnails for a product's photos, primary first. Shown only when there is more than one. */
+/**
+ * Thumbnails for a product's photos, primary first, after any extra thumbs in
+ * `children` (the turn-around). `active` is null while an extra thumb is
+ * showing. Shown only when there is something to choose between.
+ */
 export function PhotoThumbnails({
   images,
   active,
   onSelect,
+  children,
 }: {
   images: string[];
-  active: number;
+  active: number | null;
   onSelect: (index: number) => void;
+  children?: ReactNode;
 }) {
-  if (images.length < 2) return null;
+  if (images.length < 2 && !children) return null;
   return (
     <StageRail label="Product photos">
+      {children}
       {images.map((src, index) => (
         <StageThumb
           key={src}

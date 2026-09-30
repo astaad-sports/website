@@ -431,6 +431,17 @@ export const BESTSELLERS: KitItem[] = [
   { ...KIT_ITEMS[3], imageTop: 96 },
 ];
 
+/** The sides of a bat a straight cut-out can show, in the order a turn-around goes. */
+export const BAT_SIDES = ["face", "right", "back", "left"] as const;
+export type BatSide = (typeof BAT_SIDES)[number];
+
+export const BAT_SIDE_LABELS: Record<BatSide, string> = {
+  face: "Face",
+  right: "Right edge",
+  back: "Back",
+  left: "Left edge",
+};
+
 export interface BatSize {
   code: string;
   /** "SH / Full Size" */

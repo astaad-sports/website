@@ -13,6 +13,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { BAT_SIDES } from "@/lib/catalogue";
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -391,11 +393,18 @@ export const productImages = pgTable(
     pathname: text("pathname"),
     alt: text("alt"),
     position: integer("position").notNull().default(0),
-    /** Bats: the straight view of the face, which the builders engrave a name on. At most one per product. */
-    face: boolean("face").notNull().default(false),
+    /**
+     * Bats: which side a straight cut-out shows, for the product page's
+     * turn-around; the builders engrave a name on the face. One photo per
+     * side per product (see setImageSide).
+     */
+    side: text("side", { enum: BAT_SIDES }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("product_images_product_position_idx").on(table.productId, table.position)]
+  (table) => [
+    index("product_images_product_position_idx").on(table.productId, table.position),
+    check("product_images_side_check", sql`${table.side} in ('face', 'right', 'back', 'left')`),
+  ]
 );
 
 export type ProductImage = typeof productImages.$inferSelect;

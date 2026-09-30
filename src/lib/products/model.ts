@@ -7,6 +7,7 @@ import {
   BAT_HANDLES,
   BAT_IMAGE,
   BAT_PROFILES,
+  BAT_SIDES,
   BAT_TOES,
   BAT_WEIGHT_GROUPS,
   BATS,
@@ -17,6 +18,7 @@ import {
   weightGroupName,
   type Bat,
   type BatConfig,
+  type BatSide,
   type GearCategorySlug,
   type GearOffered,
   type GearProduct,
@@ -306,10 +308,12 @@ export interface StoreBat extends Omit<Bat, "rating" | "reviews">, OfferPricing,
   stockLeft: number | null;
   images: string[];
   /**
-   * The straight view of the face, which the builders engrave a name on: the
-   * photo marked as the face in the admin, or the first photo.
+   * The straight cut-out of the face, which the builders engrave a name on:
+   * the photo marked as the face in the admin, or the first photo.
    */
   faceImage: string;
+  /** The sides marked in the admin, in turning order, for the gallery's turn-around (see turnViews). */
+  turn: TurnView[];
   customization: BatCustomization;
 }
 
@@ -373,8 +377,27 @@ function sizePricing(row: ProductWithImages, context: CatalogueContext): (size: 
 }
 
 export type ProductWithImages = Product & {
-  images: (Pick<ProductImage, "url" | "position"> & Partial<Pick<ProductImage, "face">>)[];
+  images: (Pick<ProductImage, "url" | "position"> & Partial<Pick<ProductImage, "side">>)[];
 };
+
+/** One side of a bat in its turn-around. */
+export interface TurnView {
+  side: BatSide;
+  url: string;
+}
+
+/**
+ * The sides marked on a bat's photos in turning order (face, right edge,
+ * back, left edge), for the gallery's turn-around. Nothing until at least the
+ * face and the back are marked.
+ */
+export function turnViews(sides: Partial<Record<BatSide, string>>): TurnView[] {
+  if (!sides.face || !sides.back) return [];
+  return BAT_SIDES.flatMap((side) => {
+    const url = sides[side];
+    return url ? [{ side, url }] : [];
+  });
+}
 
 /** The built-in cut-out for a gear category, standing in for a product with no photos. */
 function sampleImage(category: GearCategorySlug): string {
@@ -407,6 +430,8 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
   const { regularPrice, price, offer, mrp, off } = pricing(row, context);
   const sorted = [...row.images].sort((a, b) => a.position - b.position);
   const images = sorted.map((image) => image.url);
+  const sides: Partial<Record<BatSide, string>> = {};
+  for (const image of sorted) if (image.side) sides[image.side] ??= image.url;
   const grade = row.grade ?? subcategoryName(row.subcategory) ?? "";
   return {
     id: row.id,
@@ -428,7 +453,8 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     soldOut: status === "out",
     stockLeft,
     images: images.length ? images : [BAT_IMAGE],
-    faceImage: sorted.find((image) => image.face)?.url ?? images[0] ?? BAT_IMAGE,
+    faceImage: sides.face ?? images[0] ?? BAT_IMAGE,
+    turn: turnViews(sides),
     rating: context.ratings?.[row.id] ?? null,
     customization: customizationFor(row.kind, row.subcategory, row.customization),
     ...storeOffered(row, sizePricing(row, context)),

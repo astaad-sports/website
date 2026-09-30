@@ -4,10 +4,11 @@ import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import { RotateCw } from "lucide-react";
 
-import { BAT_IMAGE } from "@/lib/catalogue";
+import { BAT_IMAGE, BAT_SIDE_LABELS } from "@/lib/catalogue";
 import type { StoreBat } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { BatTurn } from "./bat-turn";
 import { PhotoTrack } from "./photo-track";
 import { StageCaption } from "./stage-caption";
 import { PhotoThumbnails, StageRail, StageThumb } from "./stage-thumbnails";
@@ -136,30 +137,55 @@ function StudioViews({ bat }: { bat: StoreBat }) {
 
 /**
  * The bat's own photos, primary first, with thumbnails when there is more than
- * one. Swipe (or drag with a mouse) left or right between them.
+ * one. Swipe (or drag with a mouse) left or right between them. A bat whose
+ * sides are marked also gets a "360°" thumbnail: the turn-around (see BatTurn).
  */
 function Photos({ bat }: { bat: StoreBat }) {
   const [active, setActive] = useState(0);
+  const [turning, setTurning] = useState(false);
+  const [side, setSide] = useState(0);
   const count = bat.images.length;
+  const turn = bat.turn.length > 0;
 
   return (
-    <Stage caption={bat.grade} count={count > 1 ? `${active + 1} of ${count}` : undefined}>
-      <PhotoTrack count={count} active={active} onChange={setActive}>
-        {(index, near) => (
-          <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
-            <Image
-              src={bat.images[index]}
-              alt={count > 1 ? `Astaad ${bat.name}, photo ${index + 1} of ${count}` : `Astaad ${bat.name}, ${bat.grade} bat`}
-              fill
-              preload={index === 0}
-              loading={index === 0 ? undefined : near ? "eager" : "lazy"}
-              sizes="(min-width: 1024px) 40vw, 80vw"
-              className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
-            />
-          </div>
+    <Stage
+      caption={turning ? "Drag to turn" : bat.grade}
+      count={turning ? BAT_SIDE_LABELS[bat.turn[side].side] : count > 1 ? `${active + 1} of ${count}` : undefined}
+    >
+      {turning ? (
+        <BatTurn bat={bat} index={side} onChange={setSide} />
+      ) : (
+        <PhotoTrack count={count} active={active} onChange={setActive}>
+          {(index, near) => (
+            <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
+              <Image
+                src={bat.images[index]}
+                alt={count > 1 ? `Astaad ${bat.name}, photo ${index + 1} of ${count}` : `Astaad ${bat.name}, ${bat.grade} bat`}
+                fill
+                preload={index === 0}
+                loading={index === 0 ? undefined : near ? "eager" : "lazy"}
+                sizes="(min-width: 1024px) 40vw, 80vw"
+                className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
+              />
+            </div>
+          )}
+        </PhotoTrack>
+      )}
+      <PhotoThumbnails
+        images={bat.images}
+        active={turning ? null : active}
+        onSelect={(index) => {
+          setTurning(false);
+          setActive(index);
+        }}
+      >
+        {turn && (
+          <StageThumb selected={turning} onSelect={() => setTurning(true)} label="Turn the bat around">
+            <RotateCw className="size-5 md:size-6" strokeWidth={1.5} aria-hidden="true" />
+            360°
+          </StageThumb>
         )}
-      </PhotoTrack>
-      <PhotoThumbnails images={bat.images} active={active} onSelect={setActive} />
+      </PhotoThumbnails>
     </Stage>
   );
 }

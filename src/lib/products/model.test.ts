@@ -25,6 +25,7 @@ import {
   startingWeight,
   stockNote,
   toStoreCatalogue,
+  turnViews,
   type ProductWithImages,
   type StoreCatalogue,
 } from "./model";
@@ -277,15 +278,31 @@ describe("words on the page", () => {
   });
 });
 
-describe("the builder's photo", () => {
+describe("the sides of a bat", () => {
+  const photos = [
+    { url: "/angled.webp", position: 0 },
+    { url: "/back.webp", position: 1, side: "back" as const },
+    { url: "/face.webp", position: 2, side: "face" as const },
+    { url: "/left.webp", position: 3, side: "left" as const },
+    { url: "/right.webp", position: 4, side: "right" as const },
+  ];
+
   test("the face photo is engraved, or the first one", () => {
-    const photos = [
-      { url: "/angled.webp", position: 0 },
-      { url: "/back.webp", position: 1 },
-      { url: "/face.webp", position: 2, face: true },
-    ];
     expect(findStoreBat(catalogueWith({ goat: { images: photos } }), "goat")!.faceImage).toBe("/face.webp");
     expect(findStoreBat(catalogueWith({ goat: { images: photos.slice(0, 2) } }), "goat")!.faceImage).toBe("/angled.webp");
     expect(findStoreBat(seeded, "goat")!.faceImage).toBe(findStoreBat(seeded, "goat")!.images[0]);
+  });
+
+  test("the turn-around goes face, right edge, back, left edge, whatever the photo order", () => {
+    expect(findStoreBat(catalogueWith({ goat: { images: photos } }), "goat")!.turn.map((view) => view.side)).toEqual([
+      "face",
+      "right",
+      "back",
+      "left",
+    ]);
+    // An edge can be missing; the face and the back cannot.
+    expect(turnViews({ face: "/f", back: "/b", left: "/l" }).map((view) => view.url)).toEqual(["/f", "/b", "/l"]);
+    expect(turnViews({ face: "/f", right: "/r", left: "/l" })).toEqual([]);
+    expect(findStoreBat(seeded, "goat")!.turn).toEqual([]);
   });
 });

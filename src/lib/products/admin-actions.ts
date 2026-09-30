@@ -14,7 +14,7 @@ import {
   getProductById,
   getProductImage,
   reorderProductImages,
-  setFaceImage,
+  setImageSide,
   replaceProductImage,
   setProductAvailability,
   setProductStocks,
@@ -22,6 +22,7 @@ import {
   type ProductWriteResult,
 } from "@/db/products";
 import type { ProductAvailability } from "@/db/schema";
+import { BAT_SIDE_LABELS, BAT_SIDES } from "@/lib/catalogue";
 import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser } from "@/lib/auth/session";
 
@@ -294,12 +295,18 @@ export async function movePhoto(_previous: ProductActionState, form: FormData): 
   return done(parsed.data.move === "first" ? "Set as primary photo" : "Photo moved");
 }
 
-/** Make a photo the bat's face, the one the builders engrave a name on. Posts `imageId`. */
-export async function markFacePhoto(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
+/**
+ * Mark which side of the bat a photo shows (face, right edge, back or left
+ * edge), or clear it. Posts `imageId` and `side` ("" to clear).
+ */
+export async function markPhotoSide(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
   if (!(await signedInAdmin())) return NOT_ADMIN;
-  const id = z.uuid().safeParse(form.get("imageId"));
-  if (!id.success) return failed(SOMETHING_WRONG);
-  if (!(await setFaceImage(id.data))) return failed("This photo no longer exists.");
+  const parsed = z
+    .object({ imageId: z.uuid(), side: z.enum(BAT_SIDES).nullable() })
+    .safeParse({ imageId: form.get("imageId"), side: form.get("side") || null });
+  if (!parsed.success) return failed(SOMETHING_WRONG);
+  if (!(await setImageSide(parsed.data.imageId, parsed.data.side))) return failed("This photo no longer exists.");
   productsChanged();
-  return done("Set as face photo");
+  const { side } = parsed.data;
+  return done(side ? `Marked as the ${BAT_SIDE_LABELS[side].toLowerCase()}` : "Side cleared");
 }
