@@ -16,6 +16,7 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SizeGuideSection } from "@/components/storefront/size-guide-section";
 import { HOME_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
+import { WatchReel } from "@/components/storefront/watch-reel";
 import { CUSTOMER_CLIP } from "@/lib/customer-photos";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { batCounts, batsInSubcategory, builderBat, categoryStats } from "@/lib/products/model";
@@ -46,6 +47,7 @@ export default async function Home() {
         <SizeGuideSection />
         {bestsellers.length > 0 && <Bestsellers items={bestsellers} />}
         <CustomerReviews reviews={reviews.slice(0, HOME_REVIEWS)} summary={summariseReviews(reviews)} clip={CUSTOMER_CLIP} />
+        <WatchReel />
         <InstagramFeed />
         <BrandStory />
         <Craft />

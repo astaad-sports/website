@@ -109,6 +109,16 @@
     "width": 1536,
     "height": 1536
   },
+  "home/choice-of-professionals": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/home/choice-of-professionals-1e6ae1a07a.mp4",
+    "width": 720,
+    "height": 1280
+  },
+  "home/choice-of-professionals-poster": {
+    "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/home/choice-of-professionals-poster-4746cce5df.webp",
+    "width": 720,
+    "height": 1280
+  },
   "reviews/01": {
     "src": "https://otr4jcwn8kcd1aqi.public.blob.vercel-storage.com/site/reviews/01-7a0bbbe742.webp",
     "width": 1054,
