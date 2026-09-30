@@ -25,9 +25,10 @@ const ROOM = 26;
 const LETTER_WIDTH = 0.66;
 
 /**
- * The name as it is cut: along the right of the lower blade, read from the toe
- * up. A long name gets smaller letters, so it stays below the stickers. For a
- * photo box that is a size container (`[container-type:size]`).
+ * The name as it is cut: along the right of the lower blade, read from the
+ * handle down, the way the ASTAAD lettering on the face runs. A long name gets
+ * smaller letters, so it stays below the stickers. For a photo box that is a
+ * size container (`[container-type:size]`).
  */
 export function BladeEngraving({ text }: { text: string }) {
   const size = Math.min(LETTER, ROOM / (LETTER_WIDTH * Math.max(text.length, 1)));
@@ -35,7 +36,7 @@ export function BladeEngraving({ text }: { text: string }) {
     <span
       aria-hidden="true"
       style={{ fontSize: `${size.toFixed(2)}cqh` }}
-      className={cn(ENGRAVED, "absolute top-[82.2%] left-[calc(50%+3.1cqh)] -translate-1/2 -rotate-90 mix-blend-multiply")}
+      className={cn(ENGRAVED, "absolute top-[82.2%] left-[calc(50%+3.1cqh)] -translate-1/2 rotate-90 mix-blend-multiply")}
     >
       {text}
     </span>
