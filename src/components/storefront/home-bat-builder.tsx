@@ -12,7 +12,7 @@ import {
   BAT_HANDLES,
   BAT_PROFILES,
   BAT_TOES,
-  BAT_WEIGHTS,
+  batWeightsFor,
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
@@ -94,10 +94,11 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
   const { config, update } = useBatConfig(standardBatConfig(bat));
   // The size the button adds, and so the price it names.
   const size = findVariant(bat, config.size) ?? startingVariant(bat);
+  const item = batCartItem(bat, config);
   const engraved = custom.engraving ? config.name.trim() : "";
   const toes = custom.toes.length > 0;
   const chips = [
-    BAT_WEIGHTS[config.weight].label,
+    item.options.weight,
     BAT_PROFILES[config.profile].label,
     toes ? `${BAT_TOES[config.toe].label} toe` : null,
     `${BAT_HANDLES[config.handle].label} handle`,
@@ -176,7 +177,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
 
           <div className="flex flex-1 flex-col justify-between gap-4">
             <OptionGroup label="Weight">
-              <ChoiceButtons label="Weight" options={BAT_WEIGHTS} offered={custom.weights} value={config.weight} onChange={(v) => update("weight", v)} />
+              <ChoiceButtons label="Weight" options={batWeightsFor(size.size)} offered={custom.weights} value={config.weight} onChange={(v) => update("weight", v)} />
             </OptionGroup>
             <OptionGroup label="Profile">
               <ChoiceButtons label="Profile" options={BAT_PROFILES} offered={custom.profiles} value={config.profile} onChange={(v) => update("profile", v)} />
@@ -223,7 +224,7 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
             )}
             <div className="flex flex-wrap items-center gap-5">
               <AddToCartButton
-                item={batCartItem(bat, config)}
+                item={item}
                 productName={`Astaad ${bat.name}`}
                 soldOut={bat.soldOut}
                 size="lg"

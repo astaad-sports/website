@@ -8,11 +8,13 @@ import {
   BAT_IMAGE,
   BAT_PROFILES,
   BAT_TOES,
-  BAT_WEIGHTS,
+  BAT_WEIGHT_GROUPS,
   BATS,
+  batWeightsFor,
   DEFAULT_BAT_CONFIG,
   GEAR,
   STORE_CATEGORIES,
+  weightGroupName,
   type Bat,
   type BatConfig,
   type GearCategorySlug,
@@ -154,7 +156,8 @@ export function percentOff(price: number, mrp: number | null | undefined): numbe
 // ---------------------------------------------------------------------------
 // Bat customisation
 
-export const WEIGHT_OPTIONS = BAT_WEIGHTS.map((option) => option.label);
+/** Every weight range, across sizes (see BAT_WEIGHT_GROUPS). */
+export const WEIGHT_OPTIONS = BAT_WEIGHT_GROUPS.flatMap((group) => group.weights.map((option) => option.label));
 export const PROFILE_OPTIONS = BAT_PROFILES.map((option) => option.label);
 export const TOE_OPTIONS = BAT_TOES.map((option) => option.label);
 export const HANDLE_OPTIONS = BAT_HANDLES.map((option) => option.label);
@@ -185,8 +188,11 @@ export const NO_CUSTOMIZATION: BatCustomization = {
 /**
  * Only known labels, in their usual order. An enabled build needs at least one
  * weight, profile and handle; otherwise it is treated as not customisable. The
- * toe is optional: with none offered, the bat has no toe choice. A build saved
- * before toe shapes existed has no `toes` at all, and offers every one.
+ * weights span every size: in each size it is sold in, the bat offers that
+ * size's ranges listed here (see BAT_WEIGHT_GROUPS; the editor sees to it that
+ * each size sold has one). The toe is optional: with none offered, the bat has
+ * no toe choice. A build saved before toe shapes existed has no `toes` at all,
+ * and offers every one.
  */
 export function normaliseCustomization(input: Partial<BatCustomization> | null | undefined): BatCustomization {
   if (!input?.enabled) return NO_CUSTOMIZATION;
@@ -212,6 +218,25 @@ export function normaliseCustomization(input: Partial<BatCustomization> | null |
 export function customizationFor(kind: string, subcategory: string | null, stored: BatCustomization | null): BatCustomization {
   if (kind !== "bat" || subcategory !== "english-willow") return NO_CUSTOMIZATION;
   return normaliseCustomization(stored);
+}
+
+/** The weight ranges a bat of this size is made in, as labels (see batWeightsFor). */
+export function weightLabelsFor(size: string | null | undefined): string[] {
+  return batWeightsFor(size).map((option) => option.label);
+}
+
+/**
+ * The weight ranges a bat offers, grouped by the sizes it is sold in, for the
+ * words about them: each group named for its sizes ("Size 6", "SH and LH"),
+ * leaving out any the bat offers nothing of.
+ */
+export function offeredWeightGroups(bat: Pick<StoreBat, "sizes" | "customization">): { name: string; weights: string[] }[] {
+  const sold = bat.sizes.map((size) => size.code);
+  return BAT_WEIGHT_GROUPS.flatMap((group) => {
+    if (!group.sizes.some((code) => sold.includes(code))) return [];
+    const weights = group.weights.map((option) => option.label).filter((label) => bat.customization.weights.includes(label));
+    return weights.length ? [{ name: weightGroupName(group, sold), weights }] : [];
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -625,32 +650,45 @@ export function builderBat(catalogue: StoreCatalogue): StoreBat | undefined {
 
 /**
  * A bat's standard build, which its builder starts on and its cart buttons
- * add: the usual build options (see startingBatConfig), in SH if that can be
- * bought, otherwise the first size that can.
+ * add: in SH if that can be bought, otherwise the first size that can, with
+ * the usual build options in that size (see startingBatConfig).
  */
 export function standardBatConfig(bat: Pick<StoreBat, "customization"> & Sellable): BatConfig {
-  return { ...startingBatConfig(bat.customization), size: startingVariant(bat).size ?? DEFAULT_BAT_CONFIG.size };
+  const size = startingVariant(bat).size ?? DEFAULT_BAT_CONFIG.size;
+  return startingBatConfig(bat.customization, { ...DEFAULT_BAT_CONFIG, size });
+}
+
+/** `index` when its label is offered, otherwise the first label offered, otherwise `index` as it is. */
+function firstOffered(labels: string[], offered: string[], index: number): number {
+  if (offered.includes(labels[index])) return index;
+  const first = labels.findIndex((label) => offered.includes(label));
+  return first === -1 ? index : first;
+}
+
+/**
+ * The weight a builder starts on in a size: `current` (an index into the
+ * size's ranges, see BatConfig) when the bat offers that range in the size,
+ * otherwise the first range it does offer in it.
+ */
+export function startingWeight(customization: BatCustomization, size: string | null | undefined, current: number): number {
+  return firstOffered(weightLabelsFor(size), customization.weights, current);
 }
 
 /**
  * A builder's first choices for a bat's build: the usual one wherever the bat
- * offers it, otherwise the first option it does offer. Indexes still refer to
- * the full BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES lists; extras
- * the bat does not offer start switched off. The size is left as it is.
+ * offers it, otherwise the first option it does offer. Indexes refer to the
+ * weight ranges of `base`'s size and the full BAT_PROFILES, BAT_TOES and
+ * BAT_HANDLES lists; extras the bat does not offer start switched off. The
+ * size is left as it is.
  */
 export function startingBatConfig(customization: BatCustomization, base: BatConfig = DEFAULT_BAT_CONFIG): BatConfig {
-  const start = (labels: string[], offered: string[], index: number) => {
-    if (offered.includes(labels[index])) return index;
-    const first = labels.findIndex((label) => offered.includes(label));
-    return first === -1 ? index : first;
-  };
   const on = customization.enabled;
   return {
     ...base,
-    weight: start(WEIGHT_OPTIONS, customization.weights, base.weight),
-    profile: start(PROFILE_OPTIONS, customization.profiles, base.profile),
-    toe: start(TOE_OPTIONS, customization.toes, base.toe),
-    handle: start(HANDLE_OPTIONS, customization.handles, base.handle),
+    weight: startingWeight(customization, base.size, base.weight),
+    profile: firstOffered(PROFILE_OPTIONS, customization.profiles, base.profile),
+    toe: firstOffered(TOE_OPTIONS, customization.toes, base.toe),
+    handle: firstOffered(HANDLE_OPTIONS, customization.handles, base.handle),
     name: on && customization.engraving ? base.name : "",
     knock: on && customization.matchReady && base.knock,
     scuff: on && customization.scuffSheet && base.scuff,

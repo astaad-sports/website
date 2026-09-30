@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 
 import type { BatCustomization } from "@/db/schema";
-import { ENGRAVING_MAX } from "@/lib/catalogue";
+import { BAT_WEIGHT_GROUPS, DEFAULT_BAT_SIZE, ENGRAVING_MAX, weightGroupName } from "@/lib/catalogue";
 import { HANDLE_OPTIONS, PROFILE_OPTIONS, TOE_OPTIONS, WEIGHT_OPTIONS } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
@@ -136,21 +136,31 @@ function Row({ children }: { children: ReactNode }) {
 
 /**
  * English Willow customization: whether customers can build this bat, and
- * which weights, profiles, toes, handles and extras they can pick. Posts
- * customEnabled, customWeights, customProfiles, customToes, customHandles,
- * customEngraving, customMatchReady and customScuffSheet (see parseProductForm).
+ * which weights (of each size it is sold in), profiles, toes, handles and
+ * extras they can pick. Posts customEnabled, customWeights, customProfiles,
+ * customToes, customHandles, customEngraving, customMatchReady and
+ * customScuffSheet (see parseProductForm).
  */
 export function ProductCustomization({
   value,
+  sizes,
   onChange,
   error,
 }: {
   value: BatCustomization;
+  /** The size codes the bat is sold in: each has weight ranges of its own. */
+  sizes: string[];
   onChange: (value: BatCustomization) => void;
   error?: string;
 }) {
   const set = (patch: Partial<BatCustomization>) => onChange({ ...value, ...patch });
   const invalid = Boolean(error);
+  // One group of weight chips per size sold (SH and LH share one); with no size ticked yet, the bat sells in SH.
+  const sold = sizes.length ? sizes : [DEFAULT_BAT_SIZE];
+  const weightGroups = BAT_WEIGHT_GROUPS.filter((group) => group.sizes.some((code) => sold.includes(code)));
+  /** One group's chips changed: the other sizes' ranges stay as they are. */
+  const setWeights = (labels: string[], chosen: string[]) =>
+    set({ weights: WEIGHT_OPTIONS.filter((label) => (labels.includes(label) ? chosen.includes(label) : value.weights.includes(label))) });
 
   return (
     <EditorSection id="custom-title" title="English Willow customization">
@@ -158,15 +168,21 @@ export function ProductCustomization({
       {value.enabled ? (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4">
-            <ChipGroup
-              id="custom-weights"
-              label="Weight"
-              name="customWeights"
-              options={WEIGHT_OPTIONS}
-              chosen={value.weights}
-              onChange={(weights) => set({ weights })}
-              invalid={invalid}
-            />
+            {weightGroups.map((group) => {
+              const labels = group.weights.map((option) => option.label);
+              return (
+                <ChipGroup
+                  key={group.sizes[0]}
+                  id={`custom-weights-${group.sizes[0]}`}
+                  label={weightGroups.length > 1 ? `Weight · ${weightGroupName(group, sold)}` : "Weight"}
+                  name="customWeights"
+                  options={labels}
+                  chosen={value.weights}
+                  onChange={(chosen) => setWeights(labels, chosen)}
+                  invalid={invalid}
+                />
+              );
+            })}
             <ChipGroup
               id="custom-profiles"
               label="Profile"
@@ -197,7 +213,10 @@ export function ProductCustomization({
             {error ? (
               <FieldError id="customization-error" message={error} />
             ) : (
-              <FieldHelp>Customers pick from the options you keep selected.</FieldHelp>
+              <FieldHelp>
+                Customers pick from the options you keep selected.
+                {weightGroups.length > 1 && " Each size has weight ranges of its own."}
+              </FieldHelp>
             )}
           </div>
           <div className="flex flex-col">

@@ -79,6 +79,32 @@ describe("pricing comes from the catalogue", () => {
   });
 });
 
+describe("weight ranges by size", () => {
+  const goat = batIn(seeded, "goat");
+
+  test("a bat in Size 6 or Harrow takes that size's ranges", () => {
+    const size6 = batCartItem(goat, { ...standardBatConfig(goat), size: "6" });
+    expect(size6.options).toMatchObject({ size: "6", weight: "975–1000 g" });
+    expect(priceCartItem(size6)!.summary).toContain("Size 6 · 975–1000 g");
+    expect(batCartItem(goat, { ...standardBatConfig(goat), size: "H", weight: 2 }).options.weight).toBe("1100–1120 g");
+  });
+
+  test("a full-size range on a Size 6 bat is not a build the bat offers", () => {
+    const size6 = batCartItem(goat, { ...standardBatConfig(goat), size: "6" });
+    expect(priceCartItem({ ...size6, options: { ...size6.options, weight: "1150–1180 g" } })).toBeNull();
+  });
+
+  test("a range the bat does not offer in a size falls back to one it does", () => {
+    const heavyJunior = catalogueWith({ goat: { customization: { ...FULL_CUSTOMIZATION, weights: ["1000–1025 g", "1150–1180 g"] } } });
+    const bat = batIn(heavyJunior, "goat");
+    expect(batCartItem(bat, { ...standardBatConfig(bat), size: "6", weight: 1 }).options.weight).toBe("1000–1025 g");
+    // Nothing offered in Harrow: no weight, so it is not a build the bat sells.
+    const harrow = batCartItem(bat, { ...standardBatConfig(bat), size: "H" });
+    expect(harrow.options.weight).toBe("");
+    expect(priceCartItem(harrow, heavyJunior)).toBeNull();
+  });
+});
+
 describe("items must match the catalogue", () => {
   test("unknown products and options are dropped and counted", () => {
     const standard = build();

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { BatCustomization } from "@/db/schema";
-import { DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
+import { BAT_WEIGHTS, DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
 
 import {
   batCounts,
@@ -18,8 +18,11 @@ import {
   listInWords,
   NO_CUSTOMIZATION,
   normaliseCustomization,
+  offeredWeightGroups,
   seedProductRows,
+  standardBatConfig,
   startingBatConfig,
+  startingWeight,
   stockNote,
   toStoreCatalogue,
   type ProductWithImages,
@@ -166,6 +169,44 @@ describe("the builder's starting choices", () => {
   test("the toe starts semi-round, or on the first toe the bat offers", () => {
     expect(startingBatConfig(FULL_CUSTOMIZATION).toe).toBe(1);
     expect(startingBatConfig({ ...FULL_CUSTOMIZATION, toes: ["Flat"] }).toe).toBe(2);
+  });
+
+  test("the weight is chosen among the ranges of the build's size", () => {
+    // Balanced in every size: the index means the same whichever size is chosen.
+    expect(startingBatConfig(FULL_CUSTOMIZATION, { ...DEFAULT_BAT_CONFIG, size: "6" }).weight).toBe(1);
+    expect(startingWeight(FULL_CUSTOMIZATION, "H", 2)).toBe(2);
+    // Only the heavy Size 6 range offered: Size 6 starts there, SH stays balanced, Harrow (nothing offered) stays put.
+    const heavyJunior = { ...FULL_CUSTOMIZATION, weights: ["1000–1025 g", ...BAT_WEIGHTS.map((option) => option.label)] };
+    expect(startingWeight(heavyJunior, "6", 1)).toBe(2);
+    expect(startingWeight(heavyJunior, "SH", 1)).toBe(1);
+    expect(startingWeight(heavyJunior, "H", 1)).toBe(1);
+  });
+
+  test("a standard build in the first size that can be bought takes that size's weight", () => {
+    // Only Size 6 left: the standard build is a Size 6 bat, in its heavy range (the one offered).
+    const heavyJunior = { ...FULL_CUSTOMIZATION, weights: ["1000–1025 g", ...BAT_WEIGHTS.map((option) => option.label)] };
+    const goat = findStoreBat(
+      catalogueWith({ goat: { stock: 2, variantStock: { "6": 2, H: 0, SH: 0, LH: 0 }, customization: heavyJunior } }),
+      "goat"
+    )!;
+    expect(standardBatConfig(goat)).toMatchObject({ size: "6", weight: 2 });
+    expect(standardBatConfig(findStoreBat(seeded, "goat")!)).toMatchObject({ size: "SH", weight: 1 });
+  });
+});
+
+describe("weight ranges by size", () => {
+  test("the ranges of every size are kept, in size order", () => {
+    const custom = normaliseCustomization({ ...FULL_CUSTOMIZATION, weights: ["1150–1180 g", "975–1000 g", "900 g"] });
+    expect(custom.weights).toEqual(["975–1000 g", "1150–1180 g"]);
+  });
+
+  test("the ranges a bat offers are grouped by the sizes it is sold in", () => {
+    expect(offeredWeightGroups(findStoreBat(seeded, "goat")!).map((group) => group.name)).toEqual(["Size 6", "Harrow", "SH and LH"]);
+    const shOnly = findStoreBat(catalogueWith({ goat: { sizes: ["SH"] } }), "goat")!;
+    expect(offeredWeightGroups(shOnly)).toEqual([{ name: "SH", weights: BAT_WEIGHTS.map((option) => option.label) }]);
+    // Nothing offered in Size 6 or Harrow: those groups are left out.
+    const balancedOnly = findStoreBat(catalogueWith({ goat: { customization: { ...FULL_CUSTOMIZATION, weights: ["1150–1180 g"] } } }), "goat")!;
+    expect(offeredWeightGroups(balancedOnly)).toEqual([{ name: "SH and LH", weights: ["1150–1180 g"] }]);
   });
 });
 

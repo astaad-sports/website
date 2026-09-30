@@ -13,11 +13,11 @@ import {
   BAT_HANDLES,
   BAT_PROFILES,
   BAT_TOES,
-  BAT_WEIGHTS,
+  batWeightsFor,
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { standardBatConfig, type StoreBat } from "@/lib/products/model";
+import { standardBatConfig, startingWeight, type StoreBat } from "@/lib/products/model";
 import {
   findVariant,
   otherPrices,
@@ -233,7 +233,11 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
   // The bat may have changed under the page (a size removed): fall back to where the picker starts.
   const size = findVariant(bat, config.size) ?? startingVariant(bat);
   const soldOut = variantSoldOut(bat, size);
-  const onSizeChange = (code: string) => update("size", code);
+  // Each size has weight ranges of its own: keep the same weight (light, balanced, heavy) where the bat offers it.
+  const onSizeChange = (code: string) => {
+    update("size", code);
+    update("weight", startingWeight(custom, code, config.weight));
+  };
 
   if (!custom.enabled) {
     return (
@@ -250,7 +254,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
   const toes = custom.toes.length > 0;
   const summary: [string, string, boolean?][] = [
     ["Size", size.sizeLabel ?? ""],
-    ["Weight", BAT_WEIGHTS[config.weight].label],
+    ["Weight", item.options.weight],
     ["Profile", BAT_PROFILES[config.profile].label],
     ...(toes ? [["Toe", BAT_TOES[config.toe].label] as [string, string]] : []),
     ["Handle shape", BAT_HANDLES[config.handle].label],
@@ -342,7 +346,7 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
               <ChoiceButtons
                 variant="card"
                 label="Weight"
-                options={BAT_WEIGHTS}
+                options={batWeightsFor(size.size)}
                 offered={custom.weights}
                 value={config.weight}
                 onChange={(value) => update("weight", value)}

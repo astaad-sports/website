@@ -7,11 +7,13 @@ import {
   HANDLE_OPTIONS,
   isBatSubcategory,
   isCategorySlug,
+  listInWords,
   normaliseCustomization,
   NO_CUSTOMIZATION,
   PROFILE_OPTIONS,
   TOE_OPTIONS,
   WEIGHT_OPTIONS,
+  weightLabelsFor,
   type BatSubcategory,
   type CategorySlug,
 } from "./model";
@@ -254,6 +256,14 @@ export function parseProductForm(form: FormData): ParsedProductForm {
       const handles = chosen("customHandles").filter((value) => HANDLE_OPTIONS.includes(value));
       if (!weights.length || !profiles.length || !handles.length) {
         errors.customization = "Pick at least one weight, profile and handle, or turn customization off.";
+      } else {
+        // Each size has weight ranges of its own (see BAT_WEIGHT_GROUPS): a size sold needs one of them.
+        const unweighted = sizeOptions(category, subcategory).filter(
+          (size) => sizes.includes(size.code) && !weightLabelsFor(size.code).some((label) => weights.includes(label))
+        );
+        if (unweighted.length) {
+          errors.customization = `Pick at least one weight for ${listInWords(unweighted.map((size) => size.label))}.`;
+        }
       }
       customization = normaliseCustomization({
         enabled: true,

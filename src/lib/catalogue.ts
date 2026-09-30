@@ -435,6 +435,8 @@ export interface BatSize {
   code: string;
   /** "SH / Full Size" */
   label: string;
+  /** In the middle of a sentence: "Size 6", "Harrow", "SH". */
+  short: string;
   age: string;
   height: string;
   length: string;
@@ -443,10 +445,10 @@ export interface BatSize {
 
 /** The sizes English and Kashmir willow bats can come in; each bat is sold in the ones ticked for it in the admin. */
 export const BAT_SIZES: BatSize[] = [
-  { code: "6", label: "Size 6", age: "10–12 years", height: "4'6\" – 5'0\"", length: "31.5\"" },
-  { code: "H", label: "H / Harrow", age: "12–14 years", height: "5'0\" – 5'4\"", length: "32.75\"" },
-  { code: "SH", label: "SH / Full Size", age: "15+ years", height: "5'4\" – 5'10\"", length: "33.5\"" },
-  { code: "LH", label: "LH / Long Handle", age: "15+ years", height: "5'10\"+", length: "34.5\"", longHandle: true },
+  { code: "6", label: "Size 6", short: "Size 6", age: "10–12 years", height: "4'6\" – 5'0\"", length: "31.5\"" },
+  { code: "H", label: "H / Harrow", short: "Harrow", age: "12–14 years", height: "5'0\" – 5'4\"", length: "32.75\"" },
+  { code: "SH", label: "SH / Full Size", short: "SH", age: "15+ years", height: "5'4\" – 5'10\"", length: "33.5\"" },
+  { code: "LH", label: "LH / Long Handle", short: "LH", age: "15+ years", height: "5'10\"+", length: "34.5\"", longHandle: true },
 ];
 
 /** Tennis bats come in two lengths, at one price. They go by length, not by age or height. */
@@ -465,11 +467,44 @@ export interface BatOption {
   picture?: SiteImage;
 }
 
-export const BAT_WEIGHTS: BatOption[] = [
-  { label: "1120–1150 g", hint: "Light · quick hands" },
-  { label: "1150–1180 g", hint: "Balanced · most players" },
-  { label: "1180–1220 g", hint: "Heavy · power hitters" },
+/** The weight ranges bats of some sizes are made in. */
+export interface BatWeightGroup {
+  /** The size codes (see BAT_SIZES) made in these ranges. */
+  sizes: string[];
+  /** Light, balanced and heavy, in that order. */
+  weights: BatOption[];
+}
+
+const WEIGHT_HINTS = ["Light · quick hands", "Balanced · most players", "Heavy · power hitters"];
+
+const weightRanges = (labels: [string, string, string]): BatOption[] =>
+  labels.map((label, index) => ({ label, hint: WEIGHT_HINTS[index] }));
+
+/**
+ * The weight ranges a willow bat is made in, by size: Size 6 and Harrow bats
+ * are lighter, and SH and LH share the full-size ranges. Every size's ranges
+ * run light, balanced, heavy, so a BatConfig's weight index means the same
+ * whichever size is chosen.
+ */
+export const BAT_WEIGHT_GROUPS: BatWeightGroup[] = [
+  { sizes: ["6"], weights: weightRanges(["950–975 g", "975–1000 g", "1000–1025 g"]) },
+  { sizes: ["H"], weights: weightRanges(["1050–1075 g", "1075–1100 g", "1100–1120 g"]) },
+  { sizes: ["SH", "LH"], weights: weightRanges(["1120–1150 g", "1150–1180 g", "1180–1220 g"]) },
 ];
+
+/** The full-size ranges (SH and LH), which a bat in a size with no ranges of its own is made in too. */
+export const BAT_WEIGHTS: BatOption[] = BAT_WEIGHT_GROUPS[BAT_WEIGHT_GROUPS.length - 1].weights;
+
+/** The weight ranges a bat of this size is made in (see BAT_WEIGHT_GROUPS). */
+export function batWeightsFor(size: string | null | undefined): BatOption[] {
+  return BAT_WEIGHT_GROUPS.find((group) => typeof size === "string" && group.sizes.includes(size))?.weights ?? BAT_WEIGHTS;
+}
+
+/** "Size 6", "Harrow", "SH and LH": the sizes a weight group is for, or only those among `sold`. */
+export function weightGroupName(group: BatWeightGroup, sold?: string[]): string {
+  const codes = sold ? group.sizes.filter((code) => sold.includes(code)) : group.sizes;
+  return listInWords(codes.map((code) => BAT_SIZES.find((size) => size.code === code)?.short ?? code));
+}
 
 // The profile photos are side views, with the sweet spot glowing.
 export const BAT_PROFILES: BatOption[] = [
@@ -492,8 +527,9 @@ export const BAT_TOES: BatOption[] = [
 
 export const ENGRAVING_MAX = 15;
 
-/** A bat's configuration: indices into BAT_WEIGHTS, BAT_PROFILES, BAT_TOES and BAT_HANDLES, and the size's code. */
+/** A bat's configuration: indices into its size's weight ranges, BAT_PROFILES, BAT_TOES and BAT_HANDLES, and the size's code. */
 export interface BatConfig {
+  /** An index into the weight ranges of `size` (see batWeightsFor): 0 light, 1 balanced, 2 heavy, whatever the size. */
   weight: number;
   profile: number;
   toe: number;

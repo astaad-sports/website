@@ -10,14 +10,16 @@ import {
   BAT_HANDLES,
   BAT_PROFILES,
   BAT_TOES,
-  BAT_WEIGHTS,
+  BAT_WEIGHT_GROUPS,
   GEAR_CATEGORY_CONTENT,
   GEAR_CATEGORY_SLUGS,
   getCategory,
+  weightGroupName,
   type BatOption,
 } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { categoryOffered, type StoreCatalogue } from "@/lib/products/model";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Size guide",
@@ -41,11 +43,12 @@ function sizedGear(catalogue: StoreCatalogue) {
   });
 }
 
-const BAT_CHOICES: { title: string; options: BatOption[] }[] = [
-  { title: "Weight", options: BAT_WEIGHTS },
-  { title: "Profile", options: BAT_PROFILES },
-  { title: "Toe", options: BAT_TOES },
-  { title: "Handle", options: BAT_HANDLES },
+/** The builder's choices. Weights are by size; the rest are the same in every size. */
+const BAT_CHOICES: { title: string; groups: { name?: string; options: BatOption[] }[] }[] = [
+  { title: "Weight", groups: BAT_WEIGHT_GROUPS.map((group) => ({ name: weightGroupName(group), options: group.weights })) },
+  { title: "Profile", groups: [{ options: BAT_PROFILES }] },
+  { title: "Toe", groups: [{ options: BAT_TOES }] },
+  { title: "Handle", groups: [{ options: BAT_HANDLES }] },
 ];
 
 /**
@@ -107,21 +110,36 @@ export default async function SizeGuidePage() {
               <div className="flex flex-col gap-1.5">
                 <h3 className="type-heading-md">Weight, profile, toe and handle</h3>
                 <p className="type-body text-ink-muted">
-                  Custom bats let you choose all four. Not sure? The balanced weight suits most players.
+                  Custom bats let you choose all four. Size 6 and Harrow bats are made lighter, in ranges of their own.
+                  Not sure? The balanced weight suits most players.
                 </p>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {BAT_CHOICES.map((choice) => (
-                  <div key={choice.title} className="flex flex-col gap-2 rounded-md bg-surface-sunken p-5">
+                  <div
+                    key={choice.title}
+                    className={cn(
+                      "flex flex-col gap-3 rounded-md bg-surface-sunken p-5",
+                      // The weight groups take a row of their own, side by side.
+                      choice.groups.length > 1 && "md:col-span-2 xl:col-span-3"
+                    )}
+                  >
                     <h4 className="type-eyebrow text-ink-muted">{choice.title}</h4>
-                    <dl className="flex flex-col gap-2">
-                      {choice.options.map((option) => (
-                        <div key={option.label} className="flex flex-col">
-                          <dt className="type-body font-semibold">{option.label}</dt>
-                          <dd className="type-body-sm text-ink-muted">{option.hint}</dd>
+                    <div className={cn("grid gap-4", choice.groups.length > 1 && "sm:grid-cols-3")}>
+                      {choice.groups.map((group) => (
+                        <div key={group.name ?? choice.title} className="flex flex-col gap-2">
+                          {group.name && <h5 className="type-body-sm font-semibold">{group.name}</h5>}
+                          <dl className="flex flex-col gap-2">
+                            {group.options.map((option) => (
+                              <div key={option.label} className="flex flex-col">
+                                <dt className="type-body font-semibold">{option.label}</dt>
+                                <dd className="type-body-sm text-ink-muted">{option.hint}</dd>
+                              </div>
+                            ))}
+                          </dl>
                         </div>
                       ))}
-                    </dl>
+                    </div>
                   </div>
                 ))}
               </div>

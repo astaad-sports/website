@@ -18,6 +18,8 @@ import {
   percentOff,
   productHref,
   stockStatus,
+  WEIGHT_OPTIONS,
+  weightLabelsFor,
   type CategorySlug,
 } from "@/lib/products/model";
 import {
@@ -336,6 +338,27 @@ export function ProductEditor({
     setEdited((current) => new Set(current).add(key).add("sizes").add("hands"));
   }
 
+  /**
+   * A size just ticked for a bat has weight ranges of its own (see
+   * BAT_WEIGHT_GROUPS): it offers every one of them until some are unticked,
+   * unless the bat already offers ranges of that group (LH shares SH's).
+   */
+  function setSizes(sizes: string[]) {
+    set("sizes", sizes);
+    const { weights } = values.customization;
+    const added = sizes
+      .filter((code) => !values.sizes.includes(code))
+      .map((code) => weightLabelsFor(code))
+      .filter((labels) => !labels.some((label) => weights.includes(label)))
+      .flat();
+    if (values.category === "bats" && added.length) {
+      set("customization", {
+        ...values.customization,
+        weights: WEIGHT_OPTIONS.filter((label) => weights.includes(label) || added.includes(label)),
+      });
+    }
+  }
+
   /** "7699" reads as "7,699" once the admin leaves the field. */
   function tidyRupees(key: "price" | "mrp") {
     const amount = parseRupees(values[key]);
@@ -560,7 +583,7 @@ export function ProductEditor({
                     options={sizeChoices.map((size) => size.code)}
                     labels={Object.fromEntries(sizeChoices.map((size) => [size.code, size.label]))}
                     chosen={values.sizes}
-                    onChange={(sizes) => set("sizes", sizes)}
+                    onChange={setSizes}
                     invalid={Boolean(errorFor("sizes"))}
                     errorId="sizes-error"
                   />
@@ -757,6 +780,7 @@ export function ProductEditor({
           {kind === "bat" && values.subcategory === "english-willow" && (
             <ProductCustomization
               value={values.customization}
+              sizes={values.sizes}
               onChange={(value) => set("customization", value)}
               error={errorFor("customization")}
             />

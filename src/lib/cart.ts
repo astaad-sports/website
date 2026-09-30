@@ -8,7 +8,6 @@ import {
   BAT_HANDLES,
   BAT_PROFILES,
   BAT_TOES,
-  BAT_WEIGHTS,
   ENGRAVING_MAX,
   HANDS,
   type BatConfig,
@@ -26,6 +25,7 @@ import {
   MAX_SLUG_LENGTH,
   standardBatConfig,
   startingBatConfig,
+  weightLabelsFor,
   type StoreBat,
   type StoreCatalogue,
   type StoreGear,
@@ -47,7 +47,7 @@ const batItemSchema = z.object({
   options: z.object({
     /** A size code the bat is sold in, e.g. "SH". */
     size: z.string().max(8),
-    /** BAT_WEIGHTS, BAT_PROFILES and BAT_HANDLES labels. */
+    /** A weight range of the size (see batWeightsFor), then BAT_PROFILES and BAT_HANDLES labels. */
     weight: z.string().max(40),
     profile: z.string().max(40),
     /**
@@ -182,16 +182,18 @@ export type GearForCart = Pick<StoreGear, "slug"> & Sellable;
 export function batCartItem(bat: BatForCart, config: BatConfig = standardBatConfig(bat), qty = 1): BatCartItem {
   const pick = (labels: string[], allowed: string[], index: number) => {
     const label = labels[index];
-    return label && allowed.includes(label) ? label : (allowed[0] ?? "");
+    return label && allowed.includes(label) ? label : (labels.find((entry) => allowed.includes(entry)) ?? "");
   };
   const { slug, customization } = bat;
   const on = customization.enabled;
+  const size = (findVariant(bat, config.size) ?? startingVariant(bat)).size ?? "";
   return {
     kind: "bat",
     slug,
     options: {
-      size: (findVariant(bat, config.size) ?? startingVariant(bat)).size ?? "",
-      weight: on ? pick(BAT_WEIGHTS.map((entry) => entry.label), customization.weights, config.weight) : "",
+      size,
+      // The weight ranges are the size's own (see batWeightsFor).
+      weight: on ? pick(weightLabelsFor(size), customization.weights, config.weight) : "",
       profile: on ? pick(BAT_PROFILES.map((entry) => entry.label), customization.profiles, config.profile) : "",
       toe: on && customization.toes.length ? pick(BAT_TOES.map((entry) => entry.label), customization.toes, config.toe) : undefined,
       handle: on ? pick(BAT_HANDLES.map((entry) => entry.label), customization.handles, config.handle) : "",
@@ -245,6 +247,8 @@ function batOptionsValid(options: BatCartItem["options"], customization: BatCust
     );
   }
   return (
+    // A weight range of the size chosen, among those the bat offers.
+    weightLabelsFor(options.size).includes(options.weight) &&
     customization.weights.includes(options.weight) &&
     customization.profiles.includes(options.profile) &&
     (options.toe === undefined || customization.toes.includes(options.toe)) &&

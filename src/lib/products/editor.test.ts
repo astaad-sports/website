@@ -169,6 +169,17 @@ describe("the product editor's fields", () => {
     expect(parsed.ok && parsed.values.customization).toEqual(NO_CUSTOMIZATION);
   });
 
+  test("each size a bat is sold in needs a weight range of its own", () => {
+    const fullSize = ["1120–1150 g", "1150–1180 g", "1180–1220 g"];
+    const parsed = parseProductForm(form({ ...BAT, customWeights: fullSize }));
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.fieldErrors.customization).toBe("Pick at least one weight for Size 6 and H / Harrow.");
+    const shOnly = parseProductForm(form({ ...BAT, sizes: ["SH", "LH"], customWeights: fullSize }));
+    expect(shOnly.ok && shOnly.values.customization?.weights).toEqual(fullSize);
+    const oneEach = parseProductForm(form({ ...BAT, customWeights: ["975–1000 g", "1075–1100 g", "1150–1180 g"] }));
+    expect(oneEach.ok).toBe(true);
+  });
+
   test("an enabled build needs a weight, a profile and a handle", () => {
     const parsed = parseProductForm(form({ ...BAT, customWeights: [] }));
     expect(parsed.ok).toBe(false);

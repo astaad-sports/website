@@ -4,7 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { countInWords, listInWords, type StoreBat } from "@/lib/products/model";
+import { countInWords, listInWords, offeredWeightGroups, type StoreBat } from "@/lib/products/model";
 
 import { Eyebrow } from "./eyebrow";
 
@@ -14,9 +14,24 @@ interface Row {
   body: string;
 }
 
+/** The Weight row: the ranges the bat offers, by size once it is sold in sizes with ranges of their own. */
+function weightRow(bat: StoreBat): Row | null {
+  const groups = offeredWeightGroups(bat);
+  if (groups.length === 0) return null;
+  const weighed = "weighed without grip and scuff sheet";
+  const body =
+    groups.length === 1
+      ? groups[0].weights.length > 1
+        ? `${countInWords(groups[0].weights.length)} ranges: ${listInWords(groups[0].weights)}, ${weighed}.`
+        : `${groups[0].weights[0]}, ${weighed}.`
+      : `${groups.map((group) => `${group.name}: ${listInWords(group.weights)}`).join(". ")}. All ${weighed}.`;
+  return { id: "weight", title: "Weight", body };
+}
+
 /** The rows that describe build options, naming only the ones this bat offers. */
-function buildRows({ customization }: StoreBat): { profile: Row | null; weight: Row | null; handle: Row; care: Row } {
-  const { enabled, profiles, weights, handles } = customization;
+function buildRows(bat: StoreBat): { profile: Row | null; weight: Row | null; handle: Row; care: Row } {
+  const { customization } = bat;
+  const { enabled, profiles, handles } = customization;
   const handleShapes = listInWords(handles.map((label) => label.toLowerCase()), "or");
   const care = "Oil lightly twice a season, keep the scuff sheet on, and store dry and out of direct sun.";
   return {
@@ -30,16 +45,7 @@ function buildRows({ customization }: StoreBat): { profile: Row | null; weight: 
               : `${profiles[0]}, shaped by hand before pressing.`,
         }
       : null,
-    weight: enabled
-      ? {
-          id: "weight",
-          title: "Weight",
-          body:
-            weights.length > 1
-              ? `${countInWords(weights.length)} ranges: ${listInWords(weights)}, weighed without grip and scuff sheet.`
-              : `${weights[0]}, weighed without grip and scuff sheet.`,
-        }
-      : null,
+    weight: enabled ? weightRow(bat) : null,
     handle: {
       id: "handle",
       title: "Handle",
