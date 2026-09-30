@@ -16,7 +16,7 @@ import {
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { builderImage, countInWords, listInWords, standardBatConfig, type StoreBat } from "@/lib/products/model";
+import { countInWords, listInWords, standardBatConfig, type StoreBat } from "@/lib/products/model";
 import { findVariant, startingVariant } from "@/lib/products/variants";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
@@ -151,11 +151,11 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
                 {bat.offer && <OfferNote offer={bat.offer} tone="dark" className="mt-1" />}
               </div>
             </div>
-            {/* The bat's front view, with the engraving cut into the lower blade. The photo is
+            {/* The bat's face, with the engraving cut into the lower blade. The photo is
                 centred and fills the height, so the blade sits the same way for every bat. */}
             <div className="relative mx-auto mt-6 h-[360px] w-[142px] [container-type:size] md:absolute md:top-24 md:left-[196px] md:mt-0 md:h-[390px] md:w-[168px]">
               <Image
-                src={builderImage(bat)}
+                src={bat.faceImage}
                 alt={`Preview of your ${bat.name} bat`}
                 fill
                 sizes="168px"

@@ -17,7 +17,6 @@ import {
   kitGear,
   listInWords,
   NO_CUSTOMIZATION,
-  builderImage,
   normaliseCustomization,
   offeredWeightGroups,
   seedProductRows,
@@ -279,9 +278,14 @@ describe("words on the page", () => {
 });
 
 describe("the builder's photo", () => {
-  test("the second photo is engraved, or the only one", () => {
-    const photos = [{ url: "/angled.webp", position: 0 }, { url: "/front.webp", position: 1 }];
-    expect(builderImage(findStoreBat(catalogueWith({ goat: { images: photos } }), "goat")!)).toBe("/front.webp");
-    expect(builderImage(findStoreBat(seeded, "goat")!)).toBe(findStoreBat(seeded, "goat")!.images[0]);
+  test("the face photo is engraved, or the first one", () => {
+    const photos = [
+      { url: "/angled.webp", position: 0 },
+      { url: "/back.webp", position: 1 },
+      { url: "/face.webp", position: 2, face: true },
+    ];
+    expect(findStoreBat(catalogueWith({ goat: { images: photos } }), "goat")!.faceImage).toBe("/face.webp");
+    expect(findStoreBat(catalogueWith({ goat: { images: photos.slice(0, 2) } }), "goat")!.faceImage).toBe("/angled.webp");
+    expect(findStoreBat(seeded, "goat")!.faceImage).toBe(findStoreBat(seeded, "goat")!.images[0]);
   });
 });

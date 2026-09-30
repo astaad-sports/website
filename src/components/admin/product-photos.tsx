@@ -3,10 +3,11 @@
 import { startTransition, useEffect, useOptimistic, useRef, useState, type DragEvent } from "react";
 import Image from "next/image";
 import { Dialog } from "@base-ui/react/dialog";
-import { ArrowDown, ArrowUp, CircleAlert, Ellipsis, ImagePlus, LoaderCircle, RefreshCw, Star, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CircleAlert, Ellipsis, ImagePlus, LoaderCircle, PenLine, RefreshCw, Star, Trash2 } from "lucide-react";
 
 import {
   deletePhoto,
+  markFacePhoto,
   movePhoto,
   replacePhoto,
   uploadPhoto,
@@ -22,17 +23,23 @@ import { BUTTON_BASE, BUTTON_SECONDARY, HAIRLINE_LIST } from "./styles";
 export interface EditorPhoto {
   id: string;
   url: string;
+  /** Bats: the photo the builders engrave a name on (see markFacePhoto). */
+  face: boolean;
 }
 
 type PhotoAction = (previous: ProductActionState, form: FormData) => Promise<ProductActionState>;
 type Move = "first" | "up" | "down";
-type PhotoChange = { type: "move"; id: string; move: Move } | { type: "delete"; id: string };
+type PhotoChange =
+  | { type: "move"; id: string; move: Move }
+  | { type: "delete"; id: string }
+  | { type: "face"; id: string };
 type Control = "open" | "up" | "down";
 
 const SOMETHING_WRONG = "Something went wrong. Try again.";
 
-/** The photos with a move or delete applied, as the server will have them. */
+/** The photos with a move, delete or face change applied, as the server will have them. */
 function applyChange(photos: EditorPhoto[], change: PhotoChange): EditorPhoto[] {
+  if (change.type === "face") return photos.map((photo) => ({ ...photo, face: photo.id === change.id }));
   const from = photos.findIndex((photo) => photo.id === change.id);
   if (from < 0) return photos;
   if (change.type === "delete") return photos.filter((photo) => photo.id !== change.id);
@@ -81,6 +88,15 @@ function PrimaryBadge() {
   );
 }
 
+/** On the photo the builders engrave a name on. */
+function FaceBadge() {
+  return (
+    <span className="self-start rounded-xs border border-foreground px-1.5 text-[11px] leading-5 font-semibold tracking-[0.04em]">
+      Face
+    </span>
+  );
+}
+
 function ErrorLine({ message }: { message: string }) {
   return (
     <p role="alert" className="flex items-start gap-1.5 text-[13px] leading-[18px] text-danger">
@@ -99,17 +115,20 @@ const ROW_ICON_BUTTON =
 /**
  * The product's photos, primary first. Add them from the gallery or camera
  * (or drop them on desktop); each is shrunk in the browser, then uploaded one
- * at a time. Tap a photo to set it as primary, replace or delete it; the
- * arrows reorder. Moves and deletes show at once. Success messages go to the
- * editor's single toast through `onSaved`.
+ * at a time. Tap a photo to set it as primary (or, with a builder, as the
+ * face it engraves), replace or delete it; the arrows reorder. Changes show
+ * at once. Success messages go to the editor's single toast through `onSaved`.
  */
 export function ProductPhotos({
   productId,
   photos,
+  builder,
   onSaved,
 }: {
   productId: string;
   photos: EditorPhoto[];
+  /** Whether the store has a builder for this product (English willow bats), which engraves its face photo. */
+  builder?: boolean;
   onSaved: (message: string) => void;
 }) {
   const [shown, showChange] = useOptimistic(photos, applyChange);
@@ -244,6 +263,11 @@ export function ProductPhotos({
     run(movePhoto, formOf({ imageId: photo.id, move: "first" }), { type: "move", id: photo.id, move: "first" });
   }
 
+  function setFace(photo: EditorPhoto) {
+    close();
+    run(markFacePhoto, formOf({ imageId: photo.id }), { type: "face", id: photo.id });
+  }
+
   function chooseReplacement(photo: EditorPhoto) {
     replacing.current = photo.id;
     replaceInput.current?.click();
@@ -275,16 +299,21 @@ export function ProductPhotos({
                   id={controlId(photo.id, "open")}
                   type="button"
                   onClick={() => open(photo.id)}
-                  aria-label={index === 0 ? `Primary photo, ${position}, actions` : `Photo ${position}, actions`}
+                  aria-label={[index === 0 ? "Primary photo" : "Photo", position, photo.face ? "face" : null, "actions"]
+                    .filter(Boolean)
+                    .join(", ")}
                   className="-ml-1 flex min-h-16 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm pr-2 pl-1 text-left transition-colors hover:bg-surface-sunken/60"
                 >
                   <Thumb url={photo.url} size={64} />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    {index === 0 ? (
-                      <PrimaryBadge />
-                    ) : (
-                      <span className="text-[15px] leading-[22px] font-semibold">Photo {index + 1}</span>
-                    )}
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {index === 0 ? (
+                        <PrimaryBadge />
+                      ) : (
+                        <span className="text-[15px] leading-[22px] font-semibold">Photo {index + 1}</span>
+                      )}
+                      {photo.face && <FaceBadge />}
+                    </span>
                     <span className="text-[13px] leading-[18px] text-ink-muted tabular-nums">{position}</span>
                   </span>
                   <Ellipsis className="size-5 shrink-0 text-ink-muted" strokeWidth={1.5} aria-hidden="true" />
@@ -365,8 +394,8 @@ export function ProductPhotos({
           </p>
         </div>
         <FieldHelp>
-          JPG, PNG or WebP. Cards show the first photo. On an English willow bat the builder engraves the second, so
-          make that a straight front view, handle to toe.
+          JPG, PNG or WebP. Cards show the first photo.
+          {builder && " The builder engraves the face photo: mark the straight view of the face, handle to toe."}
         </FieldHelp>
         <p role="status" className={cn("flex items-center gap-2 text-[13px] leading-[18px] font-semibold", !working && "sr-only")}>
           {working && <LoaderCircle className="size-4 shrink-0 animate-spin" strokeWidth={2} aria-hidden="true" />}
@@ -454,6 +483,7 @@ export function ProductPhotos({
                       </Dialog.Title>
                       <Dialog.Description className="text-[13px] leading-[18px] text-ink-muted tabular-nums">
                         {selectedIndex + 1} of {shown.length}
+                        {selected.face && " · Face photo"}
                       </Dialog.Description>
                     </span>
                   </div>
@@ -463,6 +493,14 @@ export function ProductPhotos({
                         <button type="button" onClick={() => setPrimary(selected)} className={MENU_ITEM}>
                           <Star strokeWidth={1.5} aria-hidden="true" />
                           Set as primary photo
+                        </button>
+                      </li>
+                    )}
+                    {builder && !selected.face && (
+                      <li className="border-b border-border">
+                        <button type="button" onClick={() => setFace(selected)} className={MENU_ITEM}>
+                          <PenLine strokeWidth={1.5} aria-hidden="true" />
+                          Use as face photo
                         </button>
                       </li>
                     )}

@@ -391,6 +391,8 @@ export const productImages = pgTable(
     pathname: text("pathname"),
     alt: text("alt"),
     position: integer("position").notNull().default(0),
+    /** Bats: the straight view of the face, which the builders engrave a name on. At most one per product. */
+    face: boolean("face").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("product_images_product_position_idx").on(table.productId, table.position)]

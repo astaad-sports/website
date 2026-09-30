@@ -17,7 +17,7 @@ import {
   ENGRAVING_MAX,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { builderImage, standardBatConfig, startingWeight, type StoreBat } from "@/lib/products/model";
+import { standardBatConfig, startingWeight, type StoreBat } from "@/lib/products/model";
 import {
   findVariant,
   otherPrices,
@@ -290,10 +290,10 @@ export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliv
               <span aria-hidden="true" className="block size-2 rounded-full bg-success" />
               Live preview
             </span>
-            {/* The front view is centred and fills the height, so the blade sits the same way for every bat. */}
+            {/* The face is centred and fills the height, so the blade sits the same way for every bat. */}
             <div className="relative mx-auto mt-14 h-[360px] w-[142px] [container-type:size] xl:mt-[70px] xl:h-[482px] xl:w-[190px]">
               <Image
-                src={builderImage(bat)}
+                src={bat.faceImage}
                 alt={`${bat.name} preview with your configuration`}
                 fill
                 sizes="190px"

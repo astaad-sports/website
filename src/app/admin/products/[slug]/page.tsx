@@ -43,7 +43,7 @@ function toEditorProduct(product: ProductWithAllImages): EditorProduct {
     availability: product.availability,
     customization: product.customization,
     updatedAt: product.updatedAt.getTime(),
-    photos: product.images.map((image) => ({ id: image.id, url: image.url })),
+    photos: product.images.map((image) => ({ id: image.id, url: image.url, face: image.face })),
   };
 }
 

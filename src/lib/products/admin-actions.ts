@@ -14,6 +14,7 @@ import {
   getProductById,
   getProductImage,
   reorderProductImages,
+  setFaceImage,
   replaceProductImage,
   setProductAvailability,
   setProductStocks,
@@ -291,4 +292,14 @@ export async function movePhoto(_previous: ProductActionState, form: FormData): 
   await reorderProductImages(product.id, ids);
   productsChanged();
   return done(parsed.data.move === "first" ? "Set as primary photo" : "Photo moved");
+}
+
+/** Make a photo the bat's face, the one the builders engrave a name on. Posts `imageId`. */
+export async function markFacePhoto(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
+  if (!(await signedInAdmin())) return NOT_ADMIN;
+  const id = z.uuid().safeParse(form.get("imageId"));
+  if (!id.success) return failed(SOMETHING_WRONG);
+  if (!(await setFaceImage(id.data))) return failed("This photo no longer exists.");
+  productsChanged();
+  return done("Set as face photo");
 }

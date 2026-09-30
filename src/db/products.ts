@@ -446,6 +446,20 @@ export async function reorderProductImages(productId: string, orderedIds: string
   });
 }
 
+/** Make this photo its product's face, the one the builders engrave, and no other. Undefined when the photo is gone. */
+export async function setFaceImage(imageId: string): Promise<ProductImage | undefined> {
+  return getDb().transaction(async (tx) => {
+    const [image] = await tx.select().from(productImages).where(eq(productImages.id, imageId)).limit(1);
+    if (!image) return undefined;
+    await tx
+      .update(productImages)
+      .set({ face: false })
+      .where(and(eq(productImages.productId, image.productId), eq(productImages.face, true)));
+    await tx.update(productImages).set({ face: true }).where(eq(productImages.id, imageId));
+    return { ...image, face: true };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Duplicating
 
@@ -545,6 +559,7 @@ export async function duplicateProduct(id: string): Promise<Product | undefined>
           pathname: image.pathname,
           alt: image.alt,
           position: image.position,
+          face: image.face,
         }))
       );
     }

@@ -134,6 +134,13 @@
       "when": 1790797239116,
       "tag": "0018_size_weights",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790799952403,
+      "tag": "0019_face_photo",
+      "breakpoints": true
     }
   ]
 }

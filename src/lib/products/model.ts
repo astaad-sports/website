@@ -305,6 +305,11 @@ export interface StoreBat extends Omit<Bat, "rating" | "reviews">, OfferPricing,
   /** Counted stock across its sizes, or null when not counted. */
   stockLeft: number | null;
   images: string[];
+  /**
+   * The straight view of the face, which the builders engrave a name on: the
+   * photo marked as the face in the admin, or the first photo.
+   */
+  faceImage: string;
   customization: BatCustomization;
 }
 
@@ -367,7 +372,9 @@ function sizePricing(row: ProductWithImages, context: CatalogueContext): (size: 
   };
 }
 
-export type ProductWithImages = Product & { images: Pick<ProductImage, "url" | "position">[] };
+export type ProductWithImages = Product & {
+  images: (Pick<ProductImage, "url" | "position"> & Partial<Pick<ProductImage, "face">>)[];
+};
 
 /** The built-in cut-out for a gear category, standing in for a product with no photos. */
 function sampleImage(category: GearCategorySlug): string {
@@ -398,7 +405,8 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
   const seeded = BATS.find((bat) => bat.slug === row.slug);
   const { status, stockLeft } = storeStock(row);
   const { regularPrice, price, offer, mrp, off } = pricing(row, context);
-  const images = [...row.images].sort((a, b) => a.position - b.position).map((image) => image.url);
+  const sorted = [...row.images].sort((a, b) => a.position - b.position);
+  const images = sorted.map((image) => image.url);
   const grade = row.grade ?? subcategoryName(row.subcategory) ?? "";
   return {
     id: row.id,
@@ -420,6 +428,7 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     soldOut: status === "out",
     stockLeft,
     images: images.length ? images : [BAT_IMAGE],
+    faceImage: sorted.find((image) => image.face)?.url ?? images[0] ?? BAT_IMAGE,
     rating: context.ratings?.[row.id] ?? null,
     customization: customizationFor(row.kind, row.subcategory, row.customization),
     ...storeOffered(row, sizePricing(row, context)),
@@ -693,15 +702,6 @@ export function startingBatConfig(customization: BatCustomization, base: BatConf
     knock: on && customization.matchReady && base.knock,
     scuff: on && customization.scuffSheet && base.scuff,
   };
-}
-
-/**
- * The photo a builder engraves: the second, which for the English willow bats
- * is the straight front view from handle to toe that BladeEngraving is drawn
- * for (the first is the angled hero shot cards show), or the only one.
- */
-export function builderImage(bat: Pick<StoreBat, "images">): string {
-  return bat.images[1] ?? bat.images[0];
 }
 
 /** "Only 2 left" on a product page when a counted product is running low; null otherwise. */

@@ -694,6 +694,7 @@ export function ProductEditor({
               <ProductPhotos
                 productId={product.id}
                 photos={product.photos}
+                builder={kind === "bat" && values.subcategory === "english-willow"}
                 onSaved={(message) => setPhotoToast({ message, at: Date.now() })}
               />
             ) : (
