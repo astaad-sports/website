@@ -5,8 +5,8 @@ import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
-import type { StoreBat } from "@/lib/products/model";
-import { otherPrices, startingVariant } from "@/lib/products/variants";
+import { standardBatConfig, type StoreBat } from "@/lib/products/model";
+import { findVariant, otherPrices, startingVariant, variantSoldOut } from "@/lib/products/variants";
 import type { PublicReview } from "@/lib/reviews/model";
 
 import type { DeliveryTerms } from "./delivery";
@@ -22,16 +22,20 @@ import { WishlistButton } from "./wishlist-button";
  * The product hero: the gallery on the left; the wishlist heart, name, rating
  * (from the bat's own published reviews), stock, price (with any running
  * offer), delivery promises and actions on the right. From xl it is 760px
- * tall, growing when an offer or a dispatch time needs the room.
+ * tall, growing when an offer or a dispatch time needs the room. With `size`
+ * (from the address, see sizeInAddress), the price and the cart button are
+ * that size's.
  */
 export function ProductHero({
   bat,
   delivery,
   reviews,
+  size,
 }: {
   bat: StoreBat;
   delivery: DeliveryTerms;
   reviews: PublicReview[];
+  size?: string;
 }) {
   const highlights = [
     { icon: Leaf, label: bat.grade },
@@ -39,10 +43,15 @@ export function ProductHero({
     { icon: Target, label: "Great Control" },
     { icon: Zap, label: "Game Ready" },
   ];
-  const discounted = bat.mrp > bat.price;
+  // The size the address asks for, and the bat at that size's price.
+  const chosen = size ? findVariant(bat, size) : undefined;
+  const shown = chosen
+    ? { ...bat, price: chosen.price, regularPrice: chosen.regularPrice, mrp: chosen.mrp, off: chosen.off }
+    : bat;
+  const discounted = shown.mrp > shown.price;
   // Sizes with a price of their own, and the sizes the price above is for.
-  const standard = startingVariant(bat);
-  const others = otherPrices(bat);
+  const standard = chosen ?? startingVariant(bat);
+  const others = otherPrices(shown);
   const atThisPrice = bat.sizes.filter((size) => !others.some((variant) => variant.size === size.code));
 
   return (
@@ -77,15 +86,15 @@ export function ProductHero({
         <div className="flex flex-col gap-1 border-y border-border py-4">
           <div className="flex flex-wrap items-center gap-3.5">
             <span className="text-[40px] leading-[44px] font-bold tracking-[-0.02em]">
-              {formatPrice(bat.price)}
+              {formatPrice(shown.price)}
             </span>
             {discounted && (
               <>
                 <span className="text-lg leading-6 text-ink-subtle line-through">
-                  {formatPrice(bat.mrp)}
+                  {formatPrice(shown.mrp)}
                 </span>
                 <span className="h-[26px] rounded-xs bg-brand-yellow px-2.5 text-xs leading-[26px] font-bold tracking-[0.06em] text-on-yellow">
-                  {bat.off}% OFF
+                  {shown.off}% OFF
                 </span>
               </>
             )}
@@ -93,7 +102,7 @@ export function ProductHero({
           {bat.offer && <OfferNote offer={bat.offer} />}
           <span className="text-[13px] leading-[18px] text-ink-muted">
             {discounted
-              ? `You save ${formatPrice(bat.mrp - bat.price)} · inclusive of all taxes`
+              ? `You save ${formatPrice(shown.mrp - shown.price)} · inclusive of all taxes`
               : "Inclusive of all taxes"}
           </span>
           {others.length > 0 && (
@@ -120,17 +129,19 @@ export function ProductHero({
             <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
           </Button>
           <AddToCartButton
-            item={batCartItem(bat)}
+            item={batCartItem(bat, standardBatConfig(bat, chosen?.size))}
             productName={`Astaad ${bat.name}`}
-            soldOut={bat.soldOut}
+            soldOut={chosen ? variantSoldOut(bat, chosen) : bat.soldOut}
             size="lg"
             variant="secondary"
             className="h-13 w-full rounded-xs border border-border bg-surface-raised text-sm font-bold tracking-[0.1em] uppercase hover:border-border-strong hover:bg-surface-raised"
           >
             <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
             Add to cart · standard build
-            {/* Named when the price above is not this size's. */}
-            {standard.regularPrice !== bat.regularPrice && ` · ${standard.sizeLabel} ${formatPrice(standard.price)}`}
+            {/* The size is named when the address chose it, or when the price above is not this size's. */}
+            {chosen
+              ? ` · ${chosen.sizeLabel}`
+              : standard.regularPrice !== bat.regularPrice && ` · ${standard.sizeLabel} ${formatPrice(standard.price)}`}
           </AddToCartButton>
         </div>
         <ul aria-label="Highlights" className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3">

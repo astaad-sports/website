@@ -29,6 +29,7 @@ import type { ProductRating } from "@/lib/reviews/model";
 import {
   countedStock,
   defaultOffered,
+  findVariant,
   sizeOptions,
   sizePrice,
   startingVariant,
@@ -686,11 +687,29 @@ export function builderBat(catalogue: StoreCatalogue): StoreBat | undefined {
 /**
  * A bat's standard build, which its builder starts on and its cart buttons
  * add: in SH if that can be bought, otherwise the first size that can, with
- * the usual build options in that size (see startingBatConfig).
+ * the usual build options in that size (see startingBatConfig). With `size`,
+ * a size the bat is sold in (see sizeInAddress), the standard build in that size.
  */
-export function standardBatConfig(bat: Pick<StoreBat, "customization"> & Sellable): BatConfig {
-  const size = startingVariant(bat).size ?? DEFAULT_BAT_CONFIG.size;
-  return startingBatConfig(bat.customization, { ...DEFAULT_BAT_CONFIG, size });
+export function standardBatConfig(bat: Pick<StoreBat, "customization"> & Sellable, size?: string | null): BatConfig {
+  const asked = size ? findVariant(bat, size)?.size : null;
+  const chosen = asked ?? startingVariant(bat).size ?? DEFAULT_BAT_CONFIG.size;
+  return startingBatConfig(bat.customization, { ...DEFAULT_BAT_CONFIG, size: chosen });
+}
+
+/**
+ * A bat's page with one size chosen: "/bats/goat?size=6". Search engines are
+ * given each size as a product of its own at this address, so the page must
+ * open on that size, with its price (see sizeInAddress).
+ */
+export function batSizeHref(slug: string, size: string): string {
+  return `/bats/${slug}?size=${encodeURIComponent(size)}`;
+}
+
+/** The size a bat page's address asks for (`?size=6`, in any case), when the bat is sold in it. */
+export function sizeInAddress(bat: Pick<StoreBat, "sizes">, value: string | string[] | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const asked = value.trim().toLowerCase();
+  return bat.sizes.find((size) => size.code.toLowerCase() === asked)?.code;
 }
 
 /** `index` when its label is offered, otherwise the first label offered, otherwise `index` as it is. */

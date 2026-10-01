@@ -16,11 +16,11 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { getBatRange, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
-import { findStoreBat } from "@/lib/products/model";
+import { findStoreBat, sizeInAddress } from "@/lib/products/model";
 import { reviewsOfProduct } from "@/lib/reviews/model";
 import { getPublishedReviews } from "@/lib/reviews/store";
 import { pageMetadata, productShareImage } from "@/lib/seo/metadata";
-import { breadcrumbJsonLd, productJsonLd, realPhotos } from "@/lib/seo/structured-data";
+import { batSizeListings, breadcrumbJsonLd, productJsonLd, realPhotos } from "@/lib/seo/structured-data";
 import { batDescription, batDescriptor, batTitle } from "@/lib/seo/titles";
 import { getStoreSettings } from "@/lib/settings/store";
 import { siteUrl } from "@/lib/site";
@@ -44,12 +44,14 @@ export async function generateMetadata({ params }: PageProps<"/bats/[slug]">): P
   });
 }
 
-export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
-  const { slug } = await params;
+export default async function BatPage({ params, searchParams }: PageProps<"/bats/[slug]">) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const [catalogue, settings, published] = await Promise.all([getStoreCatalogue(), getStoreSettings(), getPublishedReviews()]);
   const bat = findStoreBat(catalogue, slug);
   if (!bat) notFound();
   const reviews = reviewsOfProduct(published, bat.id);
+  // "?size=6" opens the page on that size: search engines list each size at such an address.
+  const size = sizeInAddress(bat, query.size);
 
   const cta = bat.customization.enabled ? `Customize your ${bat.name}` : `Choose your ${bat.name}`;
   const delivery = deliveryTerms(settings);
@@ -78,13 +80,14 @@ export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
           reviews,
           deliveryFeePaise: delivery.feePaise,
           base,
+          group: { id: bat.slug, sizes: batSizeListings(bat) },
         })}
       />
       <JsonLd data={breadcrumbJsonLd(trail, base)} />
       <SiteHeader activeHref={getCategory("bats")?.href} />
       <main className="flex-1">
-        <ProductHero bat={bat} delivery={delivery} reviews={reviews} />
-        <ProductBuilder key={bat.slug} bat={bat} deliveryFeePaise={delivery.feePaise} />
+        <ProductHero bat={bat} delivery={delivery} reviews={reviews} size={size} />
+        <ProductBuilder key={`${bat.slug}:${size ?? ""}`} bat={bat} deliveryFeePaise={delivery.feePaise} size={size} />
         <ProductStory bat={bat} />
         <ProductDetails bat={bat} />
         <ProductReviews productId={bat.id} productName={bat.name} reviews={reviews} />

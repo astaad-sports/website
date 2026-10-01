@@ -224,11 +224,20 @@ function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreV
  * The configurator (size first, then weight, profile, toe, handle, engraving,
  * knocking, scuff sheet) with a live preview and a pinned order summary.
  * Only the options this bat offers appear. A bat that cannot be customised
- * gets just the size picker, with its price and Add to cart.
+ * gets just the size picker, with its price and Add to cart. `size` (from the
+ * address, see sizeInAddress) is the size it starts on.
  */
-export function ProductBuilder({ bat, deliveryFeePaise }: { bat: StoreBat; deliveryFeePaise: number }) {
+export function ProductBuilder({
+  bat,
+  deliveryFeePaise,
+  size: startingSize,
+}: {
+  bat: StoreBat;
+  deliveryFeePaise: number;
+  size?: string;
+}) {
   const custom = bat.customization;
-  const { config, update } = useBatConfig(standardBatConfig(bat));
+  const { config, update } = useBatConfig(standardBatConfig(bat, startingSize));
   const item = batCartItem(bat, config);
   // The bat may have changed under the page (a size removed): fall back to where the picker starts.
   const size = findVariant(bat, config.size) ?? startingVariant(bat);

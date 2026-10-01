@@ -1,9 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import type { StoreBat } from "@/lib/products/model";
+import { findStoreBat, seedProductRows, toStoreCatalogue, type StoreBat } from "@/lib/products/model";
 import { DEFAULT_SETTINGS } from "@/lib/settings/model";
 
-import { breadcrumbJsonLd, productJsonLd, realPhotos, serialiseJsonLd, storeJsonLd, type JsonLd } from "./structured-data";
+import {
+  batSizeListings,
+  breadcrumbJsonLd,
+  productJsonLd,
+  realPhotos,
+  serialiseJsonLd,
+  storeJsonLd,
+  type JsonLd,
+} from "./structured-data";
 
 const BASE = "https://astaadsports.com";
 
@@ -51,14 +59,8 @@ describe("a product's offers", () => {
     });
   });
 
-  test("sizes with prices of their own run from the lowest to the highest", () => {
-    expect(offers(data(product([16499, 12999, 16499])))).toMatchObject({
-      "@type": "AggregateOffer",
-      lowPrice: 12999,
-      highPrice: 16499,
-      offerCount: 2,
-      priceCurrency: "INR",
-    });
+  test("sizes with prices of their own, and no sizes to list, fall back to the price the page shows", () => {
+    expect(offers(data(product([16499, 12999, 16499])))).toMatchObject({ "@type": "Offer", price: 16499 });
   });
 
   test("a product with no variants uses its own price", () => {
@@ -81,6 +83,102 @@ describe("a product's offers", () => {
       shippingRate: { value: 99, currency: "INR" },
       shippingDestination: { addressCountry: "IN" },
     });
+  });
+});
+
+describe("a bat's sizes as products of their own", () => {
+  const goat = findStoreBat(
+    toStoreCatalogue(
+      seedProductRows().map((row) =>
+        row.slug === "goat"
+          ? {
+              ...row,
+              sizes: ["6", "SH", "LH"],
+              sizePrices: { "6": { pricePaise: 799900, mrpPaise: null } },
+              // Counted stock: none of Size 6 left.
+              stock: 6,
+              variantStock: { "6": 0, SH: 4, LH: 2 },
+            }
+          : row
+      )
+    ),
+    "goat"
+  )!;
+  const sizes = batSizeListings(goat);
+
+  test("each size has its own identifier, address, price and stock", () => {
+    expect(sizes).toEqual([
+      { id: "goat-6", label: "Size 6", detail: expect.any(String), path: "/bats/goat?size=6", price: 7999, soldOut: true },
+      { id: "goat-sh", label: "SH / Full Size", detail: expect.any(String), path: "/bats/goat?size=SH", price: 16499, soldOut: false },
+      { id: "goat-lh", label: "LH / Long Handle", detail: expect.any(String), path: "/bats/goat?size=LH", price: 16499, soldOut: false },
+    ]);
+  });
+
+  const grouped = productJsonLd({
+    product: goat,
+    name: "Astaad G.O.A.T Grade 1 English Willow Cricket Bat",
+    description: "G.O.A.T · Grade 1 English Willow.",
+    category: "Cricket Bats",
+    path: "/bats/goat",
+    reviews: [{ name: "Rohit", rating: 5, body: "Superb" }],
+    deliveryFeePaise: 0,
+    base: BASE,
+    group: { id: goat.slug, sizes },
+  });
+  const variants = grouped.hasVariant as Record<string, unknown>[];
+
+  test("the bat is a group that varies by size, with the rating and photos on the group", () => {
+    expect(grouped).toMatchObject({
+      "@type": "ProductGroup",
+      name: "Astaad G.O.A.T Grade 1 English Willow Cricket Bat",
+      productGroupID: "goat",
+      variesBy: ["https://schema.org/size"],
+      url: "https://astaadsports.com/bats/goat",
+      brand: { "@type": "Brand", name: "Astaad" },
+      aggregateRating: { ratingValue: 5, ratingCount: 1 },
+    });
+    expect(grouped).not.toHaveProperty("offers");
+    expect(variants).toHaveLength(3);
+  });
+
+  test("each size is a product with one exact price, its stock and the address that opens on it", () => {
+    expect(variants[0]).toMatchObject({
+      "@type": "Product",
+      sku: "goat-6",
+      name: "Astaad G.O.A.T Grade 1 English Willow Cricket Bat, Size 6",
+      size: "Size 6",
+      offers: {
+        "@type": "Offer",
+        price: 7999,
+        priceCurrency: "INR",
+        availability: "https://schema.org/OutOfStock",
+        url: "https://astaadsports.com/bats/goat?size=6",
+        hasMerchantReturnPolicy: { merchantReturnDays: 7 },
+      },
+    });
+    expect(variants[1]).toMatchObject({
+      sku: "goat-sh",
+      offers: { price: 16499, availability: "https://schema.org/InStock", url: "https://astaadsports.com/bats/goat?size=SH" },
+    });
+    // The size is named in the description, and the description's own full stop is not doubled.
+    expect(variants[0].description).toStartWith("G.O.A.T · Grade 1 English Willow. Size: Size 6 (");
+    expect(new Set(variants.map((variant) => variant.sku)).size).toBe(3);
+  });
+
+  test("a bat sold in one size stays a single product", () => {
+    const single = productJsonLd({
+      product: goat,
+      name: "x",
+      description: "x",
+      category: "x",
+      path: "/bats/goat",
+      reviews: [],
+      deliveryFeePaise: 0,
+      base: BASE,
+      group: { id: goat.slug, sizes: sizes.slice(1, 2) },
+    });
+    expect(single["@type"]).toBe("Product");
+    expect(single).toHaveProperty("offers");
   });
 });
 
@@ -151,14 +249,15 @@ describe("the returns policy", () => {
     });
   });
 
-  test("a product with one price repeats it; a price range cannot carry one", () => {
-    expect(offers(data(product([16499]))).hasMerchantReturnPolicy).toMatchObject({
+  test("every offer repeats it in short", () => {
+    expect(offers(data(product([16499]))).hasMerchantReturnPolicy).toEqual({
       "@type": "MerchantReturnPolicy",
       applicableCountry: "IN",
+      returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
       merchantReturnDays: 7,
+      returnMethod: "https://schema.org/ReturnByMail",
       returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
     });
-    expect(offers(data(product([16499, 12999])))).not.toHaveProperty("hasMerchantReturnPolicy");
   });
 });
 

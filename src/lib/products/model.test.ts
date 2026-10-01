@@ -5,6 +5,7 @@ import { BAT_WEIGHTS, DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
 
 import {
   batCounts,
+  batSizeHref,
   batsInSubcategory,
   builderBat,
   countInWords,
@@ -20,6 +21,7 @@ import {
   normaliseCustomization,
   offeredWeightGroups,
   seedProductRows,
+  sizeInAddress,
   standardBatConfig,
   startingBatConfig,
   startingWeight,
@@ -304,5 +306,30 @@ describe("the sides of a bat", () => {
     expect(turnViews({ face: "/f", back: "/b", left: "/l" }).map((view) => view.url)).toEqual(["/f", "/b", "/l"]);
     expect(turnViews({ face: "/f", right: "/r", left: "/l" })).toEqual([]);
     expect(findStoreBat(seeded, "goat")!.turn).toEqual([]);
+  });
+});
+
+describe("a size in a bat page's address", () => {
+  const goat = findStoreBat(catalogueWith({ goat: { sizes: ["6", "SH", "LH"] } }), "goat")!;
+
+  test("the address names a size the bat is sold in, in any case", () => {
+    expect(batSizeHref("goat", "SH")).toBe("/bats/goat?size=SH");
+    expect(sizeInAddress(goat, "SH")).toBe("SH");
+    expect(sizeInAddress(goat, "lh")).toBe("LH");
+    expect(sizeInAddress(goat, " 6 ")).toBe("6");
+  });
+
+  test("anything else is ignored", () => {
+    expect(sizeInAddress(goat, "H")).toBeUndefined();
+    expect(sizeInAddress(goat, "")).toBeUndefined();
+    expect(sizeInAddress(goat, undefined)).toBeUndefined();
+    expect(sizeInAddress(goat, ["6", "SH"])).toBeUndefined();
+  });
+
+  test("the standard build starts in that size, with that size's weights", () => {
+    expect(standardBatConfig(goat, "6")).toMatchObject({ size: "6" });
+    expect(standardBatConfig(goat, "LH")).toMatchObject({ size: "LH" });
+    // A size the bat is not sold in falls back to where the picker starts.
+    expect(standardBatConfig(goat, "H").size).toBe(standardBatConfig(goat).size);
   });
 });
