@@ -1,8 +1,8 @@
 // Structured data (schema.org JSON-LD): what search engines read to show a
 // product's price, stock and stars, the trail of pages above it, and who the
 // store is. Pure: `base` is the site's address (see siteUrl).
-import { batSizeHref, type StoreBat } from "@/lib/products/model";
-import { findVariant, variantSoldOut } from "@/lib/products/variants";
+import { sizeHref, slugify, type StoreBat } from "@/lib/products/model";
+import { variantSoldOut } from "@/lib/products/variants";
 import { summariseReviews, type PublicReview } from "@/lib/reviews/model";
 import type { Settings } from "@/lib/settings/model";
 import { absoluteUrl } from "@/lib/site";
@@ -153,24 +153,62 @@ export interface SizeListing {
 }
 
 /**
- * A bat's sizes as listings: each with its own price and stock, at the
- * address that opens the bat's page on it (see batSizeHref).
+ * A product's sizes as listings: each with its own price and stock, at the
+ * address that opens the product's page on it (see sizeHref). `path` is the
+ * product's page. A size sold right- and left-handed is in stock while
+ * either hand is.
  */
-export function batSizeListings(bat: Pick<StoreBat, "slug" | "sizes" | "variants" | "soldOut">): SizeListing[] {
-  return bat.sizes.flatMap((size) => {
-    const variant = findVariant(bat, size.code);
-    if (!variant) return [];
+export function sizeListings(
+  product: Pick<StoreBat, "slug" | "sizes" | "variants" | "soldOut">,
+  path: string
+): SizeListing[] {
+  return product.sizes.flatMap((size) => {
+    const inSize = product.variants.filter((variant) => variant.size === size.code);
+    if (inSize.length === 0) return [];
     return [
       {
-        id: `${bat.slug}-${size.code.toLowerCase()}`,
+        id: `${product.slug}-${slugify(size.code)}`,
         label: size.label,
         detail: size.hint,
-        path: batSizeHref(bat.slug, size.code),
-        price: variant.price,
-        soldOut: variantSoldOut(bat, variant),
+        path: sizeHref(path, size.code),
+        price: inSize[0].price,
+        soldOut: inSize.every((variant) => variantSoldOut(product, variant)),
       },
     ];
   });
+}
+
+/** The colour words a product's name can carry, as the store writes them. */
+const COLOURS = [
+  "Black",
+  "White",
+  "Red",
+  "Blue",
+  "Navy",
+  "Green",
+  "Yellow",
+  "Orange",
+  "Pink",
+  "Purple",
+  "Grey",
+  "Gray",
+  "Silver",
+  "Gold",
+  "Maroon",
+  "Brown",
+];
+
+/**
+ * The colour a gear product's name states: "Legacy Pro Pads Black" is
+ * "Black", and two colours are joined the way shopping listings want them,
+ * "Black/Red". Undefined when the name states none. Gear is listed once per
+ * colour, so the name is where its colour is kept. Not for bats: "Black
+ * Edition" is a model, not a colour.
+ */
+export function colourInName(name: string): string | undefined {
+  const words = name.split(/[^A-Za-z]+/).map((word) => word.toLowerCase());
+  const found = COLOURS.filter((colour) => words.includes(colour.toLowerCase()));
+  return found.length ? found.join("/") : undefined;
 }
 
 /**
@@ -181,7 +219,8 @@ export function batSizeListings(bat: Pick<StoreBat, "slug" | "sizes" | "variants
  * With `group`, a product sold in two or more sizes is a ProductGroup whose
  * variants are the sizes, each a product with its own price and stock: a
  * shopping listing needs one exact price, which a range of prices is not.
- * Otherwise it is one Product at the price its page shows.
+ * Otherwise it is one Product at the price its page shows, in its one size
+ * when it has one. `color` goes on the product and on each of its sizes.
  */
 export function productJsonLd({
   product,
@@ -193,6 +232,7 @@ export function productJsonLd({
   deliveryFeePaise,
   base,
   group,
+  color,
 }: {
   product: Pick<StoreBat, "images" | "price" | "variants" | "soldOut" | "offer">;
   /** As a shopper would search for it: "Astaad G.O.A.T Grade 1 English Willow Cricket Bat". */
@@ -206,6 +246,8 @@ export function productJsonLd({
   base: string;
   /** The product's identifier, which must never change (its slug), and its sizes. */
   group?: { id: string; sizes: SizeListing[] };
+  /** "Black", "Black/Red" (see colourInName). */
+  color?: string;
 }): JsonLd {
   const url = absoluteUrl(path, base);
   const images = product.images.map((src) => absoluteUrl(src, base));
@@ -217,6 +259,7 @@ export function productJsonLd({
     url,
     image: images,
     brand: { "@type": "Brand", name: "Astaad" },
+    ...(color ? { color } : {}),
     ...(average !== null
       ? {
           aggregateRating: {
@@ -255,6 +298,7 @@ export function productJsonLd({
         name: `${name}, ${size.label}`,
         description: `${words}. Size: ${size.label}${size.detail ? ` (${size.detail})` : ""}.`,
         size: size.label,
+        ...(color ? { color } : {}),
         image: images[0],
         offers: offerJsonLd(
           { price: size.price, soldOut: size.soldOut, offer: product.offer },
@@ -273,6 +317,7 @@ export function productJsonLd({
     "@type": "Product",
     name,
     ...shared,
+    ...(group?.sizes.length === 1 ? { size: group.sizes[0].label } : {}),
     offers: offerJsonLd({ price, soldOut: product.soldOut, offer: product.offer }, url, deliveryFeePaise),
   };
 }

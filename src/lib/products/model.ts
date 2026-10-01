@@ -697,19 +697,19 @@ export function standardBatConfig(bat: Pick<StoreBat, "customization"> & Sellabl
 }
 
 /**
- * A bat's page with one size chosen: "/bats/goat?size=6". Search engines are
- * given each size as a product of its own at this address, so the page must
- * open on that size, with its price (see sizeInAddress).
+ * A product's page with one size chosen: "/bats/goat?size=6". Search engines
+ * are given each size as a product of its own at this address, so the page
+ * must open on that size, with its price (see sizeInAddress).
  */
-export function batSizeHref(slug: string, size: string): string {
-  return `/bats/${slug}?size=${encodeURIComponent(size)}`;
+export function sizeHref(path: string, size: string): string {
+  return `${path}?size=${encodeURIComponent(size)}`;
 }
 
-/** The size a bat page's address asks for (`?size=6`, in any case), when the bat is sold in it. */
-export function sizeInAddress(bat: Pick<StoreBat, "sizes">, value: string | string[] | undefined): string | undefined {
+/** The size a product page's address asks for (`?size=6`, in any case), when the product is sold in it. */
+export function sizeInAddress(product: Pick<StoreOffered, "sizes">, value: string | string[] | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
   const asked = value.trim().toLowerCase();
-  return bat.sizes.find((size) => size.code.toLowerCase() === asked)?.code;
+  return product.sizes.find((size) => size.code.toLowerCase() === asked)?.code;
 }
 
 /** `index` when its label is offered, otherwise the first label offered, otherwise `index` as it is. */

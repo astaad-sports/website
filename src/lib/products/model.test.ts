@@ -5,7 +5,6 @@ import { BAT_WEIGHTS, DEFAULT_BAT_CONFIG } from "@/lib/catalogue";
 
 import {
   batCounts,
-  batSizeHref,
   batsInSubcategory,
   builderBat,
   countInWords,
@@ -21,6 +20,7 @@ import {
   normaliseCustomization,
   offeredWeightGroups,
   seedProductRows,
+  sizeHref,
   sizeInAddress,
   standardBatConfig,
   startingBatConfig,
@@ -309,11 +309,16 @@ describe("the sides of a bat", () => {
   });
 });
 
-describe("a size in a bat page's address", () => {
+describe("a size in a product page's address", () => {
   const goat = findStoreBat(catalogueWith({ goat: { sizes: ["6", "SH", "LH"] } }), "goat")!;
 
   test("the address names a size the bat is sold in, in any case", () => {
-    expect(batSizeHref("goat", "SH")).toBe("/bats/goat?size=SH");
+    expect(sizeHref("/bats/goat", "SH")).toBe("/bats/goat?size=SH");
+    // Gear sizes are words, and "Men’s" has to survive the address.
+    expect(sizeHref("/shop/helmets/club-cricket-helmet", "Large")).toBe("/shop/helmets/club-cricket-helmet?size=Large");
+    const pads = findStoreGear(seeded, "batting-pads", "pro-batting-pads")!;
+    const mens = pads.sizes[0].code;
+    expect(sizeInAddress(pads, new URLSearchParams(sizeHref("/x", mens).split("?")[1]).get("size")!)).toBe(mens);
     expect(sizeInAddress(goat, "SH")).toBe("SH");
     expect(sizeInAddress(goat, "lh")).toBe("LH");
     expect(sizeInAddress(goat, " 6 ")).toBe("6");

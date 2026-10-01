@@ -84,18 +84,21 @@ function highlightsFor(product: StoreGear): Highlight[] {
  * The gear product hero: the stage on the left; the wishlist heart, name,
  * rating (from the product's own published reviews), stock, price (with any
  * running offer), delivery promises, options and highlights on the right. From xl it is at
- * least 760px tall, growing with the options beside the stage.
+ * least 760px tall, growing with the options beside the stage. `size` (from
+ * the address, see sizeInAddress) is the size the options start on.
  */
 export function GearHero({
   product,
   category,
   delivery,
   reviews,
+  size,
 }: {
   product: StoreGear;
   category: StoreCategory;
   delivery: DeliveryTerms;
   reviews: PublicReview[];
+  size?: string;
 }) {
   // The % OFF chip and the saving show only while an offer runs; an MRP alone
   // is struck through as before. The struck price is then the MRP, or the
@@ -163,6 +166,8 @@ export function GearHero({
         </div>
         <ProductPromises delivery={delivery} />
         <GearOptions
+          key={size ?? ""}
+          size={size}
           product={{
             slug: product.slug,
             name: product.name,

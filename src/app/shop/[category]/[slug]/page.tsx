@@ -14,11 +14,11 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { GEAR_CATEGORY_CONTENT, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
-import { findStoreGear } from "@/lib/products/model";
+import { findStoreGear, sizeInAddress } from "@/lib/products/model";
 import { reviewsOfProduct } from "@/lib/reviews/model";
 import { getPublishedReviews } from "@/lib/reviews/store";
 import { pageMetadata, productShareImage } from "@/lib/seo/metadata";
-import { breadcrumbJsonLd, productJsonLd, realPhotos } from "@/lib/seo/structured-data";
+import { breadcrumbJsonLd, colourInName, productJsonLd, realPhotos, sizeListings } from "@/lib/seo/structured-data";
 import { gearDescription, gearDetails, gearTitle } from "@/lib/seo/titles";
 import { getStoreSettings } from "@/lib/settings/store";
 import { siteUrl } from "@/lib/site";
@@ -44,13 +44,15 @@ export async function generateMetadata({
   });
 }
 
-export default async function GearPage({ params }: PageProps<"/shop/[category]/[slug]">) {
-  const { category: categorySlug, slug } = await params;
+export default async function GearPage({ params, searchParams }: PageProps<"/shop/[category]/[slug]">) {
+  const [{ category: categorySlug, slug }, query] = await Promise.all([params, searchParams]);
   const [catalogue, settings, published] = await Promise.all([getStoreCatalogue(), getStoreSettings(), getPublishedReviews()]);
   const product = findStoreGear(catalogue, categorySlug, slug);
   const category = getCategory(categorySlug);
   if (!product || !category) notFound();
   const reviews = reviewsOfProduct(published, product.id);
+  // "?size=Large" opens the page on that size: search engines list each size at such an address.
+  const size = sizeInAddress(product, query.size);
 
   const content = GEAR_CATEGORY_CONTENT[product.categorySlug];
   const delivery = deliveryTerms(settings);
@@ -76,12 +78,14 @@ export default async function GearPage({ params }: PageProps<"/shop/[category]/[
           reviews,
           deliveryFeePaise: delivery.feePaise,
           base,
+          group: { id: product.slug, sizes: sizeListings(product, path) },
+          color: colourInName(product.name),
         })}
       />
       <JsonLd data={breadcrumbJsonLd(trail, base)} />
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
-        <GearHero product={product} category={category} delivery={delivery} reviews={reviews} />
+        <GearHero product={product} category={category} delivery={delivery} reviews={reviews} size={size} />
         <GearDetails product={product} content={content} deliveryFeePaise={delivery.feePaise} />
         <ProductReviews productId={product.id} productName={product.name} reviews={reviews} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />

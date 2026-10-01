@@ -20,7 +20,7 @@ import { findStoreBat, sizeInAddress } from "@/lib/products/model";
 import { reviewsOfProduct } from "@/lib/reviews/model";
 import { getPublishedReviews } from "@/lib/reviews/store";
 import { pageMetadata, productShareImage } from "@/lib/seo/metadata";
-import { batSizeListings, breadcrumbJsonLd, productJsonLd, realPhotos } from "@/lib/seo/structured-data";
+import { breadcrumbJsonLd, productJsonLd, realPhotos, sizeListings } from "@/lib/seo/structured-data";
 import { batDescription, batDescriptor, batTitle } from "@/lib/seo/titles";
 import { getStoreSettings } from "@/lib/settings/store";
 import { siteUrl } from "@/lib/site";
@@ -80,7 +80,7 @@ export default async function BatPage({ params, searchParams }: PageProps<"/bats
           reviews,
           deliveryFeePaise: delivery.feePaise,
           base,
-          group: { id: bat.slug, sizes: batSizeListings(bat) },
+          group: { id: bat.slug, sizes: sizeListings(bat, path) },
         })}
       />
       <JsonLd data={breadcrumbJsonLd(trail, base)} />

@@ -1,14 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
-import { findStoreBat, seedProductRows, toStoreCatalogue, type StoreBat } from "@/lib/products/model";
+import { findStoreBat, findStoreGear, seedProductRows, toStoreCatalogue, type StoreBat } from "@/lib/products/model";
 import { DEFAULT_SETTINGS } from "@/lib/settings/model";
 
 import {
-  batSizeListings,
   breadcrumbJsonLd,
+  colourInName,
   productJsonLd,
   realPhotos,
   serialiseJsonLd,
+  sizeListings,
   storeJsonLd,
   type JsonLd,
 } from "./structured-data";
@@ -104,7 +105,7 @@ describe("a bat's sizes as products of their own", () => {
     ),
     "goat"
   )!;
-  const sizes = batSizeListings(goat);
+  const sizes = sizeListings(goat, "/bats/goat");
 
   test("each size has its own identifier, address, price and stock", () => {
     expect(sizes).toEqual([
@@ -165,7 +166,7 @@ describe("a bat's sizes as products of their own", () => {
     expect(new Set(variants.map((variant) => variant.sku)).size).toBe(3);
   });
 
-  test("a bat sold in one size stays a single product", () => {
+  test("a bat sold in one size stays a single product, in that size", () => {
     const single = productJsonLd({
       product: goat,
       name: "x",
@@ -178,7 +179,94 @@ describe("a bat's sizes as products of their own", () => {
       group: { id: goat.slug, sizes: sizes.slice(1, 2) },
     });
     expect(single["@type"]).toBe("Product");
+    expect(single.size).toBe("SH / Full Size");
     expect(single).toHaveProperty("offers");
+  });
+});
+
+describe("gear sizes and colours", () => {
+  const catalogue = toStoreCatalogue(
+    seedProductRows().map((row) =>
+      row.slug === "club-cricket-helmet"
+        ? { ...row, sizes: ["Medium", "Large", "XL"], stock: 3, variantStock: { Medium: 2, Large: 0, XL: 1 } }
+        : row.slug === "pro-batting-pads"
+          ? { ...row, name: "Legacy Pro Pads Black", sizes: ["Men’s"], hands: true }
+          : row
+    )
+  );
+  const helmet = findStoreGear(catalogue, "helmets", "club-cricket-helmet")!;
+  const pads = findStoreGear(catalogue, "batting-pads", "pro-batting-pads")!;
+  const kitbag = findStoreGear(catalogue, "cricket-kitbags", "pro-cricket-kitbag")!;
+
+  const gearData = (product: typeof helmet, path: string) =>
+    productJsonLd({
+      product,
+      name: `Astaad ${product.name}`,
+      description: "Gear.",
+      category: "Cricket gear",
+      path,
+      reviews: [],
+      deliveryFeePaise: 0,
+      base: BASE,
+      group: { id: product.slug, sizes: sizeListings(product, path) },
+      color: colourInName(product.name),
+    });
+
+  test("a helmet in three shells is a group, one product per shell, at an address that opens on it", () => {
+    const grouped = gearData(helmet, "/shop/helmets/club-cricket-helmet");
+    const variants = grouped.hasVariant as { sku: string; size: string; offers: Record<string, unknown> }[];
+    expect(grouped["@type"]).toBe("ProductGroup");
+    expect(variants.map((variant) => variant.sku)).toEqual([
+      "club-cricket-helmet-medium",
+      "club-cricket-helmet-large",
+      "club-cricket-helmet-xl",
+    ]);
+    expect(variants.map((variant) => variant.size)).toEqual(["Medium", "Large", "XL"]);
+    expect(variants[1].offers).toMatchObject({
+      price: helmet.price,
+      availability: "https://schema.org/OutOfStock",
+      url: "https://astaadsports.com/shop/helmets/club-cricket-helmet?size=Large",
+    });
+    expect(variants[0].offers.availability).toBe("https://schema.org/InStock");
+  });
+
+  test("gear in one size is one product in that size, with the colour its name states", () => {
+    const single = gearData(pads, "/shop/batting-pads/pro-batting-pads");
+    expect(single).toMatchObject({ "@type": "Product", size: "Men’s", color: "Black" });
+    // Right and left hand are one listing, with a stable identifier for the size.
+    expect(sizeListings(pads, "/x")).toEqual([
+      { id: "pro-batting-pads-mens", label: "Men’s", detail: undefined, path: "/x?size=Men%E2%80%99s", price: pads.price, soldOut: false },
+    ]);
+  });
+
+  test("gear with no sizes has no size, and no colour unless its name has one", () => {
+    const plain = gearData(kitbag, "/shop/cricket-kitbags/pro-cricket-kitbag");
+    expect(plain["@type"]).toBe("Product");
+    expect(plain).not.toHaveProperty("size");
+    expect(plain).not.toHaveProperty("color");
+  });
+
+  test("a group carries the colour on itself and on each size", () => {
+    const blue = gearData({ ...helmet, name: "Legacy Pro Helmet Navy Blue" }, "/x");
+    expect(blue.color).toBe("Blue/Navy");
+    expect((blue.hasVariant as Record<string, unknown>[]).every((variant) => variant.color === "Blue/Navy")).toBe(true);
+  });
+});
+
+describe("the colour in a name", () => {
+  test("is a whole colour word, however it is typed", () => {
+    expect(colourInName("Legacy Pro Pads Black")).toBe("Black");
+    expect(colourInName("Classic Pro Red Gloves")).toBe("Red");
+    expect(colourInName("Falcon Pro Players white")).toBe("White");
+    expect(colourInName("Player Series Kitbag Black-Red")).toBe("Black/Red");
+  });
+
+  test("is not found where there is none", () => {
+    expect(colourInName("Legacy Pro Helmet")).toBeUndefined();
+    expect(colourInName("Player Series Kitbag RCB Edition")).toBeUndefined();
+    // Part of another word is not a colour.
+    expect(colourInName("Blackout Predator Gloves")).toBeUndefined();
+    expect(colourInName("Goldsmith Pads")).toBeUndefined();
   });
 });
 

@@ -65,19 +65,23 @@ export type GearOptionsProduct = Pick<
  * Size and hand choices (where the product has them), the selection line and
  * Add to cart. Each size and hand has its own stock: one with none left is
  * struck through, and the button reads "Out of stock" and cannot be pressed
- * when the chosen one cannot be bought.
+ * when the chosen one cannot be bought. `size` (from the address) is the size
+ * it starts on, in the first hand that can be bought.
  */
 export function GearOptions({
   product,
   categoryName,
   categoryHref,
+  size: startingSize,
 }: {
   product: GearOptionsProduct;
   categoryName: string;
   categoryHref: string;
+  size?: string;
 }) {
   const [chosen, setChosen] = useState(() => {
-    const start = startingVariant(product);
+    const inSize = startingSize ? product.variants.filter((entry) => entry.size === startingSize) : [];
+    const start = inSize.find((entry) => !variantSoldOut(product, entry)) ?? inSize[0] ?? startingVariant(product);
     return { size: start.size, hand: start.hand };
   });
   // The product may have changed under the page (a size removed): fall back to where a picker starts.
