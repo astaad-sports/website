@@ -26,6 +26,38 @@ export function realPhotos(images: readonly string[]): string[] {
   return images.filter((src) => !src.startsWith("/images/"));
 }
 
+/** How long a customer has to return an item, as /returns promises. */
+export const RETURN_WINDOW_DAYS = 7;
+
+/**
+ * The returns policy in the terms search engines read. It says what
+ * src/app/returns/page.tsx says, and the two must change together: 7 days
+ * from delivery, by courier, for unused items, refunded in full. The customer
+ * pays to send back a change of mind, and we pay for a damaged, defective or
+ * wrong item. What the page excepts (an engraved bat) has no term here.
+ */
+const RETURN_POLICY = {
+  applicableCountry: "IN",
+  returnPolicyCategory: `${CONTEXT}/MerchantReturnFiniteReturnWindow`,
+  merchantReturnDays: RETURN_WINDOW_DAYS,
+  returnMethod: `${CONTEXT}/ReturnByMail`,
+  returnFees: `${CONTEXT}/ReturnFeesCustomerResponsibility`,
+};
+
+/** The whole policy, for the store itself. */
+function storeReturnPolicy(base: string): JsonLd {
+  return {
+    "@type": "MerchantReturnPolicy",
+    ...RETURN_POLICY,
+    returnPolicyCountry: "IN",
+    itemCondition: `${CONTEXT}/NewCondition`,
+    refundType: `${CONTEXT}/FullRefund`,
+    customerRemorseReturnFees: `${CONTEXT}/ReturnFeesCustomerResponsibility`,
+    itemDefectReturnFees: `${CONTEXT}/FreeReturn`,
+    merchantReturnLink: absoluteUrl("/returns", base),
+  };
+}
+
 /** A 10-digit Indian number as "+919876543210"; anything else as typed. */
 function telephone(phone: string): string {
   const digits = phone.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
@@ -34,8 +66,9 @@ function telephone(phone: string): string {
 
 /**
  * The store and the site, for the home page: the name Google shows for the
- * site, the crest, and the contact details Settings has. The store carries no
- * rating of its own; reviews are of products.
+ * site, the crest, the contact details Settings has, and the returns policy
+ * that covers everything it sells. The store carries no rating of its own;
+ * reviews are of products.
  */
 export function storeJsonLd(
   settings: Pick<Settings, "storeName" | "supportEmail" | "supportPhone" | "storeAddress">,
@@ -56,6 +89,7 @@ export function storeJsonLd(
       ...(settings.storeAddress
         ? { address: { "@type": "PostalAddress", streetAddress: settings.storeAddress, addressCountry: "IN" } }
         : {}),
+      hasMerchantReturnPolicy: storeReturnPolicy(base),
     },
     { "@context": CONTEXT, "@type": "WebSite", name: settings.storeName, url: base, publisher: { "@id": id } },
   ];
@@ -78,7 +112,8 @@ export function breadcrumbJsonLd(trail: { name: string; path: string }[], base: 
 /**
  * One price for every size is an Offer. Sizes with prices of their own are an
  * AggregateOffer from the lowest to the highest. A running offer's last day
- * is the price's last day. Prices are rupees, as the page shows them.
+ * is the price's last day. Prices are rupees, as the page shows them. An
+ * Offer repeats the returns policy in the few terms a product may carry.
  */
 function offersJsonLd(
   product: Pick<StoreBat, "price" | "variants" | "soldOut" | "offer">,
@@ -111,6 +146,7 @@ function offersJsonLd(
       shippingRate: { "@type": "MonetaryAmount", value: deliveryFeePaise / 100, currency: "INR" },
       shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
     },
+    hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", ...RETURN_POLICY },
   };
 }
 

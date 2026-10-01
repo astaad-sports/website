@@ -24,6 +24,8 @@ const PROMISES = [
  * The returns policy, part of the terms of service (which summarise it).
  * Keeps the storefront's "Easy returns within 7 days" promise; only
  * engraved bats are excluded, unless damaged, defective or wrong.
+ * Search engines are given the same terms as data (RETURN_POLICY in
+ * src/lib/seo/structured-data.ts): change both together.
  */
 export default async function ReturnsPage() {
   const settings = await getStoreSettings();

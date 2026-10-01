@@ -132,6 +132,36 @@ test("words a customer typed cannot end the script tag", () => {
   expect(JSON.parse(written).review[0].reviewBody).toBe("</script><script>alert(1)</script>");
 });
 
+describe("the returns policy", () => {
+  test("the store's says what /returns says: 7 days, by courier, unused, refunded in full", () => {
+    const [store] = storeJsonLd(DEFAULT_SETTINGS, { base: BASE });
+    expect(store.hasMerchantReturnPolicy).toEqual({
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: "IN",
+      returnPolicyCountry: "IN",
+      returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+      merchantReturnDays: 7,
+      itemCondition: "https://schema.org/NewCondition",
+      returnMethod: "https://schema.org/ReturnByMail",
+      returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
+      customerRemorseReturnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
+      itemDefectReturnFees: "https://schema.org/FreeReturn",
+      refundType: "https://schema.org/FullRefund",
+      merchantReturnLink: "https://astaadsports.com/returns",
+    });
+  });
+
+  test("a product with one price repeats it; a price range cannot carry one", () => {
+    expect(offers(data(product([16499]))).hasMerchantReturnPolicy).toMatchObject({
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: "IN",
+      merchantReturnDays: 7,
+      returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
+    });
+    expect(offers(data(product([16499, 12999])))).not.toHaveProperty("hasMerchantReturnPolicy");
+  });
+});
+
 describe("the store", () => {
   test("settings left empty are left out", () => {
     const [store, site] = storeJsonLd(DEFAULT_SETTINGS, { base: BASE });
@@ -142,6 +172,7 @@ describe("the store", () => {
       name: "Astaad Sports",
       url: BASE,
       logo: "https://astaadsports.com/brand/astaad-crest.png",
+      hasMerchantReturnPolicy: store.hasMerchantReturnPolicy,
     });
     expect(site).toMatchObject({ "@type": "WebSite", name: "Astaad Sports", url: BASE });
   });
