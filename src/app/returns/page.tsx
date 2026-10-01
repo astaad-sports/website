@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalPage, StoreDetails, type LegalSection } from "@/components/storefront/legal-page";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { getStoreSettings } from "@/lib/settings/store";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Returns and refunds",
   description: "How to return an Astaad Sports order, what can be returned, and when refunds arrive.",
-};
+  path: "/returns",
+});
 
 const UPDATED = "28 September 2026";
 

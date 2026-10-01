@@ -9,13 +9,16 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { batsByRange } from "@/lib/products/model";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { deliveryFeePaise } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
 
-export const metadata: Metadata = {
-  title: "Shop",
-  description: "Astaad bats, batting pads, batting gloves, helmets and kitbags, all in one place.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Shop Cricket Bats and Gear",
+  description:
+    "Astaad cricket bats, batting pads, batting gloves, helmets and kitbags, all in one place, delivered across India.",
+  path: "/shop",
+});
 
 /** Everything on the store in one grid, which the tabs narrow to a category. The phone's Shop tab opens it. */
 export default async function ShopPage() {

@@ -6,12 +6,14 @@ import { TrackOrderForm } from "@/components/orders/track-order-form";
 import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { CARRIERS } from "@/lib/shipping";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Track your order",
   description: "See where your Astaad Sports order is with your order number and mobile number.",
-};
+  path: "/track-order",
+});
 
 const CARD = "flex flex-col gap-3 rounded-md border border-border bg-surface-raised p-6 shadow-card";
 const LINK = "type-body-sm inline-flex min-h-11 items-center gap-1.5 font-semibold underline underline-offset-4";

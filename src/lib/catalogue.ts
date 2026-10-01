@@ -12,6 +12,8 @@ export type GearCategorySlug =
 export interface StoreCategory {
   slug: string;
   name: string;
+  /** The category page's title in search results, which says "cricket" where the name alone doesn't. */
+  seoTitle: string;
   href: string;
   number: string;
   kind: "bats" | "gear";
@@ -28,6 +30,7 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     kind: "bats",
     tagline: "Choose your willow. Build your game.",
     name: "Bats",
+    seoTitle: "Cricket Bats: English Willow, Kashmir Willow and Tennis",
     href: "/shop/bats",
     number: "01",
     image: siteImage("categories/bats").src,
@@ -38,6 +41,7 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     kind: "gear",
     tagline: "Light on the legs, solid where it counts.",
     name: "Batting Pads",
+    seoTitle: "Cricket Batting Pads",
     href: "/shop/batting-pads",
     number: "02",
     image: siteImage("categories/batting-pads").src,
@@ -48,6 +52,7 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     kind: "gear",
     tagline: "Grip, feel and protection for every innings.",
     name: "Batting Gloves",
+    seoTitle: "Cricket Batting Gloves",
     href: "/shop/batting-gloves",
     number: "03",
     image: siteImage("categories/batting-gloves").src,
@@ -58,6 +63,7 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     kind: "gear",
     tagline: "Head protection you forget you are wearing.",
     name: "Helmets",
+    seoTitle: "Cricket Helmets",
     href: "/shop/helmets",
     number: "04",
     image: siteImage("categories/helmets").src,
@@ -68,6 +74,7 @@ export const STORE_CATEGORIES: StoreCategory[] = [
     kind: "gear",
     tagline: "Room for the full kit, built for the road.",
     name: "Cricket Kitbags",
+    seoTitle: "Cricket Kitbags",
     href: "/shop/cricket-kitbags",
     number: "05",
     image: siteImage("categories/cricket-kitbags").src,
@@ -191,6 +198,8 @@ export const GEAR_CATEGORY_SLUGS = STORE_CATEGORIES.filter(
 export interface BatRange {
   slug: "kashmir-willow" | "tennis-bats";
   name: string;
+  /** The range page's title in search results. */
+  seoTitle: string;
   /** The range mid-sentence: "No Kashmir willow bats yet." */
   noun: string;
   href: string;
@@ -209,6 +218,7 @@ export const BAT_RANGES: BatRange[] = [
   {
     slug: "kashmir-willow",
     name: "Kashmir Willow",
+    seoTitle: "Kashmir Willow Cricket Bats",
     noun: "Kashmir willow bats",
     href: "/shop/kashmir-willow",
     tagline: "Durable, value-driven. Ready to play.",
@@ -217,6 +227,7 @@ export const BAT_RANGES: BatRange[] = [
   {
     slug: "tennis-bats",
     name: "Tennis Bats",
+    seoTitle: "Tennis Ball Cricket Bats",
     noun: "tennis bats",
     href: "/shop/tennis-bats",
     tagline: "Light, fast and made for the gully.",

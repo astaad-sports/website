@@ -13,6 +13,7 @@ import { categoryName, subcategoryName } from "@/lib/products/model";
 export const metadata: Metadata = {
   title: "Write a review",
   description: "Tell other players about your Astaad bat or gear, or send the Astaad team your feedback.",
+  robots: { index: false },
 };
 
 /**

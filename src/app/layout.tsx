@@ -5,6 +5,8 @@ import "./globals.css";
 
 import { CatalogueProvider } from "@/components/cart/catalogue-provider";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
+import { DEFAULT_SHARE_IMAGE, OPEN_GRAPH_BASE, SITE_NAME } from "@/lib/seo/metadata";
+import { siteUrl } from "@/lib/site";
 
 // The three Astaad families: `sans` for everything readable, `display` for
 // uppercase hero and campaign headlines, `script` for one handwritten tagline.
@@ -29,12 +31,21 @@ const caveat = Caveat({
   display: "swap",
 });
 
+// What every page starts from. Public pages add their own title, description
+// and canonical address with pageMetadata; there is no canonical here, or a
+// page without one would claim to be the home page.
 export const metadata: Metadata = {
+  // Relative addresses in metadata (canonical, share pictures) resolve against the live site.
+  metadataBase: new URL(siteUrl()),
+  applicationName: SITE_NAME,
   title: {
-    default: "Astaad Sports",
-    template: "%s | Astaad Sports",
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
   description: "Premium cricket gear for players who never settle.",
+  openGraph: { ...OPEN_GRAPH_BASE, images: [DEFAULT_SHARE_IMAGE] },
+  // Google Search Console's "HTML tag" check; nothing is written while it is unset.
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION || undefined },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -48,7 +59,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // ignores attribute differences on these two elements only, not their children.
   return (
     <html
-      lang="en"
+      lang="en-IN"
       className={`${inter.variable} ${montserrat.variable} ${caveat.variable} h-full`}
       suppressHydrationWarning
     >

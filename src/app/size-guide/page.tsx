@@ -19,13 +19,15 @@ import {
 } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { categoryOffered, type StoreCatalogue } from "@/lib/products/model";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = {
-  title: "Size guide",
+export const metadata: Metadata = pageMetadata({
+  title: "Cricket Bat and Gear Size Guide",
   description:
     "Find the right size bat, batting pads, gloves and helmet, and choose a bat's weight, profile, toe and handle.",
-};
+  path: "/size-guide",
+});
 
 const CARD = "flex flex-col gap-5 rounded-md border border-border bg-surface-raised p-6 shadow-card md:p-8";
 

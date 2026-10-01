@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { JsonLd } from "@/components/seo/json-ld";
 import { CompleteYourKit } from "@/components/storefront/complete-your-kit";
 import { deliveryTerms } from "@/components/storefront/delivery";
 import { FinalCta } from "@/components/storefront/final-cta";
@@ -13,12 +14,16 @@ import { ProductStory } from "@/components/storefront/product-story";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
-import { getCategory } from "@/lib/catalogue";
+import { getBatRange, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
-import { findStoreBat, listInWords, type StoreBat } from "@/lib/products/model";
+import { findStoreBat } from "@/lib/products/model";
 import { reviewsOfProduct } from "@/lib/reviews/model";
 import { getPublishedReviews } from "@/lib/reviews/store";
+import { pageMetadata, productShareImage } from "@/lib/seo/metadata";
+import { breadcrumbJsonLd, productJsonLd, realPhotos } from "@/lib/seo/structured-data";
+import { batDescription, batDescriptor, batTitle } from "@/lib/seo/titles";
 import { getStoreSettings } from "@/lib/settings/store";
+import { siteUrl } from "@/lib/site";
 
 // Bats added after the build still render on first visit (dynamicParams is on by default).
 export async function generateStaticParams() {
@@ -26,24 +31,17 @@ export async function generateStaticParams() {
   return bats.map((bat) => ({ slug: bat.slug }));
 }
 
-/** The meta description, naming only the choices this bat offers. */
-function metaDescription(bat: StoreBat): string {
-  const { customization } = bat;
-  if (!customization.enabled) return `The Astaad ${bat.name}, a ${bat.grade} cricket bat in four sizes.`;
-  const choices = ["weight", "profile", "handle"];
-  if (customization.engraving) choices.push("free name engraving");
-  if (customization.matchReady) choices.push("knocking");
-  return `Configure your Astaad ${bat.name}: ${listInWords(choices)}.`;
-}
-
 export async function generateMetadata({ params }: PageProps<"/bats/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const bat = findStoreBat(await getStoreCatalogue(), slug);
   if (!bat) return {};
-  return {
-    title: `${bat.name} — ${bat.grade} Cricket Bat`,
-    description: metaDescription(bat),
-  };
+  const photo = realPhotos(bat.images)[0];
+  return pageMetadata({
+    title: batTitle(bat),
+    description: batDescription(bat),
+    path: `/bats/${bat.slug}`,
+    image: photo ? productShareImage(bat, photo) : undefined,
+  });
 }
 
 export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
@@ -56,8 +54,33 @@ export default async function BatPage({ params }: PageProps<"/bats/[slug]">) {
   const cta = bat.customization.enabled ? `Customize your ${bat.name}` : `Choose your ${bat.name}`;
   const delivery = deliveryTerms(settings);
 
+  const base = siteUrl();
+  const path = `/bats/${bat.slug}`;
+  const range = getBatRange(bat.subcategory);
+  // Home, Bats, the bat's range where it has a page of its own, then the bat.
+  const trail = [
+    { name: "Home", path: "/" },
+    { name: "Bats", path: "/shop/bats" },
+    ...(range ? [{ name: range.name, path: range.href }] : []),
+    { name: bat.name, path },
+  ];
+
   return (
     <>
+      <JsonLd
+        data={productJsonLd({
+          product: bat,
+          name: `Astaad ${bat.name} ${batDescriptor(bat)}`,
+          // The bat's specification line, as "Product details" shows it.
+          description: bat.details,
+          category: "Cricket Bats",
+          path,
+          reviews,
+          deliveryFeePaise: delivery.feePaise,
+          base,
+        })}
+      />
+      <JsonLd data={breadcrumbJsonLd(trail, base)} />
       <SiteHeader activeHref={getCategory("bats")?.href} />
       <main className="flex-1">
         <ProductHero bat={bat} delivery={delivery} reviews={reviews} />

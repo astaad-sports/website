@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalPage, StoreDetails, type LegalSection } from "@/components/storefront/legal-page";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { getStoreSettings } from "@/lib/settings/store";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Warranty",
   description: "What the Astaad Sports warranty covers on bats and gear, for how long, and how to make a claim.",
-};
+  path: "/warranty",
+});
 
 const UPDATED = "28 September 2026";
 

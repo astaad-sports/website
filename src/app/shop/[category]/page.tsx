@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { JsonLd } from "@/components/seo/json-ld";
 import { BatGrid, CategoryGrid } from "@/components/storefront/category-grid";
 import { CategoryHero } from "@/components/storefront/category-hero";
 import { CompleteYourKit } from "@/components/storefront/complete-your-kit";
@@ -20,8 +21,12 @@ import {
 } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { batsByRange, batsInSubcategory, gearInCategory } from "@/lib/products/model";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { breadcrumbJsonLd } from "@/lib/seo/structured-data";
+import { categoryDescription } from "@/lib/seo/titles";
 import { deliveryFeePaise } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
+import { siteUrl } from "@/lib/site";
 
 export function generateStaticParams() {
   return [...STORE_CATEGORIES, ...BAT_RANGES].map(({ slug }) => ({ category: slug }));
@@ -32,16 +37,30 @@ export async function generateMetadata({
 }: PageProps<"/shop/[category]">): Promise<Metadata> {
   const { category: slug } = await params;
   const range = getBatRange(slug);
-  if (range) {
-    return { title: range.name, description: `Astaad ${range.noun}: ${range.tagline}` };
-  }
-  const category = getCategory(slug);
-  if (!category) return {};
-  return {
-    title: category.name,
-    description: `Astaad ${category.name.toLowerCase()}: ${category.tagline}`,
-  };
+  const entry = range ?? getCategory(slug);
+  if (!entry) return {};
+  const catalogue = await getStoreCatalogue();
+  const products = range
+    ? batsInSubcategory(catalogue, range.slug)
+    : slug === "bats"
+      ? catalogue.bats
+      : gearInCategory(catalogue, slug);
+  const from = products.length ? Math.min(...products.map((product) => product.price)) : null;
+  return pageMetadata({
+    title: entry.seoTitle,
+    description: categoryDescription(entry, products.length, from),
+    path: entry.href,
+  });
 }
+
+/** The category's trail for search engines, as its hero shows it: Home, Shop (or Bats for a range), the category. */
+function CategoryTrail({ name, href, parent }: { name: string; href: string; parent: { name: string; path: string } }) {
+  return (
+    <JsonLd data={breadcrumbJsonLd([{ name: "Home", path: "/" }, parent, { name, path: href }], siteUrl())} />
+  );
+}
+
+const SHOP = { name: "Shop", path: "/shop" };
 
 export default async function CategoryPage({ params }: PageProps<"/shop/[category]">) {
   const { category: slug } = await params;
@@ -58,6 +77,7 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
 
   return (
     <>
+      <CategoryTrail name={category.name} href={category.href} parent={SHOP} />
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
         <CategoryHero
@@ -93,6 +113,7 @@ async function BatRangePage({ range }: { range: BatRange }) {
 
   return (
     <>
+      <CategoryTrail name={range.name} href={range.href} parent={{ name: "Bats", path: batsCategory.href }} />
       <SiteHeader activeHref={batsCategory.href} />
       <main className="flex-1">
         <CategoryHero
@@ -126,6 +147,7 @@ async function BatsPage({ category }: { category: StoreCategory }) {
 
   return (
     <>
+      <CategoryTrail name={category.name} href={category.href} parent={SHOP} />
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
         <CategoryHero

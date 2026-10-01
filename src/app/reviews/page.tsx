@@ -9,11 +9,13 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { Button } from "@/components/ui/button";
 import { summariseReviews } from "@/lib/reviews/model";
 import { getPublishedReviews } from "@/lib/reviews/store";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Customer reviews",
   description: "Reviews and photos from players who use Astaad bats and gear.",
-};
+  path: "/reviews",
+});
 
 /** Every published review, the latest first, with the average rating and a way to write one. */
 export default async function ReviewsPage() {

@@ -26,6 +26,11 @@ const siteImageHosts = Object.values(siteImages).flatMap(({ src }) =>
 const hosts = [...new Set([blobHost(), ...siteImageHosts].filter((host): host is string => Boolean(host)))];
 
 const nextConfig: NextConfig = {
+  // Titles, canonical addresses and the rest go in <head> for every visitor.
+  // Next otherwise streams them into <body> for all but a list of crawlers
+  // that leaves Googlebot out. Pages already wait for the catalogue, so
+  // nothing is slower for it.
+  htmlLimitedBots: /.*/,
   images: {
     // `search: ""` refuses query strings, so no one can make the optimizer
     // transform the same photo again and again under different URLs.

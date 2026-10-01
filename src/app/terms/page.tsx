@@ -3,13 +3,15 @@ import Link from "next/link";
 
 import { LegalPage, StoreDetails, type LegalSection } from "@/components/storefront/legal-page";
 import { formatPaise } from "@/lib/format";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { deliveryFeePaise } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of service",
   description: "The terms for buying from Astaad Sports: orders, payment, delivery, custom bats, returns and refunds.",
-};
+  path: "/terms",
+});
 
 const UPDATED = "28 September 2026";
 

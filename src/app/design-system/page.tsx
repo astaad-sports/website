@@ -30,6 +30,7 @@ import { ThemeToggle } from "./theme-toggle";
 export const metadata: Metadata = {
   title: "Design system",
   description: "Astaad Sports tokens, type styles and components.",
+  robots: { index: false },
 };
 
 const COLOUR_GROUPS: { title: string; tokens: [string, string][] }[] = [

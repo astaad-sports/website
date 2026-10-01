@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalPage, StoreDetails, type LegalSection } from "@/components/storefront/legal-page";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { getStoreSettings } from "@/lib/settings/store";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Privacy policy",
   description: "What personal data Astaad Sports collects, why, who it is shared with, and your rights.",
-};
+  path: "/privacy",
+});
 
 const UPDATED = "28 September 2026";
 

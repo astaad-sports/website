@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { siteUrl } from "./site";
+import { absoluteUrl, siteUrl } from "./site";
 
 test("SITE_URL comes first, without a trailing slash", () => {
   expect(siteUrl({ SITE_URL: "https://astaadsports.com/" })).toBe("https://astaadsports.com");
@@ -27,5 +27,13 @@ test("a value that is not an http(s) address is skipped", () => {
   expect(siteUrl({ SITE_URL: "ftp://astaadsports.com" })).toBe("http://localhost:3000");
   expect(siteUrl({ SITE_URL: "https://", VERCEL_PROJECT_PRODUCTION_URL: "astaadsports.com" })).toBe(
     "https://astaadsports.com"
+  );
+});
+
+test("a path gets the site's address; a full address is left alone", () => {
+  expect(absoluteUrl("/bats/goat", "https://astaadsports.com")).toBe("https://astaadsports.com/bats/goat");
+  expect(absoluteUrl("/", "https://astaadsports.com")).toBe("https://astaadsports.com");
+  expect(absoluteUrl("https://blob.example/products/a.webp", "https://astaadsports.com")).toBe(
+    "https://blob.example/products/a.webp"
   );
 });

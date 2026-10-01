@@ -7,13 +7,15 @@ import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { mobileHref } from "@/lib/format";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { getStoreSettings } from "@/lib/settings/store";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact us",
-  description: "Call, email or visit Astaad Sports.",
-};
+  description: "Call, email or visit Astaad Sports with questions about an order, sizing or a custom cricket bat.",
+  path: "/contact",
+});
 
 const QUICK_LINKS = [
   { href: "/track-order", title: "Track your order", detail: "See where your parcel is" },
