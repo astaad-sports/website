@@ -148,6 +148,13 @@
       "when": 1790801394233,
       "tag": "0020_photo_sides",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790869606548,
+      "tag": "0021_singapore_cane",
+      "breakpoints": true
     }
   ]
 }

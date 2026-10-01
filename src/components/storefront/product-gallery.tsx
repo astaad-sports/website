@@ -50,7 +50,7 @@ function buildViews(grade: string): View[] {
     {
       id: "handle",
       name: "Handle",
-      label: "Handle · Sarawak cane, oval",
+      label: "Handle · Singapore cane, oval",
       transform: "translateY(180px) scale(2.2)",
       swatch: <span className={cn(SWATCH, "h-[46px] w-6 bg-[linear-gradient(180deg,#3d4241_0_70%,#d9b979_70%_100%)]")} />,
     },

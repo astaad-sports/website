@@ -14,7 +14,7 @@ const STEPS: { image: SiteImageKey; title: string; body: string; alt: string }[]
   {
     image: "craft/cane-handles",
     title: "The handle",
-    body: "Sarawak cane with three rubber inserts, for grip and spring.",
+    body: "Singapore cane with three rubber inserts, for grip and spring.",
     alt: "Cane handles standing in a basket",
   },
   {

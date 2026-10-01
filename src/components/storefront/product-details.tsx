@@ -50,8 +50,8 @@ function buildRows(bat: StoreBat): { profile: Row | null; weight: Row | null; ha
       id: "handle",
       title: "Handle",
       body: enabled
-        ? `Multi-piece Sarawak cane with rubber inserts for shock absorption. ${handleShapes.charAt(0).toUpperCase()}${handleShapes.slice(1)} shape, fitted with an Astaad chevron grip.`
-        : "Multi-piece Sarawak cane with rubber inserts for shock absorption, fitted with an Astaad chevron grip.",
+        ? `Multi-piece Singapore cane with rubber inserts for shock absorption. ${handleShapes.charAt(0).toUpperCase()}${handleShapes.slice(1)} shape, fitted with an Astaad chevron grip.`
+        : "Multi-piece Singapore cane with rubber inserts for shock absorption, fitted with an Astaad chevron grip.",
     },
     care: {
       id: "care",

@@ -107,7 +107,7 @@ export interface Bat {
 export const BAT_IMAGE = "/images/bat-english-willow.png";
 
 const FINISH =
-  "Sarawak cane handle with three rubber inserts · 40 mm edges · Astaad lion crest face sticker · supplied with a padded full-length cover.";
+  "Singapore cane handle with three rubber inserts · 40 mm edges · Astaad lion crest face sticker · supplied with a padded full-length cover.";
 
 export const BATS: Bat[] = [
   {
