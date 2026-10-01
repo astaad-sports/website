@@ -11,13 +11,14 @@ export const metadata: Metadata = pageMetadata({
   path: "/privacy",
 });
 
-const UPDATED = "28 September 2026";
+const UPDATED = "1 October 2026";
 
 /**
  * Privacy policy. Describes what the site actually does: Firebase sign-in,
  * orders in our database, Razorpay payments, order emails through Resend,
- * courier hand-off, one sign-in cookie and a cart in local storage, with no
- * analytics or advertising.
+ * courier hand-off, one sign-in cookie and a cart in local storage, and
+ * Google Analytics counting visits (see src/lib/analytics.ts), with no
+ * advertising.
  * Update it when any of that changes.
  */
 export default async function PrivacyPage() {
@@ -61,6 +62,11 @@ export default async function PrivacyPage() {
             <strong>Technical data:</strong> our hosting provider keeps short-lived logs of visits, such as IP
             address, browser and pages requested, to run the website and keep it secure.
           </li>
+          <li>
+            <strong>Visits:</strong> Google Analytics counts visits to the website: the pages viewed, the kind
+            of device and browser, the city or region the visit comes from, and the website or search that led
+            to us. We do not send it your name, email address, mobile number or delivery address.
+          </li>
         </ul>
       ),
     },
@@ -79,11 +85,12 @@ export default async function PrivacyPage() {
             <li>show your orders and their tracking in your account;</li>
             <li>answer your questions and handle returns, refunds and complaints;</li>
             <li>prevent fraud and keep the website and your account secure;</li>
+            <li>see how many people visit and which pages they use, so we can improve the website;</li>
             <li>keep the invoices and records that GST and other laws require.</li>
           </ul>
           <p>
-            We do not sell your data, show you advertising, or use analytics or tracking tools. We will only send
-            you marketing messages if you ask us to.
+            We do not sell your data or show you advertising. We will only send you marketing messages if you
+            ask us to.
           </p>
         </>
       ),
@@ -111,6 +118,10 @@ export default async function PrivacyPage() {
               <strong>Google Firebase</strong> manages sign-in and your login details.
             </li>
             <li>
+              <strong>Google Analytics</strong> counts visits, and receives the pages you view, your device and
+              browser, and your approximate location.
+            </li>
+            <li>
               <strong>Neon</strong> hosts our database, and <strong>Vercel</strong> hosts the website.
             </li>
             <li>
@@ -130,11 +141,20 @@ export default async function PrivacyPage() {
       title: "Cookies and your browser",
       body: (
         <>
-          <p>We use one cookie, and only to keep you signed in:</p>
+          <p>We use these cookies:</p>
           <ul>
             <li>
-              <strong>astaad_session</strong> is set when you sign in and lasts up to 14 days, or until you sign
-              out.
+              <strong>astaad_session</strong> keeps you signed in. It is set when you sign in and lasts up to 14
+              days, or until you sign out.
+            </li>
+            <li>
+              <strong>_ga</strong> and a second cookie whose name starts with <strong>_ga_</strong> are set by
+              Google Analytics to tell one visit from another. They last up to two years and do not say who you
+              are. You can refuse them by blocking cookies in your browser, or with{" "}
+              <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">
+                Google’s opt-out add-on
+              </a>
+              ; the website works the same without them.
             </li>
           </ul>
           <p>
@@ -142,7 +162,7 @@ export default async function PrivacyPage() {
             until you check out. Google’s sign-in window and Razorpay’s payment window may set their own cookies
             under their own privacy policies, for example to prevent fraud. When the home page shows our
             Instagram posts through Instagram’s own embed, Instagram may set cookies too, under Meta’s privacy
-            policy. We use no advertising or analytics cookies.
+            policy. We use no advertising cookies.
           </p>
         </>
       ),

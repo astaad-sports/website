@@ -3,7 +3,9 @@ import { connection } from "next/server";
 import { Caveat, Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { CatalogueProvider } from "@/components/cart/catalogue-provider";
+import { analyticsId } from "@/lib/analytics";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { DEFAULT_SHARE_IMAGE, OPEN_GRAPH_BASE, SITE_NAME } from "@/lib/seo/metadata";
 import { siteUrl } from "@/lib/site";
@@ -54,6 +56,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // cached (see getStoreCatalogue); a small store renders quickly.
   await connection();
   const catalogue = await getStoreCatalogue();
+  const analytics = analyticsId();
   // Browser extensions (ColorZilla, Grammarly, dark-mode tools) add attributes
   // to <html> and <body> before React hydrates. suppressHydrationWarning
   // ignores attribute differences on these two elements only, not their children.
@@ -65,6 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <CatalogueProvider catalogue={catalogue}>{children}</CatalogueProvider>
+        {analytics && <GoogleAnalytics id={analytics} />}
       </body>
     </html>
   );
