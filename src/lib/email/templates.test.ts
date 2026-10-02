@@ -6,13 +6,17 @@ import { formatOrderDate } from "@/lib/format";
 
 import {
   newOrderAlertEmail,
+  newReviewAlertEmail,
   orderCancelledEmail,
   orderConfirmationEmail,
   orderDeliveredEmail,
   orderPackedEmail,
+  orderRefundedEmail,
   orderShippedEmail,
   trackingUpdatedEmail,
+  unpaidOrderAlertEmail,
   type EmailOrder,
+  type EmailReview,
   type EmailStore,
 } from "./templates";
 
@@ -384,6 +388,130 @@ describe("shipping emails", () => {
     expect(email.text).toContain("Returns and refunds: https://astaadsports.com/returns");
     // The returns page is still a draft: the email points to it rather than copying its periods.
     expect(email.text).not.toMatch(/\d+ (days|hours)/);
+  });
+
+  test("delivered: asks for a review, after what was in the parcel", () => {
+    const email = orderDeliveredEmail({ order: delivered, store });
+    expect(email.html).toContain('href="https://astaadsports.com/reviews/write"');
+    expect(email.text).toContain("HOW IS IT PLAYING?");
+    expect(email.text).toContain("Write a review: https://astaadsports.com/reviews/write");
+    expect(email.text.indexOf("IN THIS PARCEL")).toBeLessThan(email.text.indexOf("HOW IS IT PLAYING?"));
+  });
+});
+
+describe("refunded", () => {
+  test("the amount, the order and when the bank shows it", () => {
+    const email = orderRefundedEmail({ order: cancelled, store, amountPaise: 3439700 });
+    expect(email.subject).toBe("Your refund for order AST-10001");
+    expect(email.text).toContain(`We have refunded ₹ 34,397 for order AST-10001, placed on ${formatOrderDate(order.createdAt)}.`);
+    expect(email.text).toContain(
+      "It goes back to the payment method you used (UPI, card or net banking). Banks usually show it within 5 to 7 working days."
+    );
+    expect(email.text).toContain("REFUND\n\n₹ 34,397");
+    expect(email.text).not.toContain("Part of");
+    expect(email.html).toContain("₹ 34,397 is on its way back to you.");
+    expect(email.html).toContain('href="https://astaadsports.com/account/orders/10001"');
+    expect(email.html).toContain('href="https://astaadsports.com/contact"');
+    expect(email.text).toContain("because you placed order AST-10001 with Astaad Sports");
+  });
+
+  test("a part refund gives its own amount, and what was paid", () => {
+    const email = orderRefundedEmail({ order: delivered, store, amountPaise: 539800 });
+    expect(email.text).toContain("We have refunded ₹ 5,398 for order AST-10001");
+    expect(email.text).toContain("REFUND\n\n₹ 5,398\nPart of the ₹ 34,397 you paid.");
+    expect(email.html).toContain("Part of the <span style=\"white-space:nowrap;\">₹ 34,397</span> you paid.");
+  });
+
+  test("a test order's says no real money moved", () => {
+    const email = orderRefundedEmail({ order: { ...cancelled, isTest: true }, store, amountPaise: 3439700 });
+    expect(email.subject).toStartWith("[Test] ");
+    expect(email.text).toContain("This was a test order, so no real money moved.");
+    expect(email.text).not.toContain("working days");
+  });
+});
+
+describe("unpaid order alert", () => {
+  const unpaid: EmailOrder = { ...order, status: "pending_payment", razorpayPaymentId: null, paidAt: null };
+
+  test("who it was, how to reach them, what they wanted and a link to the admin page", () => {
+    const email = unpaidOrderAlertEmail({ order: unpaid, store, customer });
+    expect(email.subject).toBe("Unpaid order AST-10001 · ₹ 34,397");
+    expect(email.text).toContain(
+      `Virat Kohli went to pay on ${formatOrderDate(order.createdAt)}, but the payment didn’t finish.`
+    );
+    expect(email.text).toContain("No money was taken, so there is nothing to ship.");
+    expect(email.text).toContain("Open order: https://astaadsports.com/admin/orders/10001");
+    expect(email.text).toContain(
+      "CUSTOMER\n\nVirat Kohli\nvirat@example.com\n+91 98765 43210\nWhatsApp: https://wa.me/919876543210\nMumbai, Maharashtra"
+    );
+    expect(email.html).toContain('href="tel:+919876543210"');
+    expect(email.html).toContain('href="https://wa.me/919876543210"');
+    expect(email.text).toContain("  Engraving: <Virat> & 'Co'");
+    expect(email.text).toContain("NOT PAID\n\nSubtotal: ₹ 34,997");
+    expect(email.text).toContain("Total: ₹ 34,397");
+    // Nothing was paid, so no payment note and no customer small print.
+    expect(email.text).not.toContain("Paid on");
+    expect(email.text).not.toContain("because you placed order");
+    expect(email.text).toContain("You get unpaid-order alerts because your address is in ADMIN_EMAILS.");
+  });
+
+  test("a customer's own words can't add markup", () => {
+    const email = unpaidOrderAlertEmail({
+      order: { ...unpaid, shipName: "<b>Ravi</b>", shipCity: "Pune & Co" },
+      store,
+      customer: { name: null, email: null },
+    });
+    expect(email.html).toContain("&lt;b&gt;Ravi&lt;/b&gt;");
+    expect(email.html).not.toContain("<b>Ravi</b>");
+    expect(email.html).toContain("Pune &amp; Co");
+    expect(email.text).not.toContain("mailto:");
+  });
+});
+
+describe("new review alert", () => {
+  const review: EmailReview = {
+    id: "5d0c2a1e-0000-4000-8000-000000000001",
+    name: "Rohit S.",
+    place: "Pune Warriors CC",
+    rating: 5,
+    body: "Picks up beautifully.\n\nMiddle is <huge> & the grip is great.",
+    contact: "rohit@example.com",
+    isPrivate: false,
+    hasPhoto: true,
+    productName: "Astaad EW Pro 100",
+  };
+
+  test("who, the stars, the product, their words and a link to the admin page", () => {
+    const email = newReviewAlertEmail({ review, store });
+    expect(email.subject).toBe("New review from Rohit S. · 5 out of 5 stars");
+    expect(email.text).toContain("New review from Rohit S., Pune Warriors CC");
+    expect(email.text).toContain("It isn’t on the site yet. Open it to publish it or hide it.");
+    expect(email.text).toContain(`Open review: https://astaadsports.com/admin/reviews/${review.id}`);
+    expect(email.text).toContain(
+      "DETAILS\n\nRating: 5 out of 5 stars\nProduct: Astaad EW Pro 100\nPhoto: 1 attached\nContact: rohit@example.com"
+    );
+    expect(email.text).toContain("WHAT THEY WROTE\n\nPicks up beautifully.\nMiddle is <huge> & the grip is great.");
+    expect(email.html).toContain("Middle is &lt;huge&gt; &amp; the grip is great.");
+    expect(email.html).not.toContain("<huge>");
+    expect(email.text).toContain("You get new-review alerts because your address is in ADMIN_EMAILS.");
+  });
+
+  test("private feedback says it can't go on the site", () => {
+    const email = newReviewAlertEmail({ review: { ...review, isPrivate: true }, store });
+    expect(email.subject).toBe("Private feedback from Rohit S. · 5 out of 5 stars");
+    expect(email.text).toContain("They asked for it to stay with the store, so it can’t go on the site.");
+    expect(email.text).not.toContain("publish");
+  });
+
+  test("leaves out what the customer didn't give", () => {
+    const email = newReviewAlertEmail({
+      review: { ...review, place: null, contact: null, hasPhoto: false, productName: null },
+      store,
+    });
+    expect(email.text).toContain("New review from Rohit S.\n");
+    expect(email.text).toContain("DETAILS\n\nRating: 5 out of 5 stars\n\nWHAT THEY WROTE");
+    expect(email.text).not.toContain("Product:");
+    expect(email.text).not.toContain("Contact:");
   });
 });
 

@@ -35,21 +35,29 @@ export function EmailSettings({ status }: { status: EmailStatus }) {
             </Note>
           )}
           <Note>
-            Customers are emailed when they pay, and when their order is packed, ships, is delivered or is cancelled.
+            Customers are emailed when they pay, and when their order is packed, ships, is delivered, is cancelled
+            or is refunded.
           </Note>
           <Note>
             {alerts > 0 ? (
               <>
-                New-order alerts, and a copy of each later email to the customer, go to{" "}
-                {alerts === 1 ? "the address" : `the ${alerts} addresses`} in <EnvName>ADMIN_EMAILS</EnvName>.
+                Alerts for new orders, unpaid orders and new reviews, and a copy of each later email to the
+                customer, go to {alerts === 1 ? "the address" : `the ${alerts} addresses`} in{" "}
+                <EnvName>ADMIN_EMAILS</EnvName>.
               </>
             ) : (
               <>
-                Add your email to <EnvName>ADMIN_EMAILS</EnvName> to get an alert for each new order, and a copy of
-                each later email to the customer.
+                Add your email to <EnvName>ADMIN_EMAILS</EnvName> to get an alert for each new order, unpaid order
+                and new review, and a copy of each later email to the customer.
               </>
             )}
           </Note>
+          {alerts > 0 && !status.unpaidAlerts && (
+            <Note>
+              Unpaid-order alerts are off until <EnvName>CRON_SECRET</EnvName> is set in the site&apos;s environment
+              variables.
+            </Note>
+          )}
         </>
       ) : (
         <Note>

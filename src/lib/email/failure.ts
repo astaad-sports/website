@@ -3,6 +3,8 @@
 // sendFailure whether the next try keeps Resend's Idempotency-Key.
 import type { OrderEmailKind } from "@/db/schema";
 
+import { isAdminAlert } from "./kinds";
+
 /** Resend didn't take an email: it turned it down, or never answered. */
 export class SendError extends Error {
   /** Resend's HTTP status; null when no answer came (a network error or the timeout). */
@@ -47,11 +49,11 @@ export function sendFailure(error: unknown): SendFailure {
 /**
  * Why a send of this kind of email failed, in words for the order page. An
  * earlier try that may have gone is checked with whoever it was for: the
- * customer, or the admins' own inboxes for the new-order alert.
+ * customer, or the admins' own inboxes for an alert to them.
  */
 export function failureReason(error: unknown, kind: OrderEmailKind): string {
   if (sendFailure(error) === "earlier_try") {
-    const check = kind === "new_order_alert" ? "Check your inbox" : "Check with the customer";
+    const check = isAdminAlert(kind) ? "Check your inbox" : "Check with the customer";
     return `An earlier try may have gone through. ${check} before sending again.`;
   }
   return error instanceof Error ? error.message : String(error);

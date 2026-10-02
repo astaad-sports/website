@@ -14,6 +14,8 @@ export const ORDER_EMAIL_KINDS = [
   "tracking_updated",
   "delivered",
   "cancelled",
+  "refunded",
+  "unpaid_order_alert",
 ] as const satisfies readonly OrderEmailKind[];
 
 /** How the admin names each email, e.g. on the order page. */
@@ -25,7 +27,14 @@ export const ORDER_EMAIL_LABEL: Record<OrderEmailKind, string> = {
   tracking_updated: "Tracking update",
   delivered: "Delivery confirmation",
   cancelled: "Cancellation",
+  refunded: "Refund confirmation",
+  unpaid_order_alert: "Unpaid order alert",
 };
+
+/** Whether an email of this kind goes to the admins (ADMIN_EMAILS) rather than the customer. */
+export function isAdminAlert(kind: OrderEmailKind): boolean {
+  return kind === "new_order_alert" || kind === "unpaid_order_alert";
+}
 
 /**
  * The courier and AWB an email gave, as one value: ("trackon", "AWB123") →
@@ -48,12 +57,30 @@ export function trackingEmailKey(ref: string, afterId: string): string {
 }
 
 /**
+ * The key of a refund confirmation: Razorpay's refund id and the amount in
+ * paise ("rfnd_Abc123", 150000 → "refund:rfnd_Abc123:150000"). One email per
+ * refund, so an order refunded in two parts gets two; and the key alone
+ * says what Send again has to write.
+ */
+export function refundEmailKey(refundId: string, amountPaise: number): string {
+  return `refund:${refundId}:${amountPaise}`;
+}
+
+/** The refund a refundEmailKey names, or null for any other key. */
+export function refundFromEmailKey(key: string): { id: string; amountPaise: number } | null {
+  const match = /^refund:([A-Za-z0-9_]+):([1-9]\d*)$/.exec(key);
+  return match ? { id: match[1], amountPaise: Number(match[2]) } : null;
+}
+
+/**
  * Whether an order is at the step an email of this kind is about: paid,
  * confirmed or packed for the confirmation and the alert, packed for the
  * packed update, shipped for the shipping and tracking emails, delivered for
- * the delivery email, cancelled for the cancellation. The notifiers send
- * nothing otherwise, so a late or repeated call never writes about a step the
- * order has left.
+ * the delivery email, cancelled for the cancellation; any step once paid for
+ * a refund (an order is refunded cancelled or after a return), and only
+ * before payment for the unpaid order alert. The notifiers send nothing
+ * otherwise, so a late or repeated call never writes about a step the order
+ * has left.
  */
 export function orderAtEmailStep(kind: OrderEmailKind, status: OrderStatus): boolean {
   switch (kind) {
@@ -69,6 +96,10 @@ export function orderAtEmailStep(kind: OrderEmailKind, status: OrderStatus): boo
       return status === "delivered";
     case "cancelled":
       return status === "cancelled";
+    case "refunded":
+      return status !== "pending_payment";
+    case "unpaid_order_alert":
+      return status === "pending_payment";
   }
 }
 

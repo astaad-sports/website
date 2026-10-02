@@ -16,7 +16,7 @@ import { getOrderForAdmin } from "@/db/orders";
 import { primaryImagesBySlug } from "@/db/products";
 import type { OrderItemOffer } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
-import { emailsToSendAgain, ORDER_EMAIL_LABEL } from "@/lib/email/kinds";
+import { emailsToSendAgain, isAdminAlert, ORDER_EMAIL_LABEL, refundFromEmailKey } from "@/lib/email/kinds";
 import {
   formatMobile,
   formatOrderDate,
@@ -120,8 +120,13 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
     stuck: row.status !== "failed",
     error: row.status === "failed" ? row.error : null,
   }));
-  // What the customer has been sent; the admins' new-order alert is not theirs.
-  const emailed = emails.filter((row) => row.status === "sent" && row.kind !== "new_order_alert");
+  // What the customer has been sent; the admins' own alerts are not theirs.
+  const emailed = emails.filter((row) => row.status === "sent" && !isAdminAlert(row.kind));
+  // Refunds Razorpay has told us about, whether or not their email went.
+  const refunds = emails.flatMap((row) => {
+    const refund = row.kind === "refunded" ? refundFromEmailKey(row.key) : null;
+    return refund ? [{ id: row.id, amountPaise: refund.amountPaise, at: row.createdAt }] : [];
+  });
 
   return (
     <main className={cn(PAGE, "gap-4 pt-1 lg:gap-6 lg:pt-6")}>
@@ -194,7 +199,12 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
               <p className="text-[15px] leading-[22px] font-semibold text-ink-muted">
                 {order.cancelledAt ? `Cancelled on ${formatOrderDate(order.cancelledAt)}.` : "This order was cancelled."}
               </p>
-              {order.paidAt && !order.isTest && (
+              {refunds.map((refund) => (
+                <p key={refund.id} className="text-[13px] leading-[18px] text-ink-muted">
+                  Razorpay refunded {formatPaise(refund.amountPaise)} on {formatOrderDate(refund.at)}.
+                </p>
+              ))}
+              {order.paidAt && !order.isTest && refunds.length === 0 && (
                 <p className="text-[13px] leading-[18px] text-ink-muted">
                   If you haven’t yet, refund {formatPaise(order.totalPaise)} in the Razorpay dashboard
                   {order.razorpayPaymentId && ` (payment ${order.razorpayPaymentId})`}. The returns policy promises it

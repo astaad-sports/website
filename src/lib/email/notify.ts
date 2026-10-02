@@ -10,25 +10,35 @@ import {
   markOrderEmailSent,
   unsureTrackingSince,
 } from "@/db/emails";
-import { getOrderForEmail, type AdminOrder } from "@/db/orders";
+import { getOrderForEmail, listUnpaidCheckouts, type AdminOrder } from "@/db/orders";
 import { lowStockAmong } from "@/db/products";
-import type { OrderEmail, OrderEmailKind } from "@/db/schema";
+import type { OrderEmail, OrderEmailKind, Review } from "@/db/schema";
 import { formatOrderNumber } from "@/lib/format";
 import { getFreshSettings } from "@/lib/settings/store";
 import { siteUrl } from "@/lib/site";
 
 import { emailConfig } from "./config";
 import { failureReason, sendFailure } from "./failure";
-import { orderAtEmailStep, sendingIsStale, trackingEmailKey, trackingRef } from "./kinds";
+import {
+  orderAtEmailStep,
+  refundEmailKey,
+  refundFromEmailKey,
+  sendingIsStale,
+  trackingEmailKey,
+  trackingRef,
+} from "./kinds";
 import { resendConfigured, sendEmail } from "./resend";
 import {
   newOrderAlertEmail,
+  newReviewAlertEmail,
   orderCancelledEmail,
   orderConfirmationEmail,
   orderDeliveredEmail,
   orderPackedEmail,
+  orderRefundedEmail,
   orderShippedEmail,
   trackingUpdatedEmail,
+  unpaidOrderAlertEmail,
   type EmailStore,
   type RenderedEmail,
 } from "./templates";
@@ -53,11 +63,10 @@ interface Loaded {
   replyTo: string | null;
 }
 
-async function load(orderId: string): Promise<Loaded | undefined> {
-  const [order, settings] = await Promise.all([getOrderForEmail(orderId), getFreshSettings()]);
-  if (!order) return undefined;
+/** The store details the emails show, from Settings as they are now. */
+async function loadStore(): Promise<{ store: EmailStore; replyTo: string | null }> {
+  const settings = await getFreshSettings();
   return {
-    order,
     store: {
       name: settings.storeName,
       supportEmail: settings.supportEmail,
@@ -67,6 +76,12 @@ async function load(orderId: string): Promise<Loaded | undefined> {
     },
     replyTo: settings.supportEmail,
   };
+}
+
+async function load(orderId: string): Promise<Loaded | undefined> {
+  const [order, store] = await Promise.all([getOrderForEmail(orderId), loadStore()]);
+  if (!order) return undefined;
+  return { order, ...store };
 }
 
 /** The email the order was placed with, else the account's; none when neither is known. */
@@ -311,15 +326,137 @@ export async function notifyCancelled(orderId: string): Promise<NotifyResult> {
   });
 }
 
-/** The notifier that sends each kind of email. */
-const NOTIFIER: Record<OrderEmailKind, (orderId: string) => Promise<NotifyResult>> = {
-  order_confirmation: notifyOrderPaid,
-  new_order_alert: notifyOrderPaid,
-  packed: notifyPacked,
-  shipped: notifyShipment,
-  tracking_updated: notifyShipment,
-  delivered: notifyDelivered,
-  cancelled: notifyCancelled,
+/** A refund Razorpay has made: its id there, and what went back. */
+export interface RefundMade {
+  id: string;
+  amountPaise: number;
+}
+
+/**
+ * A refund made in Razorpay (its `refund.processed` webhook): the customer's
+ * refund confirmation, the admins copied. Once per refund, so an order
+ * refunded in parts gets one each. Only for an order that was paid.
+ */
+export async function notifyRefunded(orderId: string, refund: RefundMade): Promise<NotifyResult> {
+  return run("refunded", orderId, async (result) => {
+    const loaded = await load(orderId);
+    if (!loaded || !orderAtEmailStep("refunded", loaded.order.status)) return;
+    const { order, store } = loaded;
+    await sendOnce(result, loaded, {
+      kind: "refunded",
+      key: refundEmailKey(refund.id, refund.amountPaise),
+      to: customerRecipients(order),
+      bcc: adminCopies(),
+      render: () => orderRefundedEmail({ order, store, amountPaise: refund.amountPaise }),
+    });
+  });
+}
+
+/**
+ * A checkout that stopped at payment: the unpaid order alert to everyone in
+ * ADMIN_EMAILS, once. Only while the order is still unpaid.
+ */
+export async function notifyUnpaidOrder(orderId: string): Promise<NotifyResult> {
+  return run("unpaid order", orderId, async (result) => {
+    const loaded = await load(orderId);
+    if (!loaded || !orderAtEmailStep("unpaid_order_alert", loaded.order.status)) return;
+    const { order, store } = loaded;
+    await sendOnce(result, loaded, {
+      kind: "unpaid_order_alert",
+      key: "unpaid_order_alert",
+      to: emailConfig().adminRecipients,
+      render: () =>
+        unpaidOrderAlertEmail({
+          order,
+          store,
+          customer: { name: order.customer.name?.trim() || order.shipName, email: customerRecipients(order)[0] ?? null },
+        }),
+    });
+  });
+}
+
+/**
+ * The daily look for checkouts that stopped at payment (the cron route in
+ * src/app/api/cron/unpaid-orders): an alert for each one found by
+ * listUnpaidCheckouts. `orders` is how many it found. An alert that failed
+ * is tried again on the next day's run, while the order is recent enough.
+ */
+export async function notifyUnpaidOrders(): Promise<NotifyResult & { orders: number }> {
+  const total: NotifyResult & { orders: number } = { ...emptyResult(), orders: 0 };
+  if (!resendConfigured()) return total;
+  let orderIds: string[];
+  try {
+    orderIds = await listUnpaidCheckouts();
+  } catch (error) {
+    console.error(`Could not look for unpaid orders: ${logReason(error)}`);
+    return { ...total, stopped: true };
+  }
+  total.orders = orderIds.length;
+  for (const orderId of orderIds) {
+    const result = await notifyUnpaidOrder(orderId);
+    total.sent.push(...result.sent);
+    total.failed.push(...result.failed);
+    if (result.stopped) total.stopped = true;
+  }
+  return total;
+}
+
+/**
+ * A customer's new review (submitReview): an alert to everyone in
+ * ADMIN_EMAILS, so it doesn't wait unseen for the admin to publish or hide
+ * it. Not an order email, so nothing is recorded: it goes once, when the
+ * review is sent, and a failure is only logged. The review still shows under
+ * Needs attention on the admin home. Never throws.
+ */
+export async function notifyNewReview(review: Review, productName: string | null): Promise<void> {
+  if (!resendConfigured()) return;
+  const to = emailConfig().adminRecipients;
+  if (to.length === 0) return;
+  try {
+    const { store, replyTo } = await loadStore();
+    const { subject, html, text } = newReviewAlertEmail({
+      review: {
+        id: review.id,
+        name: review.name,
+        place: review.place,
+        rating: review.rating,
+        body: review.body,
+        contact: review.contact,
+        isPrivate: review.isPrivate,
+        hasPhoto: review.photoUrl !== null,
+        productName,
+      },
+      store,
+    });
+    await sendEmail({
+      to,
+      subject,
+      html,
+      text,
+      replyTo,
+      tags: [{ name: "kind", value: "new_review_alert" }],
+      idempotencyKey: `new-review-alert-${review.id}`,
+    });
+  } catch (error) {
+    console.error(`New review alert not sent for review ${review.id}: ${logReason(error)}`);
+  }
+}
+
+/** The notifier that sends each kind of email again, given the email that failed. */
+const NOTIFIER: Record<OrderEmailKind, (email: OrderEmail) => Promise<NotifyResult>> = {
+  order_confirmation: (email) => notifyOrderPaid(email.orderId),
+  new_order_alert: (email) => notifyOrderPaid(email.orderId),
+  packed: (email) => notifyPacked(email.orderId),
+  shipped: (email) => notifyShipment(email.orderId),
+  tracking_updated: (email) => notifyShipment(email.orderId),
+  delivered: (email) => notifyDelivered(email.orderId),
+  cancelled: (email) => notifyCancelled(email.orderId),
+  // The key names the refund, so the same one is written again.
+  refunded: async (email) => {
+    const refund = refundFromEmailKey(email.key);
+    return refund ? notifyRefunded(email.orderId, refund) : emptyResult();
+  },
+  unpaid_order_alert: (email) => notifyUnpaidOrder(email.orderId),
 };
 
 /** What Send again did about the email clicked. */
@@ -349,8 +486,8 @@ export async function retryOrderEmail(emailId: string): Promise<RetryResult> {
     return { ...emptyResult(), alreadySent: true };
   }
 
-  const { kind, orderId } = email;
-  const result = await NOTIFIER[kind](orderId);
+  const { kind } = email;
+  const result = await NOTIFIER[kind](email);
   // A notifier sends at most one email of each kind, so this is the clicked one's.
   return {
     ...result,

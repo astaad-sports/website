@@ -8,6 +8,7 @@ import { getProductById } from "@/db/products";
 import { linkReview } from "@/db/review-customers";
 import { countReviewsFrom, createReview } from "@/db/reviews";
 import { getCurrentUser } from "@/lib/auth/session";
+import { notifyLater, notifyNewReview } from "@/lib/email/notify";
 import { removeStoredImage, storeImage } from "@/lib/products/storage";
 
 import { parseCustomerReview, type ReviewFieldErrors } from "./model";
@@ -35,9 +36,10 @@ async function senderHash(): Promise<string | null> {
 /**
  * A customer's review from /reviews/write (see parseCustomerReview for the
  * fields; `photo` is an optional file the browser has already shrunk). It
- * waits as New until the admin publishes it. Works signed out; signed in, it
- * is kept on the customer's account. `website` is a field people never see:
- * a form that fills it in is a bot, and is thanked without anything being saved.
+ * waits as New until the admin publishes it, and the admins are emailed that
+ * it has come. Works signed out; signed in, it is kept on the customer's
+ * account. `website` is a field people never see: a form that fills it in is
+ * a bot, and is thanked without anything being saved.
  */
 export async function submitReview(_previous: ReviewFormState, form: FormData): Promise<ReviewFormState> {
   const parsed = parseCustomerReview(form);
@@ -56,9 +58,11 @@ export async function submitReview(_previous: ReviewFormState, form: FormData): 
   }
 
   // Only a product that is on the store; the form listed those.
+  let productName: string | null = null;
   if (values.productId) {
     const product = await getProductById(values.productId);
     if (!product || product.availability === "hidden") values.productId = null;
+    else productName = product.name;
   }
 
   const file = form.get("photo");
@@ -85,6 +89,10 @@ export async function submitReview(_previous: ReviewFormState, form: FormData): 
     if (photo) await removeStoredImage(photo);
     throw error;
   }
+
+  // After the response, so a slow or failed email never holds up the customer.
+  const saved = review;
+  notifyLater(() => notifyNewReview(saved, productName));
 
   // The review is in either way; the admin can still put the two together.
   const user = await getCurrentUser();

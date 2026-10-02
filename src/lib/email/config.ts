@@ -42,21 +42,24 @@ export function emailConfig(env: Record<string, string | undefined> = process.en
 export interface EmailStatus {
   /** RESEND_API_KEY is set, so order emails go out. */
   connected: boolean;
-  /** Who emails come from, e.g. "Astaad Sports <orders@astaadsports.com>". */
+  /** Who emails come from, e.g. "Astaad Sports <no-reply@astaadsports.com>". */
   sender: string;
   usingTestSender: boolean;
-  /** How many ADMIN_EMAILS addresses get new-order alerts and copies. */
+  /** How many ADMIN_EMAILS addresses get the alerts and copies. */
   adminRecipients: number;
+  /** CRON_SECRET is set, so the daily look for unpaid orders runs (src/app/api/cron/unpaid-orders). */
+  unpaidAlerts: boolean;
 }
 
 /** For the admin's Settings page. Never exposes the key itself. */
-export function emailStatus(env?: Record<string, string | undefined>): EmailStatus {
+export function emailStatus(env: Record<string, string | undefined> = process.env): EmailStatus {
   const config = emailConfig(env);
   return {
     connected: config.apiKey !== null,
     sender: config.from,
     usingTestSender: config.usingTestSender,
     adminRecipients: config.adminRecipients.length,
+    unpaidAlerts: setting(env, "CRON_SECRET") !== null,
   };
 }
 

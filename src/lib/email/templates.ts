@@ -1,12 +1,12 @@
-// The order emails: the customer's confirmation, packed, shipping, corrected
-// tracking, delivery and cancellation emails, and the owner's new-order
-// alert. Each is a
+// The store's emails: the customer's confirmation, packed, shipping,
+// corrected tracking, delivery, cancellation and refund emails, and the
+// owner's alerts for a new order, an unpaid order and a new review. Each is a
 // one-line subject plus HTML and plain text carrying the same information.
 // Lines, totals and dates follow the customer's order page
 // (src/app/account/orders/[number]/page.tsx), so an email never disagrees
 // with it. Pure: src/lib/email/notify.ts loads the order and sends them.
 import type { Order, OrderItem, OrderItemOffer } from "@/db/schema";
-import { formatMobile, formatOrderDate, formatOrderNumber, formatPaise, mobileHref } from "@/lib/format";
+import { formatMobile, formatOrderDate, formatOrderNumber, formatPaise, mobileHref, whatsappHref } from "@/lib/format";
 import { stockShortfallNotice } from "@/lib/orders/fulfilment";
 import { CARRIERS, carrierName, isCarrierId } from "@/lib/shipping";
 
@@ -651,16 +651,19 @@ export function trackingUpdatedEmail(input: { order: EmailOrder; store: EmailSto
 
 /**
  * To the customer once the order is delivered, with where to go if something
- * is not right. It points to the returns page rather than restating its
- * periods and rules, so the two cannot drift apart.
+ * is not right, and an invitation to review it (/reviews/write). It points
+ * to the returns page rather than restating its periods and rules, so the
+ * two cannot drift apart.
  */
 export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStore }): RenderedEmail {
   const { order, store } = input;
   const number = formatOrderNumber(order.number);
   const returnsUrl = link(store, "/returns");
   const contactUrl = link(store, "/contact");
+  const reviewUrl = link(store, "/reviews/write");
   const date = order.deliveredAt ? formatOrderDate(order.deliveredAt) : null;
   const intro = `${date ? `It arrived on ${date}.` : "It has arrived."} We hope you enjoy your new gear.`;
+  const reviewAsk = "Once you have played with it, tell other players what you think. A few lines, and a photo if you have one, help them choose.";
   return finish({
     subject: `Your order ${number} has been delivered`,
     preheader: `Order ${number} ${date ? `arrived on ${date}` : "has arrived"}. We hope you enjoy your new gear.`,
@@ -677,6 +680,9 @@ export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStor
       button(orderUrl(store, order), "View your order", { gap: 28 }),
       sectionHeading("In this parcel"),
       shortItemsHtml(order.items),
+      sectionHeading("How is it playing?"),
+      paragraph(reviewAsk),
+      button(reviewUrl, "Write a review", { variant: "secondary", gap: 24 }),
     ],
     footer: customerFooter(order, store),
     text: [
@@ -691,6 +697,223 @@ export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStor
       `View your order: ${orderUrl(store, order)}`,
       "",
       ...section("In this parcel", shortItemsText(order.items)),
+      ...section("How is it playing?", [reviewAsk, `Write a review: ${reviewUrl}`]),
+    ],
+  });
+}
+
+/**
+ * To the customer once Razorpay reports the refund made (the admin makes it
+ * in the Razorpay dashboard): how much, for which order, and when the bank
+ * will show it. `amountPaise` is the refund's own amount, so a part refund
+ * says what actually went back.
+ */
+export function orderRefundedEmail(input: { order: EmailOrder; store: EmailStore; amountPaise: number }): RenderedEmail {
+  const { order, store, amountPaise } = input;
+  const number = formatOrderNumber(order.number);
+  const amount = formatPaise(amountPaise);
+  const contactUrl = link(store, "/contact");
+  const intro = `We have refunded ${amount} for order ${number}, placed on ${formatOrderDate(order.createdAt)}.`;
+  const where = order.isTest
+    ? "This was a test order, so no real money moved."
+    : "It goes back to the payment method you used (UPI, card or net banking). Banks usually show it within 5 to 7 working days.";
+  const question = "If it hasn’t reached you by then, or you have a question, contact us.";
+  const part = amountPaise < order.totalPaise ? `Part of the ${formatPaise(order.totalPaise)} you paid.` : null;
+  return finish({
+    subject: `Your refund for order ${number}`,
+    preheader: order.isTest ? "No real money moved for this test order." : `${amount} is on its way back to you.`,
+    test: order.isTest,
+    store,
+    body: [
+      eyebrow(`Order ${number}`),
+      heading("Your refund has been sent"),
+      paragraph(prose(intro)),
+      paragraph(prose(where)),
+      paragraph(html`If it hasn’t reached you by then, or you have a question, ${textLink(contactUrl, "contact us")}.`, {
+        gap: 20,
+      }),
+      button(orderUrl(store, order), "View your order", { gap: 28 }),
+      sectionHeading("Refund"),
+      paragraph(html`<strong>${amount}</strong>`, { gap: part ? 4 : 24 }),
+      part && paragraph(prose(part), { small: true, muted: true, gap: 24 }),
+    ].filter((piece): piece is SafeHtml => Boolean(piece)),
+    footer: customerFooter(order, store),
+    text: [
+      "Your refund has been sent",
+      "",
+      intro,
+      "",
+      where,
+      "",
+      question,
+      `Contact us: ${contactUrl}`,
+      "",
+      `View your order: ${orderUrl(store, order)}`,
+      "",
+      ...section("Refund", [amount, ...(part ? [part] : [])]),
+    ],
+  });
+}
+
+/**
+ * To the store's admins about a checkout that stopped at payment: who it
+ * was, how to reach them and what they wanted, so the shop can ask whether
+ * the payment gave trouble. Nothing was paid, and it says so.
+ */
+export function unpaidOrderAlertEmail(input: {
+  order: EmailOrder;
+  store: EmailStore;
+  customer: { name: string | null; email: string | null };
+}): RenderedEmail {
+  const { order, store, customer } = input;
+  const number = formatOrderNumber(order.number);
+  const total = formatPaise(order.totalPaise);
+  const name = customer.name?.trim() || order.shipName;
+  const email = customer.email ?? order.email;
+  const phone = formatMobile(order.shipPhone);
+  const whatsapp = whatsappHref(order.shipPhone);
+  const count = itemCount(order);
+  const adminUrl = link(store, `/admin/orders/${order.number}`);
+  const summary = `${name} went to pay on ${formatOrderDate(order.createdAt)}, but the payment didn’t finish.`;
+  const advice =
+    "No money was taken, so there is nothing to ship. The payment may have failed, or they may have changed their mind: a call or a message is the way to find out.";
+  const why = "You get unpaid-order alerts because your address is in ADMIN_EMAILS.";
+
+  return finish({
+    subject: `Unpaid order ${number} · ${total}`,
+    preheader: `${name} · ${count} ${count === 1 ? "item" : "items"} · not paid`,
+    store,
+    body: [
+      eyebrow("Unpaid order"),
+      heading(prose(`${number} · ${total}`)),
+      paragraph(prose(summary)),
+      paragraph(advice, { gap: 20 }),
+      button(adminUrl, "Open order", { gap: 28 }),
+      sectionHeading("Customer"),
+      block(
+        html`<div style="font-weight:bold;">${name}</div>
+${email && html`<div><a href="mailto:${email}" style="color:${C.ink};">${email}</a></div>`}
+<div><a href="${mobileHref(order.shipPhone)}" style="color:${C.ink};">${phone}</a></div>
+${whatsapp && html`<div>${textLink(whatsapp, "Message on WhatsApp")}</div>`}
+<div style="${MUTED}">${order.shipCity}, ${order.shipState}</div>`,
+        { gap: 24, style: TEXT }
+      ),
+      sectionHeading(order.items.length === 1 ? "Product" : "Products"),
+      itemsHtml(order.items),
+      sectionHeading("Not paid"),
+      paymentHtml(order),
+    ],
+    footer: {
+      html: html`<div style="font-weight:bold;color:${C.ink};">${store.name}</div><p style="margin:8px 0 0 0;${SMALL}${MUTED}">${why}</p>`,
+      text: ["--", store.name, why],
+    },
+    text: [
+      `Unpaid order ${number} · ${total}`,
+      "",
+      summary,
+      "",
+      advice,
+      "",
+      `Open order: ${adminUrl}`,
+      "",
+      ...section("Customer", [
+        name,
+        ...(email ? [email] : []),
+        phone,
+        ...(whatsapp ? [`WhatsApp: ${whatsapp}`] : []),
+        `${order.shipCity}, ${order.shipState}`,
+      ]),
+      ...section(order.items.length === 1 ? "Product" : "Products", itemsText(order.items)),
+      ...section("Not paid", paymentText(order)),
+    ],
+  });
+}
+
+/** A customer's review as its alert shows it. */
+export interface EmailReview {
+  id: string;
+  name: string | null;
+  /** A team or city, shown after the name. */
+  place: string | null;
+  rating: number | null;
+  body: string | null;
+  /** An email or mobile number for replying. */
+  contact: string | null;
+  /** The customer asked for it to stay with the store. */
+  isPrivate: boolean;
+  hasPhoto: boolean;
+  /** What they said they bought. */
+  productName: string | null;
+}
+
+/**
+ * To the store's admins when a customer sends a review from /reviews/write:
+ * who, the stars, the product and their words, with a link to the admin page
+ * where it is published or hidden. A private one says it can't go on the site.
+ */
+export function newReviewAlertEmail(input: { review: EmailReview; store: EmailStore }): RenderedEmail {
+  const { review, store } = input;
+  const name = review.name?.trim() || "A customer";
+  const from = review.place ? `${name}, ${review.place}` : name;
+  const stars = review.rating ? `${review.rating} out of 5 stars` : null;
+  const adminUrl = link(store, `/admin/reviews/${review.id}`);
+  const what = review.isPrivate ? "Private feedback" : "New review";
+  const next = review.isPrivate
+    ? "They asked for it to stay with the store, so it can’t go on the site."
+    : "It isn’t on the site yet. Open it to publish it or hide it.";
+  const lines = (review.body ?? "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const details = [
+    ...(stars ? [{ label: "Rating", value: stars }] : []),
+    ...(review.productName ? [{ label: "Product", value: review.productName }] : []),
+    ...(review.hasPhoto ? [{ label: "Photo", value: "1 attached" }] : []),
+    ...(review.contact ? [{ label: "Contact", value: review.contact }] : []),
+  ];
+  const why = "You get new-review alerts because your address is in ADMIN_EMAILS.";
+
+  return finish({
+    subject: `${what} from ${name}${stars ? ` · ${stars}` : ""}`,
+    preheader: lines[0] ?? (review.hasPhoto ? "A photo, with no words." : what),
+    store,
+    body: [
+      eyebrow(what),
+      heading(from),
+      paragraph(next, { gap: 20 }),
+      button(adminUrl, "Open review", { gap: 28 }),
+      details.length > 0 && sectionHeading("Details"),
+      details.length > 0 &&
+        block(
+          html`<table ${TABLE}>${details.map(
+            (row, index) => html`<tr>
+<td valign="top" style="padding:${index === 0 ? 0 : 8}px 0 0 0;${TEXT}${MUTED}">${row.label}</td>
+<td valign="top" align="right" style="padding:${index === 0 ? 0 : 8}px 0 0 16px;${TEXT}font-weight:bold;word-break:break-word;">${row.value}</td>
+</tr>`
+          )}</table>`,
+          { gap: 24 }
+        ),
+      lines.length > 0 && sectionHeading("What they wrote"),
+      ...lines.map((line, index) => paragraph(line, { gap: index === lines.length - 1 ? 24 : 12 })),
+    ].filter((piece): piece is SafeHtml => Boolean(piece)),
+    footer: {
+      html: html`<div style="font-weight:bold;color:${C.ink};">${store.name}</div><p style="margin:8px 0 0 0;${SMALL}${MUTED}">${why}</p>`,
+      text: ["--", store.name, why],
+    },
+    text: [
+      `${what} from ${from}`,
+      "",
+      next,
+      "",
+      `Open review: ${adminUrl}`,
+      "",
+      ...(details.length > 0
+        ? section(
+            "Details",
+            details.map((row) => `${row.label}: ${row.value}`)
+          )
+        : []),
+      ...(lines.length > 0 ? section("What they wrote", lines) : []),
     ],
   });
 }

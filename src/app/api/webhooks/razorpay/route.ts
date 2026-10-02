@@ -1,7 +1,8 @@
-import { markOrderPaid } from "@/db/orders";
-import { notifyLater, notifyOrderPaid } from "@/lib/email/notify";
+import { findPaidOrderId, markOrderPaid } from "@/db/orders";
+import { notifyLater, notifyOrderPaid, notifyRefunded } from "@/lib/email/notify";
 import { productsChanged } from "@/lib/products/catalogue";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay";
+import { processedRefund } from "@/lib/payments/refund";
 
 interface RazorpayWebhook {
   event?: string;
@@ -12,10 +13,12 @@ interface RazorpayWebhook {
 }
 
 /**
- * Razorpay webhooks. Subscribe to `order.paid` in the Razorpay dashboard with
- * this URL and RAZORPAY_WEBHOOK_SECRET as the secret. It marks the order paid,
- * and sends its emails, even when the customer closes the tab before the
- * checkout handler runs.
+ * Razorpay webhooks. Subscribe to `order.paid` and `refund.processed` in the
+ * Razorpay dashboard with this URL and RAZORPAY_WEBHOOK_SECRET as the secret.
+ * `order.paid` marks the order paid, and sends its emails, even when the
+ * customer closes the tab before the checkout handler runs.
+ * `refund.processed` emails the customer that a refund made in the dashboard
+ * is on its way.
  */
 export async function POST(request: Request) {
   if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
@@ -45,6 +48,18 @@ export async function POST(request: Request) {
     if (stockChanged) productsChanged();
     // After the response; if the checkout page already sent the emails, nothing goes twice.
     if (order && order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
+  }
+
+  const refund = processedRefund(event);
+  if (refund) {
+    const orderId = await findPaidOrderId({
+      razorpayPaymentId: refund.paymentId,
+      razorpayOrderId: refund.razorpayOrderId,
+    });
+    // After the response; a webhook delivered twice still sends one email per refund.
+    if (orderId) {
+      notifyLater(() => notifyRefunded(orderId, { id: refund.refundId, amountPaise: refund.amountPaise }));
+    }
   }
 
   // Acknowledge every verified event, handled or not, so Razorpay does not retry it.

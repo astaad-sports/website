@@ -5,10 +5,13 @@ import { orderEmails } from "@/db/schema";
 import {
   canSendAgain,
   emailsToSendAgain,
+  isAdminAlert,
   lastSentTracking,
   ORDER_EMAIL_KINDS,
   ORDER_EMAIL_LABEL,
   orderAtEmailStep,
+  refundEmailKey,
+  refundFromEmailKey,
   sendingIsStale,
   STALE_SENDING_MS,
   trackingEmailKey,
@@ -27,6 +30,25 @@ describe("order email kinds", () => {
   test("every kind has a label", () => {
     expect(Object.keys(ORDER_EMAIL_LABEL).sort()).toEqual([...ORDER_EMAIL_KINDS].sort());
     expect(ORDER_EMAIL_LABEL.shipped).toBe("Shipping update");
+  });
+
+  test("the alerts are the admins', every other email the customer's", () => {
+    expect(ORDER_EMAIL_KINDS.filter(isAdminAlert)).toEqual(["new_order_alert", "unpaid_order_alert"]);
+  });
+});
+
+describe("refund keys", () => {
+  test("a refund's key names it and its amount, and reads back", () => {
+    expect(refundEmailKey("rfnd_Q1a2b3c4d5", 150000)).toBe("refund:rfnd_Q1a2b3c4d5:150000");
+    expect(refundFromEmailKey("refund:rfnd_Q1a2b3c4d5:150000")).toEqual({ id: "rfnd_Q1a2b3c4d5", amountPaise: 150000 });
+    // Two refunds of one order are two emails.
+    expect(refundEmailKey("rfnd_A", 100)).not.toBe(refundEmailKey("rfnd_B", 100));
+  });
+
+  test("any other key is not a refund", () => {
+    for (const key of ["cancelled", "refund:rfnd_A", "refund:rfnd_A:0", "refund:rfnd_A:12.5", "refund::100", "tracking:trackon:AWB1:after:e1"]) {
+      expect(refundFromEmailKey(key)).toBeNull();
+    }
   });
 });
 
@@ -70,6 +92,15 @@ describe("when each email is due", () => {
     expect(orderAtEmailStep("cancelled", "cancelled")).toBe(true);
     expect(orderAtEmailStep("cancelled", "paid")).toBe(false);
   });
+
+  test("a refund at any step once paid, the unpaid alert only before payment", () => {
+    for (const status of ["paid", "confirmed", "packed", "shipped", "delivered", "cancelled"] as const) {
+      expect(orderAtEmailStep("refunded", status)).toBe(true);
+      expect(orderAtEmailStep("unpaid_order_alert", status)).toBe(false);
+    }
+    expect(orderAtEmailStep("refunded", "pending_payment")).toBe(false);
+    expect(orderAtEmailStep("unpaid_order_alert", "pending_payment")).toBe(true);
+  });
 });
 
 describe("stuck sends", () => {
@@ -96,6 +127,16 @@ describe("Send again", () => {
     expect(canSendAgain(confirmation, { ...shipped, status: "packed" }, null, NOW)).toBe(true);
     expect(canSendAgain(confirmation, shipped, null, NOW)).toBe(false);
     expect(canSendAgain(confirmation, { ...shipped, status: "cancelled" }, null, NOW)).toBe(false);
+  });
+
+  test("an unpaid alert only while the order is unpaid, a refund email whatever step it is at", () => {
+    const failed = { status: "failed" as const, tracking: null, updatedAt: ago(1) };
+    const unpaid = { status: "pending_payment" as const, carrier: null, trackingNumber: null };
+    expect(canSendAgain({ ...failed, kind: "unpaid_order_alert" }, unpaid, null, NOW)).toBe(true);
+    expect(canSendAgain({ ...failed, kind: "unpaid_order_alert" }, { ...unpaid, status: "paid" }, null, NOW)).toBe(false);
+    expect(canSendAgain({ ...failed, kind: "refunded" }, { ...unpaid, status: "cancelled" }, null, NOW)).toBe(true);
+    expect(canSendAgain({ ...failed, kind: "refunded" }, delivered, null, NOW)).toBe(true);
+    expect(canSendAgain({ ...failed, kind: "refunded" }, unpaid, null, NOW)).toBe(false);
   });
 
   test("is offered for a send that never finished, not for one still under way", () => {

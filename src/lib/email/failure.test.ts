@@ -36,6 +36,12 @@ describe("sendFailure", () => {
     expect(failureReason(error, "new_order_alert")).toBe(
       "An earlier try may have gone through. Check your inbox before sending again."
     );
+    expect(failureReason(error, "unpaid_order_alert")).toBe(
+      "An earlier try may have gone through. Check your inbox before sending again."
+    );
+    expect(failureReason(error, "refunded")).toBe(
+      "An earlier try may have gone through. Check with the customer before sending again."
+    );
   });
 });
 

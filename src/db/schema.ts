@@ -240,7 +240,17 @@ export const orderEmails = pgTable(
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
     kind: text("kind", {
-      enum: ["order_confirmation", "new_order_alert", "packed", "shipped", "tracking_updated", "delivered", "cancelled"],
+      enum: [
+        "order_confirmation",
+        "new_order_alert",
+        "packed",
+        "shipped",
+        "tracking_updated",
+        "delivered",
+        "cancelled",
+        "refunded",
+        "unpaid_order_alert",
+      ],
     }).notNull(),
     key: text("key").notNull(),
     /** The addresses it went to, comma-separated, as sent. */

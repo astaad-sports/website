@@ -51,9 +51,15 @@ test("emailStatus says what Settings shows, never the key", () => {
     sender: "Astaad Sports <orders@astaadsports.com>",
     usingTestSender: false,
     adminRecipients: 2,
+    unpaidAlerts: false,
   });
   expect(JSON.stringify(status)).not.toContain("re_secret_value");
   expect(emailStatus({}).connected).toBe(false);
+  // The daily look for unpaid orders runs only with CRON_SECRET, and Settings never shows it.
+  const withCron = emailStatus({ RESEND_API_KEY: "re_secret_value", CRON_SECRET: " cron_secret_value " });
+  expect(withCron.unpaidAlerts).toBe(true);
+  expect(JSON.stringify(withCron)).not.toContain("cron_secret_value");
+  expect(emailStatus({ CRON_SECRET: "  " }).unpaidAlerts).toBe(false);
 });
 
 describe("resendPayload", () => {

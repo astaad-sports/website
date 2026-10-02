@@ -79,8 +79,8 @@ export default async function PrivacyPage() {
           <ul>
             <li>take payment for, prepare, engrave and deliver your orders;</li>
             <li>
-              email you when your order is confirmed, packed, shipped, delivered or cancelled, or when its tracking
-              details change;
+              email you when your order is confirmed, packed, shipped, delivered, cancelled or refunded, or when
+              its tracking details change;
             </li>
             <li>show your orders and their tracking in your account;</li>
             <li>answer your questions and handle returns, refunds and complaints;</li>

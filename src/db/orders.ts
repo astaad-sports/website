@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, exists, ilike, inArray, isNotNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, gt, ilike, inArray, isNotNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 
 import type { PricedCart } from "@/lib/cart";
@@ -138,6 +138,58 @@ export async function markOrderPaid(input: {
     .where(eq(orders.razorpayOrderId, input.razorpayOrderId))
     .limit(1);
   return { order: existing, stockChanged: false };
+}
+
+/**
+ * The paid order a Razorpay payment belongs to, for a refund's email: by the
+ * payment's id, or by its Razorpay order when the payment id was never kept.
+ * Undefined when there is none, or it was never paid.
+ */
+export async function findPaidOrderId(input: {
+  razorpayPaymentId: string;
+  razorpayOrderId?: string | null;
+}): Promise<string | undefined> {
+  const [row] = await getDb()
+    .select({ id: orders.id })
+    .from(orders)
+    .where(
+      and(
+        ne(orders.status, "pending_payment"),
+        or(
+          eq(orders.razorpayPaymentId, input.razorpayPaymentId),
+          input.razorpayOrderId ? eq(orders.razorpayOrderId, input.razorpayOrderId) : undefined
+        )
+      )
+    )
+    .limit(1);
+  return row?.id;
+}
+
+/**
+ * Real checkouts that stopped at payment, oldest first: orders still
+ * `pending_payment` between `minMinutes` and `maxDays` old, whose customer
+ * has started no order since, and whose unpaid order alert has not gone.
+ * Each press of Pay makes an order, so only a customer's last try counts,
+ * and one who went on to pay is left out.
+ */
+export async function listUnpaidCheckouts(options: { minMinutes?: number; maxDays?: number } = {}): Promise<string[]> {
+  const { minMinutes = 60, maxDays = 3 } = options;
+  const rows = await getDb()
+    .select({ id: orders.id })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status, "pending_payment"),
+        eq(orders.isTest, false),
+        lt(orders.createdAt, sql`now() - make_interval(mins => ${minMinutes})`),
+        gt(orders.createdAt, sql`now() - make_interval(days => ${maxDays})`),
+        // Spelled out: inside `sql`, a column of a one-table select is written without its table.
+        sql`not exists (select 1 from orders later where later.user_id = "orders"."user_id" and later.created_at > "orders"."created_at")`,
+        sql`not exists (select 1 from order_emails alert where alert.order_id = "orders"."id" and alert.kind = 'unpaid_order_alert' and alert.status = 'sent')`
+      )
+    )
+    .orderBy(asc(orders.createdAt));
+  return rows.map((row) => row.id);
 }
 
 async function withItems(rows: Order[]): Promise<OrderWithItems[]> {
