@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Leaf, Scale, ShoppingCart, Target, Zap } from "lucide-react";
+import { ArrowRight, Leaf, Scale, Target, Zap } from "lucide-react";
 
-import { AddToCartButton } from "@/components/cart/add-to-cart-button";
-import { BuyNowButton } from "@/components/cart/buy-now-button";
+import { BuyButtons } from "@/components/cart/buy-buttons";
 import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
@@ -54,8 +53,9 @@ export function ProductHero({
   const standard = chosen ?? startingVariant(bat);
   const others = otherPrices(shown);
   const atThisPrice = bat.sizes.filter((size) => !others.some((variant) => variant.size === size.code));
-  // What Add to cart and Buy it now sell: the standard build. The size is
-  // named when the address chose it, or when the price above is not this size's.
+  // What Add to cart and Buy it now sell: the standard build, as the line
+  // above them says. The size is named when the address chose it, or when the
+  // price above is not this size's.
   const standardItem = batCartItem(bat, standardBatConfig(bat, chosen?.size));
   const standardSoldOut = chosen ? variantSoldOut(bat, chosen) : bat.soldOut;
   const standardSize = chosen
@@ -130,37 +130,20 @@ export function ProductHero({
         <ProductPromises delivery={delivery} />
         <div className="mt-1 flex flex-col gap-2.5">
           <Button
-            size="lg"
             render={<Link href="#build" />}
             nativeButton={false}
-            className="h-15 w-full rounded-xs text-[15px] font-bold tracking-[0.1em] uppercase"
+            className="h-12 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
           >
             {bat.customization.enabled ? "Customize your bat" : "Choose your size"}
             <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
           </Button>
-          <AddToCartButton
-            item={standardItem}
-            productName={`Astaad ${bat.name}`}
-            soldOut={standardSoldOut}
-            size="lg"
-            variant="secondary"
-            // With a size named the label is too long for one line on a phone, so it may wrap.
-            className="w-full rounded-xs border border-border bg-surface-raised text-sm font-bold tracking-[0.1em] whitespace-normal uppercase hover:border-border-strong hover:bg-surface-raised"
-          >
-            <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
-            Add to cart · standard build
-            {standardSize}
-          </AddToCartButton>
-          <BuyNowButton
-            item={standardItem}
-            soldOut={standardSoldOut}
-            size="lg"
-            className="w-full rounded-xs text-sm font-bold tracking-[0.1em] whitespace-normal uppercase"
-          >
-            Buy it now · standard build
-            {standardSize}
-            <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-          </BuyNowButton>
+          {!standardSoldOut && (
+            <p className="flex items-center gap-3 text-center text-[13px] leading-[18px] text-ink-muted before:h-px before:min-w-4 before:flex-1 before:bg-border after:h-px after:min-w-4 after:flex-1 after:bg-border">
+              or buy the standard build
+              {standardSize}
+            </p>
+          )}
+          <BuyButtons item={standardItem} productName={`Astaad ${bat.name}`} soldOut={standardSoldOut} quiet />
         </div>
         <ul aria-label="Highlights" className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3">
           {highlights.map((item) => (

@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, ShoppingCart } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
-import { AddToCartButton } from "@/components/cart/add-to-cart-button";
-import { BuyNowButton } from "@/components/cart/buy-now-button";
-import { Button } from "@/components/ui/button";
+import { BuyButtons } from "@/components/cart/buy-buttons";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { gearCartItem } from "@/lib/cart";
 import { HANDS, type Hand } from "@/lib/catalogue";
@@ -64,9 +62,10 @@ export type GearOptionsProduct = Pick<
 
 /**
  * Size and hand choices (where the product has them), the selection line,
- * Add to cart and Buy it now. Each size and hand has its own stock: one with
- * none left is struck through, and the button reads "Out of stock" and cannot
- * be pressed when the chosen one cannot be bought. `size` (from the address) is the size
+ * Add to cart beside Buy it now, and a link to the rest of the category. Each
+ * size and hand has its own stock: one with none left is struck through, and
+ * the button reads "Out of stock" and cannot be pressed when the chosen one
+ * cannot be bought. `size` (from the address) is the size
  * it starts on, in the first hand that can be bought.
  */
 export function GearOptions({
@@ -132,36 +131,19 @@ export function GearOptions({
           {note && !product.soldOut && <span className="font-semibold text-foreground"> · {note}</span>}
         </p>
       )}
-      <div className="flex flex-col gap-2.5">
-        <AddToCartButton
+      <div className="flex flex-col gap-2">
+        <BuyButtons
           item={gearCartItem(product, variant)}
           productName={`Astaad ${product.name}`}
           soldOut={variantSoldOut(product, variant)}
-          size="lg"
-          className="h-15 w-full rounded-xs text-[15px] font-bold tracking-[0.1em] uppercase"
-        >
-          <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
-          Add to cart
-        </AddToCartButton>
-        <BuyNowButton
-          item={gearCartItem(product, variant)}
-          soldOut={variantSoldOut(product, variant)}
-          size="lg"
-          className="h-15 w-full rounded-xs text-[15px] font-bold tracking-[0.1em] uppercase"
-        >
-          Buy it now
-          <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-        </BuyNowButton>
-        <Button
-          size="lg"
-          variant="secondary"
-          render={<Link href={categoryHref} />}
-          nativeButton={false}
-          className="h-13 w-full rounded-xs border border-border bg-surface-raised text-sm font-bold tracking-[0.1em] uppercase hover:border-border-strong hover:bg-surface-raised"
+        />
+        <Link
+          href={categoryHref}
+          className="inline-flex h-11 items-center gap-2 self-start border-b-2 border-brand-yellow px-1 text-[13px] leading-[18px] font-bold tracking-[0.08em] uppercase transition-colors hover:text-ink-muted"
         >
           Shop all {categoryName.toLowerCase()}
           <ArrowRight className="size-4" strokeWidth={2.2} aria-hidden="true" />
-        </Button>
+        </Link>
       </div>
     </div>
   );

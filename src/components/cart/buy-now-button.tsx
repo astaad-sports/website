@@ -52,7 +52,7 @@ export function BuyNowButton({ item, soldOut = false, tone = "light", children, 
       }}
       className={cn(TONE[tone], className)}
     >
-      {pending ? "Opening checkout…" : children}
+      {pending ? "Please wait…" : children}
     </Button>
   );
 }

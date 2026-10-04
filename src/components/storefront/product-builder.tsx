@@ -5,8 +5,7 @@ import type { ReactNode } from "react";
 import { ArrowRight, Lock, Pin, RotateCcw, Truck } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
-import { AddToCartButton } from "@/components/cart/add-to-cart-button";
-import { BuyNowButton } from "@/components/cart/buy-now-button";
+import { BuyButtons } from "@/components/cart/buy-buttons";
 import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { batCartItem, cleanEngravingInput, type CartItem } from "@/lib/cart";
@@ -207,25 +206,7 @@ function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreV
         </div>
         {bat.offer && <OfferNote offer={bat.offer} />}
       </div>
-      <AddToCartButton
-        item={item}
-        productName={`Astaad ${bat.name}`}
-        soldOut={soldOut}
-        size="lg"
-        className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
-      >
-        Add to cart
-        <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-      </AddToCartButton>
-      <BuyNowButton
-        item={item}
-        soldOut={soldOut}
-        size="lg"
-        className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
-      >
-        Buy it now
-        <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-      </BuyNowButton>
+      <BuyButtons item={item} productName={`Astaad ${bat.name}`} soldOut={soldOut} />
     </div>
   );
 }
@@ -235,7 +216,7 @@ function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreV
  * knocking, scuff sheet) with a live preview and a pinned order summary.
  * Only the options this bat offers appear. A bat that cannot be customised
  * gets just the size picker, with its price and Add to cart. Buy it now sits
- * under each Add to cart, for the same build. `size` (from the
+ * with each Add to cart, for the same build. `size` (from the
  * address, see sizeInAddress) is the size it starts on.
  */
 export function ProductBuilder({
@@ -505,26 +486,7 @@ export function ProductBuilder({
                 Customization included. No extra cost.
               </span>
             </div>
-            <AddToCartButton
-              item={item}
-              productName={`Astaad ${bat.name}`}
-              soldOut={soldOut}
-              size="lg"
-              className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
-            >
-              Add to cart
-              <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-            </AddToCartButton>
-            <BuyNowButton
-              item={item}
-              soldOut={soldOut}
-              tone="dark"
-              size="lg"
-              className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
-            >
-              Buy it now
-              <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-            </BuyNowButton>
+            <BuyButtons item={item} productName={`Astaad ${bat.name}`} soldOut={soldOut} tone="dark" />
             <ul className="flex flex-wrap justify-between gap-2 text-[11px] leading-[14px] font-medium text-on-dark-subtle">
               {trustRow(deliveryFeePaise).map((entry) => (
                 <li key={entry.label} className="inline-flex items-center gap-1.5">
