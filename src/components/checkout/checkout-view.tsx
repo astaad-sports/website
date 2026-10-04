@@ -4,8 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react";
 
+import { trackEvent } from "@/components/analytics/track";
 import { EmptyCart } from "@/components/cart/cart-view";
 import { CouponStatus, useCouponRecheck } from "@/components/cart/coupon-box";
 import { lineOfferText, RegularPrice } from "@/components/cart/line-offer";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addressSummary, type SavedAddress } from "@/lib/addresses/model";
+import { cartEvent } from "@/lib/analytics-events";
 import { lineProblemText } from "@/lib/cart";
 import { ADDRESS_FIELDS, INDIAN_STATES, type AddressField, type ShippingAddress } from "@/lib/checkout";
 import { formatOrderNumber, formatPaise } from "@/lib/format";
@@ -94,6 +96,17 @@ export function CheckoutView({
   // (say the payment window failed to load). Closing the window forgets it,
   // so paying later places the order again against current stock and prices.
   const placed = useRef<{ fingerprint: string; payment: CheckoutPayment } | null>(null);
+
+  // Google Analytics: a checkout begun, once per visit to this page, as soon as the cart is known.
+  const began = useRef(false);
+  useEffect(() => {
+    if (began.current || !priced || priced.lines.length === 0) return;
+    began.current = true;
+    trackEvent("begin_checkout", {
+      ...cartEvent(priced.lines),
+      ...(priced.coupon?.applied ? { coupon: priced.coupon.code } : {}),
+    });
+  }, [priced]);
 
   if (stage !== "form") {
     return (

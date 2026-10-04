@@ -4,7 +4,9 @@ import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { trackEvent } from "@/components/analytics/track";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { cartEvent } from "@/lib/analytics-events";
 import { priceCartItem, type CartItem } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
@@ -60,8 +62,10 @@ export function AddToCartButton({ item, productName, soldOut = false, children, 
 
   function handleClick() {
     add(item);
+    const line = priceCartItem(item, catalogue);
     // A product added since this tab loaded the catalogue: fetch it, or the cart would leave the item out.
-    if (!priceCartItem(item, catalogue)) router.refresh();
+    if (!line) router.refresh();
+    else trackEvent("add_to_cart", cartEvent([line]));
     setAdded(true);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setAdded(false), 2500);

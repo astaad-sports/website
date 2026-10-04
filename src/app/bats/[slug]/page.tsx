@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { TrackEvent } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
 import { CompleteYourKit } from "@/components/storefront/complete-your-kit";
 import { deliveryTerms } from "@/components/storefront/delivery";
@@ -14,9 +15,11 @@ import { ProductStory } from "@/components/storefront/product-story";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
+import { viewItemEvent } from "@/lib/analytics-events";
 import { getBatRange, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { findStoreBat, sizeInAddress } from "@/lib/products/model";
+import { findVariant } from "@/lib/products/variants";
 import { reviewsOfProduct } from "@/lib/reviews/model";
 import { getPublishedReviews } from "@/lib/reviews/store";
 import { pageMetadata, productShareImage } from "@/lib/seo/metadata";
@@ -84,6 +87,17 @@ export default async function BatPage({ params, searchParams }: PageProps<"/bats
         })}
       />
       <JsonLd data={breadcrumbJsonLd(trail, base)} />
+      <TrackEvent
+        name="view_item"
+        params={viewItemEvent({
+          slug: bat.slug,
+          name: bat.name,
+          category: "Bats",
+          // The price the hero shows: the size the address chose, or the bat's usual one.
+          price: (size && findVariant(bat, size)?.price) || bat.price,
+          size,
+        })}
+      />
       <SiteHeader activeHref={getCategory("bats")?.href} />
       <main className="flex-1">
         <ProductHero bat={bat} delivery={delivery} reviews={reviews} size={size} />

@@ -67,7 +67,9 @@ export default async function PrivacyPage() {
           <li>
             <strong>Visits:</strong> Google Analytics counts visits to the website: the pages viewed, the kind
             of device and browser, the city or region the visit comes from, and the website or search that led
-            to us. We do not send it your name, email address, mobile number or delivery address.
+            to us. It also counts shopping steps: a product viewed or added to the cart, a checkout started,
+            and an order paid, with the order’s number, its items and its amount. We do not send it your name,
+            email address, mobile number or delivery address.
           </li>
         </ul>
       ),
@@ -91,7 +93,10 @@ export default async function PrivacyPage() {
             </li>
             <li>answer your questions and handle returns, refunds and complaints;</li>
             <li>prevent fraud and keep the website and your account secure;</li>
-            <li>see how many people visit and which pages they use, so we can improve the website;</li>
+            <li>
+              see how many people visit, which pages they use and which visits lead to an order, so we can
+              improve the website;
+            </li>
             <li>keep the invoices and records that GST and other laws require.</li>
           </ul>
           <p>
@@ -124,8 +129,8 @@ export default async function PrivacyPage() {
               <strong>Google Firebase</strong> manages sign-in and your login details.
             </li>
             <li>
-              <strong>Google Analytics</strong> counts visits, and receives the pages you view, your device and
-              browser, and your approximate location.
+              <strong>Google Analytics</strong> counts visits and orders, and receives the pages you view, your
+              device and browser, your approximate location, and, for an order, its number, items and amount.
             </li>
             <li>
               <strong>Google Customer Reviews</strong> asks, when your order is confirmed, whether Google may

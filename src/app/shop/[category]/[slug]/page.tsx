@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { TrackEvent } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
 import { CompleteYourKit } from "@/components/storefront/complete-your-kit";
 import { deliveryTerms } from "@/components/storefront/delivery";
@@ -12,6 +13,7 @@ import { ProductReviews } from "@/components/storefront/product-reviews";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { PRODUCT_TRUST, TrustStrip } from "@/components/storefront/trust-strip";
+import { viewItemEvent } from "@/lib/analytics-events";
 import { GEAR_CATEGORY_CONTENT, getCategory } from "@/lib/catalogue";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { findStoreGear, sizeInAddress } from "@/lib/products/model";
@@ -83,6 +85,16 @@ export default async function GearPage({ params, searchParams }: PageProps<"/sho
         })}
       />
       <JsonLd data={breadcrumbJsonLd(trail, base)} />
+      <TrackEvent
+        name="view_item"
+        params={viewItemEvent({
+          slug: product.slug,
+          name: product.name,
+          category: category.name,
+          price: product.price,
+          size,
+        })}
+      />
       <SiteHeader activeHref={category.href} />
       <main className="flex-1">
         <GearHero product={product} category={category} delivery={delivery} reviews={reviews} size={size} />

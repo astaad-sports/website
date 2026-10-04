@@ -4,16 +4,20 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, CircleCheck } from "lucide-react";
 
 import { CustomerReviewOptIn } from "@/components/analytics/customer-review-opt-in";
+import { TrackEvent } from "@/components/analytics/track-event";
 import { lineOfferText, RegularPrice } from "@/components/cart/line-offer";
 import { OrderProgress } from "@/components/orders/order-progress";
 import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { getOrderForUser } from "@/db/orders";
+import { purchaseEvent } from "@/lib/analytics-events";
 import { requireUser } from "@/lib/auth/session";
 import { reviewOptIn } from "@/lib/customer-reviews";
 import { formatOrderDate, formatOrderNumber, formatPaise, parseOrderNumber } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
+import { getStoreCatalogue } from "@/lib/products/catalogue";
+import { categoryName } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 export async function generateMetadata({
@@ -44,6 +48,16 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
   const justPlaced = placed === "1" && confirmed;
   // Google asks, on the confirmation only, whether it may email a survey about the order.
   const optIn = justPlaced ? reviewOptIn(order) : null;
+  // Google Analytics counts the sale there too. A test order is not a sale.
+  const purchase =
+    justPlaced && !order.isTest
+      ? purchaseEvent(
+          order,
+          Object.fromEntries(
+            (await getStoreCatalogue()).gear.map((product) => [product.slug, categoryName(product.categorySlug)])
+          )
+        )
+      : null;
 
   return (
     <>
@@ -207,6 +221,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
       </main>
       <SiteFooter />
       {optIn && <CustomerReviewOptIn optIn={optIn} />}
+      {purchase && <TrackEvent name="purchase" params={purchase} once={`astaad-purchase-${order.number}`} />}
     </>
   );
 }
