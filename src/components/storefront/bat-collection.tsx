@@ -5,12 +5,14 @@ import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { BAT_RANGES, type BatRange } from "@/lib/catalogue";
 import { countInWords, type BatSubcategory } from "@/lib/products/model";
+import { categoryAlt } from "@/lib/seo/titles";
 import { siteImage } from "@/lib/site-images";
 import { cn } from "@/lib/utils";
 
 import { SectionHeading } from "./section-heading";
 
 const GOAT_BATS = siteImage("home/goat-bats-on-clefts");
+const GOAT_BATS_ALT = "Astaad English willow cricket bats, two G.O.A.T and a Black Edition, standing against stacked willow clefts";
 
 /** A bat range's tile: its name on two lines, tagline and model count. With no models yet, it says so. */
 function SmallTile({ range, models }: { range: BatRange; models: number }) {
@@ -26,7 +28,7 @@ function SmallTile({ range, models }: { range: BatRange; models: number }) {
           query measures inside the 32px side padding, hence 236px. */}
       <Image
         src={range.image}
-        alt=""
+        alt={categoryAlt(range)}
         width={190}
         height={134}
         className={cn(
@@ -74,7 +76,7 @@ function CollectionRow({ models }: { models: Record<BatSubcategory, number> }) {
           href="/#english-willow"
           className="relative flex h-[300px] w-[286px] flex-col justify-end overflow-hidden rounded-xs border border-border-on-dark bg-surface-dark-sunken p-[18px]"
         >
-          <Image src={GOAT_BATS.src} alt="" fill sizes="286px" className="object-cover object-[50%_20%]" />
+          <Image src={GOAT_BATS.src} alt={GOAT_BATS_ALT} fill sizes="286px" className="object-cover object-[50%_20%]" />
           <span
             aria-hidden="true"
             className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,22,22,0)_20%,rgba(22,22,22,0.85)_58%,#161616_78%)]"
@@ -103,7 +105,7 @@ function CollectionRow({ models }: { models: Record<BatSubcategory, number> }) {
           >
             <Image
               src={range.image}
-              alt=""
+              alt={categoryAlt(range)}
               width={190}
               height={134}
               className={cn(
@@ -170,7 +172,7 @@ export function BatCollection({ models }: { models: Record<BatSubcategory, numbe
             className="group relative row-span-2 block min-h-[400px] overflow-hidden rounded-xs bg-surface-dark-sunken text-on-dark transition-transform duration-200 hover:-translate-y-1"
           >
             <div className="absolute inset-y-0 right-0 w-[320px]">
-              <Image src={GOAT_BATS.src} alt="" fill sizes="320px" className="object-cover object-[60%_30%]" />
+              <Image src={GOAT_BATS.src} alt={GOAT_BATS_ALT} fill sizes="320px" className="object-cover object-[60%_30%]" />
             </div>
             <span
               aria-hidden="true"

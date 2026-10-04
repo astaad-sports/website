@@ -13,10 +13,13 @@ import {
   type StoreOffer,
 } from "@/lib/products/model";
 import type { ProductRating } from "@/lib/reviews/model";
+import { batAlt, gearAlt } from "@/lib/seo/titles";
 
 /** A product as a kit tile: what the tile shows, and what its cart button adds. */
 export interface KitTile extends KitItem {
   href: string;
+  /** What the photo is, for image search and screen readers (see batAlt and gearAlt). */
+  imageAlt: string;
   cartItem: CartItem;
   soldOut: boolean;
   /** The running offer already in `price`. */
@@ -36,6 +39,7 @@ export function batTile(bat: StoreBat): KitTile {
     mrp: bat.mrp > bat.price ? bat.mrp : undefined,
     href: `/bats/${bat.slug}`,
     image: bat.images[0],
+    imageAlt: batAlt(bat),
     imageWidth: 104,
     // A bat photo runs toe to handle, so it stops above the name.
     imageHeight: 232,
@@ -59,6 +63,7 @@ export function gearTile(product: StoreGear): KitTile {
     badge: product.badge,
     href: gearHref(product),
     image: product.images[0],
+    imageAlt: gearAlt(product),
     imageWidth: product.imageWidth,
     imageHeight: product.imageHeight,
     imageTop: product.imageTop,

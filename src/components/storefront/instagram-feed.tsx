@@ -52,7 +52,8 @@ function PostTile({ post }: { post: InstagramPost }) {
     >
       <Image
         src={`/api/instagram/${post.id}`}
-        alt=""
+        // The same words as the link's own label, which is what a screen reader hears.
+        alt={postLinkLabel(post)}
         fill
         sizes="(min-width: 1440px) 344px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 150px"
         className="object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"

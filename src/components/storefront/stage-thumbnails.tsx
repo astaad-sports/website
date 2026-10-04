@@ -53,15 +53,19 @@ export function StageThumb({
 /**
  * Thumbnails for a product's photos, primary first, after any extra thumbs in
  * `children` (the turn-around). `active` is null while an extra thumb is
- * showing. Shown only when there is something to choose between.
+ * showing. Shown only when there is something to choose between. `alt`
+ * describes each photo for image search; a screen reader hears the button's
+ * own label instead.
  */
 export function PhotoThumbnails({
   images,
+  alt,
   active,
   onSelect,
   children,
 }: {
   images: string[];
+  alt: (index: number) => string;
   active: number | null;
   onSelect: (index: number) => void;
   children?: ReactNode;
@@ -78,7 +82,7 @@ export function PhotoThumbnails({
           label={`Photo ${index + 1} of ${images.length}`}
         >
           <span className="relative block size-full">
-            <Image src={src} alt="" fill sizes="64px" className="object-contain" />
+            <Image src={src} alt={alt(index)} fill sizes="64px" className="object-contain" />
           </span>
         </StageThumb>
       ))}

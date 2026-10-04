@@ -133,7 +133,13 @@ export function ChoiceButtons({
             {variant === "picture" && option.picture && (
               // The photo sits on white, so it reads the same on the yellow of a chosen card.
               <span className="relative block h-[132px] w-full overflow-hidden rounded-[2px] bg-white">
-                <Image src={option.picture.src} alt="" fill sizes="176px" className="object-contain" />
+                <Image
+                  src={option.picture.src}
+                  alt={`${option.label} ${label.toLowerCase()} of a cricket bat`}
+                  fill
+                  sizes="176px"
+                  className="object-contain"
+                />
               </span>
             )}
             {glyph?.(index)}

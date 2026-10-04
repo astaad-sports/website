@@ -14,7 +14,8 @@ import { Eyebrow } from "./eyebrow";
  * the floodlight. `from` is the lowest price on sale, offers included, or
  * null while the category has nothing on sale; the stats then say it is
  * coming soon. With no picture (the Shop page) there is no floodlight either,
- * and the stage is as tall as its words.
+ * and the stage is as tall as its words. `imageAlt` says what the picture is
+ * (see categoryAlt).
  */
 export function CategoryHero({
   category,
@@ -23,6 +24,7 @@ export function CategoryHero({
   deliveryFeePaise,
   parent = { label: "Shop", href: "/shop" },
   imageClassName,
+  imageAlt = "",
 }: {
   category: Pick<StoreCategory, "name" | "tagline"> & Partial<Pick<StoreCategory, "image" | "tile">>;
   count: number;
@@ -31,6 +33,7 @@ export function CategoryHero({
   /** The breadcrumb step between Home and this category; null when there is none. */
   parent?: { label: string; href: string } | null;
   imageClassName?: string;
+  imageAlt?: string;
 }) {
   const picture = category.image && category.tile
     ? { src: category.image, width: category.tile.width * 2, height: category.tile.height * 2 }
@@ -105,7 +108,7 @@ export function CategoryHero({
           >
             <Image
               src={picture.src}
-              alt=""
+              alt={imageAlt}
               fill
               priority
               sizes={`${picture.width}px`}

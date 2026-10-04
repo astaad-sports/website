@@ -6,6 +6,7 @@ import { RotateCw } from "lucide-react";
 
 import { BAT_SIDE_LABELS } from "@/lib/catalogue";
 import type { StoreBat } from "@/lib/products/model";
+import { batAlt } from "@/lib/seo/titles";
 import { cn } from "@/lib/utils";
 
 /** How far (px) the pointer travels sideways to turn the bat one step. */
@@ -95,7 +96,8 @@ export function BatTurn({ bat, index, onChange }: { bat: StoreBat; index: number
           <Image
             key={view.side}
             src={view.url}
-            alt=""
+            // For image search; a screen reader hears the label on the stage above.
+            alt={`${batAlt(bat)}, ${BAT_SIDE_LABELS[view.side].toLowerCase()}`}
             fill
             loading="eager"
             sizes="(min-width: 1024px) 40vw, 80vw"

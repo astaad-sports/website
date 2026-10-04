@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import type { StoreGear } from "@/lib/products/model";
+import { gearPhotoAlt } from "@/lib/seo/titles";
 import { cn } from "@/lib/utils";
 
 import { PhotoTrack } from "./photo-track";
@@ -47,7 +48,7 @@ export function GearGallery({ product }: { product: StoreGear }) {
             >
               <Image
                 src={product.images[index]}
-                alt={count > 1 ? `Astaad ${product.name}, photo ${index + 1} of ${count}` : `Astaad ${product.name}`}
+                alt={gearPhotoAlt(product, index)}
                 fill
                 preload={index === 0}
                 loading={index === 0 ? undefined : near ? "eager" : "lazy"}
@@ -58,7 +59,12 @@ export function GearGallery({ product }: { product: StoreGear }) {
           </div>
         )}
       </PhotoTrack>
-      <PhotoThumbnails images={product.images} active={active} onSelect={setActive} />
+      <PhotoThumbnails
+        images={product.images}
+        alt={(index) => gearPhotoAlt(product, index)}
+        active={active}
+        onSelect={setActive}
+      />
       <StageCaption label={caption} count={count > 1 ? `${active + 1} of ${count}` : undefined} />
     </div>
   );

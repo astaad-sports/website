@@ -6,6 +6,7 @@ import { RotateCw } from "lucide-react";
 
 import { BAT_IMAGE, BAT_SIDE_LABELS } from "@/lib/catalogue";
 import type { StoreBat } from "@/lib/products/model";
+import { batAlt, batPhotoAlt } from "@/lib/seo/titles";
 import { cn } from "@/lib/utils";
 
 import { BatTurn } from "./bat-turn";
@@ -112,7 +113,7 @@ function StudioViews({ bat }: { bat: StoreBat }) {
       >
         <Image
           src={BAT_IMAGE}
-          alt={`Astaad ${bat.name}, ${bat.grade} bat`}
+          alt={batAlt(bat)}
           width={224}
           height={568}
           preload
@@ -160,7 +161,7 @@ function Photos({ bat }: { bat: StoreBat }) {
             <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
               <Image
                 src={bat.images[index]}
-                alt={count > 1 ? `Astaad ${bat.name}, photo ${index + 1} of ${count}` : `Astaad ${bat.name}, ${bat.grade} bat`}
+                alt={batPhotoAlt(bat, index)}
                 fill
                 preload={index === 0}
                 loading={index === 0 ? undefined : near ? "eager" : "lazy"}
@@ -173,6 +174,7 @@ function Photos({ bat }: { bat: StoreBat }) {
       )}
       <PhotoThumbnails
         images={bat.images}
+        alt={(index) => batPhotoAlt(bat, index)}
         active={turning ? null : active}
         onSelect={(index) => {
           setTurning(false);

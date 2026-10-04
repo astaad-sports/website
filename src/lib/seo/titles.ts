@@ -1,6 +1,14 @@
 // The titles and descriptions search results show for products and
-// categories. Pure. Titles go through the root layout's "%s | Astaad Sports".
-import { GEAR_CATEGORY_CONTENT, type BatRange, type GearCategorySlug, type StoreCategory } from "@/lib/catalogue";
+// categories, and the descriptions of their photos (alt text), which is what
+// image search goes by. Pure. Titles go through the root layout's
+// "%s | Astaad Sports".
+import {
+  BAT_SIDE_LABELS,
+  GEAR_CATEGORY_CONTENT,
+  type BatRange,
+  type GearCategorySlug,
+  type StoreCategory,
+} from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import {
   countInWords,
@@ -53,6 +61,23 @@ export function batDescriptor(bat: TitledBat): string {
 
 export function batTitle(bat: TitledBat): string {
   return `${bat.name} — ${batDescriptor(bat)}`;
+}
+
+/** "Astaad G.O.A.T Grade 1 English Willow Cricket Bat": a photo of the bat, wherever it is shown. */
+export function batAlt(bat: TitledBat): string {
+  return `Astaad ${bat.name} ${batDescriptor(bat)}`;
+}
+
+/**
+ * One of a bat's own photos, in its gallery. A photo whose side is marked in
+ * the admin says which: "…, back", "…, right edge". The others are numbered,
+ * and a bat with one photo needs neither.
+ */
+export function batPhotoAlt(bat: TitledBat & Pick<StoreBat, "images" | "turn">, index: number): string {
+  const count = bat.images.length;
+  if (count < 2) return batAlt(bat);
+  const side = bat.turn.find((view) => view.url === bat.images[index])?.side;
+  return `${batAlt(bat)}, ${side ? BAT_SIDE_LABELS[side].toLowerCase() : `photo ${index + 1} of ${count}`}`;
 }
 
 type Priced = Pick<StoreBat, "price" | "variants">;
@@ -111,6 +136,18 @@ export function gearTitle(product: Pick<StoreGear, "name" | "categorySlug">): st
   return `${product.name} — ${GEAR_DESCRIPTOR[product.categorySlug]}`;
 }
 
+/** "Astaad Legacy Pro Helmet, cricket helmet": a photo of the product, saying what it is where its name doesn't. */
+export function gearAlt(product: Pick<StoreGear, "name" | "categorySlug">): string {
+  if (/cricket|batting/i.test(product.name)) return `Astaad ${product.name}`;
+  return `Astaad ${product.name}, ${GEAR_DESCRIPTOR[product.categorySlug].toLowerCase()}`;
+}
+
+/** One of a gear product's photos, in its gallery: numbered when there are several. */
+export function gearPhotoAlt(product: Pick<StoreGear, "name" | "categorySlug" | "images">, index: number): string {
+  const count = product.images.length;
+  return count < 2 ? gearAlt(product) : `${gearAlt(product)}, photo ${index + 1} of ${count}`;
+}
+
 type DescribedGear = Pick<StoreGear, "name" | "categorySlug" | "line" | "note" | "sizes" | "hands">;
 
 /** "Astaad Club Cricket Helmet: Club · Steel grille. A cricket helmet with …, in medium and large shells." */
@@ -138,15 +175,28 @@ export function gearDescription(product: DescribedGear & Priced): string {
   return full.length <= LONGEST_DESCRIPTION ? full : `${gearWords(product, false)} ${price}`;
 }
 
+/**
+ * A category or bat range in the middle of a sentence, saying "cricket"
+ * where the name alone doesn't: "cricket helmets", "cricket kitbags",
+ * "Kashmir willow bats".
+ */
+export function categoryWords(category: Pick<StoreCategory, "name"> | Pick<BatRange, "noun">): string {
+  const named = "noun" in category ? category.noun : category.name.toLowerCase();
+  return /cricket|willow|tennis/i.test(named) ? named : `cricket ${named}`;
+}
+
+/** "Astaad cricket helmets": the photo that stands for a category or range. */
+export function categoryAlt(category: Pick<StoreCategory, "name"> | Pick<BatRange, "noun">): string {
+  return `Astaad ${categoryWords(category)}`;
+}
+
 /** "Astaad cricket helmets: …. 4 models from ₹ 2,499, delivered across India." `from` is null while nothing is on sale. */
 export function categoryDescription(
   category: Pick<StoreCategory, "name" | "tagline"> | Pick<BatRange, "noun" | "tagline">,
   count: number,
   from: number | null
 ): string {
-  const named = "noun" in category ? category.noun : category.name.toLowerCase();
-  const what = /cricket|willow|tennis/i.test(named) ? named : `cricket ${named}`;
   const onSale =
     from === null ? "" : ` ${count} ${count === 1 ? "model" : "models"} from ${formatPrice(from)}, delivered across India.`;
-  return `Astaad ${what}: ${category.tagline}${onSale}`;
+  return `Astaad ${categoryWords(category)}: ${category.tagline}${onSale}`;
 }

@@ -33,6 +33,7 @@ export function KitMiniCard({
   badge,
   href,
   image,
+  imageAlt,
   imageWidth,
   imageHeight,
   cartItem,
@@ -50,7 +51,7 @@ export function KitMiniCard({
       <div className="relative flex h-[172px] items-center justify-center overflow-hidden rounded-xs bg-surface-sunken">
         <Image
           src={image}
-          alt=""
+          alt={imageAlt}
           width={width}
           height={height}
           sizes={`${width}px`}
@@ -104,6 +105,7 @@ export function KitCard({
   badge,
   href,
   image,
+  imageAlt,
   imageWidth,
   imageHeight,
   imageTop,
@@ -130,7 +132,7 @@ export function KitCard({
       )}
       <Image
         src={image}
-        alt={name}
+        alt={imageAlt}
         width={imageWidth}
         height={imageHeight}
         style={{ top: imageTop, marginLeft: -imageWidth / 2, width: imageWidth, height: imageHeight }}

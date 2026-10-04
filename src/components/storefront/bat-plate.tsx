@@ -8,6 +8,7 @@ import { batCartItem } from "@/lib/cart";
 import { BAT_IMAGE } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import type { StoreBat } from "@/lib/products/model";
+import { batAlt } from "@/lib/seo/titles";
 import { cn } from "@/lib/utils";
 
 import { CardCover } from "./card-cover";
@@ -53,7 +54,7 @@ export function BatCard({ bat }: { bat: StoreBat }) {
         <WishlistButton productId={bat.id} name={bat.name} onDark={bat.dark} className="absolute top-0.5 right-0.5 z-10" />
         <Image
           src={image}
-          alt={`Astaad ${bat.name} bat`}
+          alt={batAlt(bat)}
           width={84}
           height={212}
           sizes="84px"
@@ -146,7 +147,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
         <WishlistButton productId={bat.id} name={bat.name} onDark={bat.dark} className="absolute top-2 right-2 z-10" />
         <Image
           src={image}
-          alt={`Astaad ${bat.name} bat`}
+          alt={batAlt(bat)}
           width={112}
           height={284}
           className={cn(

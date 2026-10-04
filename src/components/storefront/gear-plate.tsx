@@ -8,6 +8,7 @@ import { gearCartItem } from "@/lib/cart";
 import { gearHref } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { gearLine, type StoreGear } from "@/lib/products/model";
+import { gearAlt } from "@/lib/seo/titles";
 
 import { CardCover } from "./card-cover";
 import { CardRating } from "./card-rating";
@@ -43,7 +44,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
         <WishlistButton productId={product.id} name={product.name} className="absolute top-2 right-2 z-10" />
         <Image
           src={product.images[0]}
-          alt={`Astaad ${product.name}`}
+          alt={gearAlt(product)}
           width={product.imageWidth}
           height={product.imageHeight}
           style={{ width: product.imageWidth, height: product.imageHeight }}

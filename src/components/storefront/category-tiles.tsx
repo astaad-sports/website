@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { STORE_CATEGORIES, type StoreCategory } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import type { CategorySlug, CategoryStats } from "@/lib/products/model";
+import { categoryAlt } from "@/lib/seo/titles";
 import { cn } from "@/lib/utils";
 
 import { SectionHeading } from "./section-heading";
@@ -36,7 +37,7 @@ function CategoryTile({ category, stats }: { category: StoreCategory; stats: Cat
       />
       <Image
         src={category.image}
-        alt=""
+        alt={categoryAlt(category)}
         width={tile.width}
         height={tile.height}
         style={{ top: tile.top, width: tile.width, height: tile.height }}
@@ -69,7 +70,7 @@ function CategoryChip({ category, stats }: { category: StoreCategory; stats: Cat
       >
         <Image
           src={category.image}
-          alt=""
+          alt={categoryAlt(category)}
           width={size.width}
           height={size.height}
           sizes="64px"

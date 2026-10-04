@@ -23,7 +23,7 @@ import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { batsByRange, batsInSubcategory, gearInCategory } from "@/lib/products/model";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { breadcrumbJsonLd } from "@/lib/seo/structured-data";
-import { categoryDescription } from "@/lib/seo/titles";
+import { categoryAlt, categoryDescription } from "@/lib/seo/titles";
 import { deliveryFeePaise } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
 import { siteUrl } from "@/lib/site";
@@ -85,6 +85,7 @@ export default async function CategoryPage({ params }: PageProps<"/shop/[categor
           count={products.length}
           from={from}
           deliveryFeePaise={deliveryFeePaise(settings)}
+          imageAlt={categoryAlt(category)}
         />
         <CategoryGrid products={products} categoryName={category.name} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
@@ -123,6 +124,7 @@ async function BatRangePage({ range }: { range: BatRange }) {
           deliveryFeePaise={deliveryFeePaise(settings)}
           parent={{ label: "Bats", href: batsCategory.href }}
           imageClassName={range.grayscale ? "grayscale-[0.4]" : undefined}
+          imageAlt={categoryAlt(range)}
         />
         <BatGrid bats={bats} noun={range.noun} />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />
@@ -155,6 +157,7 @@ async function BatsPage({ category }: { category: StoreCategory }) {
           count={bats.length}
           from={bats.length ? Math.min(...bats.map((bat) => bat.price)) : null}
           deliveryFeePaise={deliveryFeePaise(settings)}
+          imageAlt={categoryAlt(category)}
         />
         <BatGrid bats={bats} noun="bats" ranges />
         <TrustStrip items={PRODUCT_TRUST} tone="sunken" />

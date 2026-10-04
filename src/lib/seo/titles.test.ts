@@ -4,12 +4,17 @@ import { BAT_RANGES, STORE_CATEGORIES } from "@/lib/catalogue";
 import { NO_CUSTOMIZATION, seedProductRows, toStoreCatalogue, type StoreBat } from "@/lib/products/model";
 
 import {
+  batAlt,
   batDescription,
   batDescriptor,
+  batPhotoAlt,
   batTitle,
+  categoryAlt,
   categoryDescription,
+  gearAlt,
   gearDescription,
   gearDetails,
+  gearPhotoAlt,
   gearTitle,
 } from "./titles";
 
@@ -130,5 +135,54 @@ describe("category descriptions", () => {
     expect(categoryDescription(category("helmets"), 0, null)).toBe(
       "Astaad cricket helmets: Head protection you forget you are wearing."
     );
+  });
+});
+
+describe("photo descriptions", () => {
+  const photos = ["https://blob.example/a.webp", "https://blob.example/b.webp", "https://blob.example/c.webp"];
+
+  test("a bat's photo says what the bat is", () => {
+    expect(batAlt(bat("goat"))).toBe("Astaad G.O.A.T Grade 1 English Willow Cricket Bat");
+    expect(batAlt({ name: "Scoop Master", grade: "Tennis Bats", subcategory: "tennis-bats" })).toBe(
+      "Astaad Scoop Master Tennis Ball Cricket Bat"
+    );
+  });
+
+  test("a gallery photo names its side when the admin marked one, and is numbered otherwise", () => {
+    const goat = {
+      ...bat("goat"),
+      images: photos,
+      turn: [
+        { side: "face" as const, url: photos[2] },
+        { side: "back" as const, url: photos[1] },
+      ],
+    };
+    expect(batPhotoAlt(goat, 0)).toBe("Astaad G.O.A.T Grade 1 English Willow Cricket Bat, photo 1 of 3");
+    expect(batPhotoAlt(goat, 1)).toBe("Astaad G.O.A.T Grade 1 English Willow Cricket Bat, back");
+    expect(batPhotoAlt(goat, 2)).toBe("Astaad G.O.A.T Grade 1 English Willow Cricket Bat, face");
+  });
+
+  test("a product with one photo is not numbered", () => {
+    expect(batPhotoAlt({ ...bat("goat"), images: photos.slice(0, 1), turn: [] }, 0)).toBe(
+      "Astaad G.O.A.T Grade 1 English Willow Cricket Bat"
+    );
+    expect(gearPhotoAlt({ ...gear("club-cricket-helmet"), images: photos.slice(0, 1) }, 0)).toBe("Astaad Club Cricket Helmet");
+  });
+
+  test("gear says what it is where its name doesn't", () => {
+    expect(gearAlt(gear("elite-batting-gloves"))).toBe("Astaad Elite Batting Gloves");
+    expect(gearAlt({ name: "Legacy Pro Helmet", categorySlug: "helmets" })).toBe("Astaad Legacy Pro Helmet, cricket helmet");
+    expect(gearPhotoAlt({ name: "Player Series Kitbag Black", categorySlug: "cricket-kitbags", images: photos }, 1)).toBe(
+      "Astaad Player Series Kitbag Black, cricket kitbag, photo 2 of 3"
+    );
+  });
+
+  test("a category's or range's photo is named in words", () => {
+    const category = (slug: string) => STORE_CATEGORIES.find((entry) => entry.slug === slug)!;
+    expect(categoryAlt(category("bats"))).toBe("Astaad cricket bats");
+    expect(categoryAlt(category("batting-pads"))).toBe("Astaad cricket batting pads");
+    expect(categoryAlt(category("cricket-kitbags"))).toBe("Astaad cricket kitbags");
+    expect(categoryAlt(BAT_RANGES[0])).toBe("Astaad Kashmir willow bats");
+    expect(categoryAlt(BAT_RANGES[1])).toBe("Astaad tennis bats");
   });
 });
