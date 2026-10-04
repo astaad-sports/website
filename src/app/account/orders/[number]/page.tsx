@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CircleCheck } from "lucide-react";
 
+import { CustomerReviewOptIn } from "@/components/analytics/customer-review-opt-in";
 import { lineOfferText, RegularPrice } from "@/components/cart/line-offer";
 import { OrderProgress } from "@/components/orders/order-progress";
 import { Eyebrow } from "@/components/storefront/eyebrow";
@@ -10,6 +11,7 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { getOrderForUser } from "@/db/orders";
 import { requireUser } from "@/lib/auth/session";
+import { reviewOptIn } from "@/lib/customer-reviews";
 import { formatOrderDate, formatOrderNumber, formatPaise, parseOrderNumber } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
 import { cn } from "@/lib/utils";
@@ -40,6 +42,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
 
   const confirmed = order.status !== "pending_payment" && order.status !== "cancelled";
   const justPlaced = placed === "1" && confirmed;
+  // Google asks, on the confirmation only, whether it may email a survey about the order.
+  const optIn = justPlaced ? reviewOptIn(order) : null;
 
   return (
     <>
@@ -202,6 +206,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
         </div>
       </main>
       <SiteFooter />
+      {optIn && <CustomerReviewOptIn optIn={optIn} />}
     </>
   );
 }

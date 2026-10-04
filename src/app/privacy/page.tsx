@@ -11,14 +11,15 @@ export const metadata: Metadata = pageMetadata({
   path: "/privacy",
 });
 
-const UPDATED = "1 October 2026";
+const UPDATED = "5 October 2026";
 
 /**
  * Privacy policy. Describes what the site actually does: Firebase sign-in,
  * orders in our database, Razorpay payments, order emails through Resend,
- * courier hand-off, one sign-in cookie and a cart in local storage, and
- * Google Analytics counting visits (see src/lib/analytics.ts), with no
- * advertising.
+ * courier hand-off, one sign-in cookie and a cart in local storage,
+ * Google Analytics counting visits (see src/lib/analytics.ts) and Google
+ * Customer Reviews asking about a survey once an order is paid (see
+ * src/lib/customer-reviews.ts), with no advertising.
  * Update it when any of that changes.
  */
 export default async function PrivacyPage() {
@@ -83,6 +84,10 @@ export default async function PrivacyPage() {
               its tracking details change;
             </li>
             <li>show your orders and their tracking in your account;</li>
+            <li>
+              let Google ask you, once your order is confirmed, whether it may email you a short survey about
+              your purchase;
+            </li>
             <li>answer your questions and handle returns, refunds and complaints;</li>
             <li>prevent fraud and keep the website and your account secure;</li>
             <li>see how many people visit and which pages they use, so we can improve the website;</li>
@@ -122,6 +127,12 @@ export default async function PrivacyPage() {
               browser, and your approximate location.
             </li>
             <li>
+              <strong>Google Customer Reviews</strong> asks, when your order is confirmed, whether Google may
+              email you a short survey about your purchase. To ask, it receives your email address, your order
+              number, the country we deliver to and the date we expect your order to arrive. Google emails you
+              the survey only if you say yes.
+            </li>
+            <li>
               <strong>Neon</strong> hosts our database, and <strong>Vercel</strong> hosts the website.
             </li>
             <li>
@@ -159,8 +170,9 @@ export default async function PrivacyPage() {
           </ul>
           <p>
             Your cart and any coupon you enter are saved in your browser’s local storage, on your device only,
-            until you check out. Google’s sign-in window and Razorpay’s payment window may set their own cookies
-            under their own privacy policies, for example to prevent fraud. When the home page shows our
+            until you check out. Google’s sign-in window, Google’s survey question on your order confirmation
+            and Razorpay’s payment window may set their own cookies under their own privacy policies, for
+            example to prevent fraud. When the home page shows our
             Instagram posts through Instagram’s own embed, Instagram may set cookies too, under Meta’s privacy
             policy. We use no advertising cookies.
           </p>
