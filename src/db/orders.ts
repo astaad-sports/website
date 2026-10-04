@@ -17,7 +17,7 @@ import {
   type OrderFilter,
 } from "@/lib/orders/fulfilment";
 
-import { getDb } from "./index";
+import { getDb, type Database } from "./index";
 import { returnOrderToStock, takeOrderFromStock } from "./products";
 import { orderItems, orders, users, type Order, type OrderItem, type OrderStatus } from "./schema";
 
@@ -25,21 +25,28 @@ export interface OrderWithItems extends Order {
   items: OrderItem[];
 }
 
+/** The database, or a transaction already open on it. */
+export type Executor = Database | Parameters<Parameters<Database["transaction"]>[0]>[0];
+
 /**
  * Record a priced cart as a `pending_payment` order with its items, in one
  * transaction. Also keeps the checkout phone on the account if it has none.
  * A guest's order has no account (`userId` null) and goes by its `email`.
- * `test` marks a test account's order.
+ * `test` marks a test account's order. With `db` a transaction, the order is
+ * part of it.
  */
-export async function createOrder(input: {
-  userId: string | null;
-  email: string | null;
-  address: ShippingAddress;
-  cart: PricedCart;
-  test: boolean;
-}): Promise<Order> {
+export async function createOrder(
+  input: {
+    userId: string | null;
+    email: string | null;
+    address: ShippingAddress;
+    cart: PricedCart;
+    test: boolean;
+  },
+  db: Executor = getDb()
+): Promise<Order> {
   const { userId, email, address, cart, test } = input;
-  return getDb().transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const [order] = await tx
       .insert(orders)
       .values({

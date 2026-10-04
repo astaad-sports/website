@@ -81,6 +81,53 @@ export function RazorpaySettings({ status }: { status: RazorpayStatus }) {
         </Note>
       )}
       <DashboardLink href={DASHBOARD_URL}>Open Razorpay dashboard</DashboardLink>
+      {status.connected && <MagicCheckoutSettings magic={status.magic} webhook={status.webhook} />}
+    </div>
+  );
+}
+
+/**
+ * Razorpay Magic Checkout: whether Buy now opens Razorpay's own window, and
+ * the three addresses Razorpay's dashboard asks for, to copy from here.
+ */
+function MagicCheckoutSettings({ magic, webhook }: { magic: RazorpayStatus["magic"]; webhook: boolean }) {
+  const urls: [string, string][] = [
+    ["Shipping info URL", magic.shippingInfoUrl],
+    ["URL for get promotions", magic.getPromotionsUrl],
+    ["URL for apply promotions", magic.applyPromotionsUrl],
+  ];
+  return (
+    <div className="mt-2 flex flex-col gap-1 border-t border-border pt-3">
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <span className="text-[15px] leading-[22px] font-semibold">Magic Checkout</span>
+        <span className="text-[11px] leading-[14px] font-semibold tracking-[0.08em] text-ink-muted uppercase">
+          {magic.on ? "On" : "Off"}
+        </span>
+      </div>
+      <Note>
+        {magic.on
+          ? "Buy now opens Razorpay’s window, which takes the mobile number, address, coupon and payment."
+          : "Buy now opens the store’s own checkout. Once Razorpay has enabled Magic Checkout for the account, enter the addresses below in the Razorpay dashboard (Magic Checkout, as a custom e-commerce platform), then set the variable to “on” and redeploy."}
+      </Note>
+      {!magic.on && (
+        <Note>
+          <EnvName>NEXT_PUBLIC_MAGIC_CHECKOUT</EnvName>
+        </Note>
+      )}
+      {magic.on && !webhook && (
+        <Note>
+          Set <EnvName>RAZORPAY_WEBHOOK_SECRET</EnvName> too: without it, a Magic Checkout order is made only if the
+          customer stays on the page until the payment finishes.
+        </Note>
+      )}
+      <dl className="mt-1 flex flex-col gap-2">
+        {urls.map(([label, url]) => (
+          <div key={label} className="flex flex-col">
+            <dt className="text-[13px] leading-[18px] text-ink-muted">{label}</dt>
+            <dd className="font-mono text-xs leading-[18px] break-all select-all">{url}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

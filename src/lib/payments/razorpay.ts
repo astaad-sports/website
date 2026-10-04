@@ -1,6 +1,9 @@
 import "server-only";
 
 import { razorpayKeys, type RazorpayKeys } from "./keys";
+import { siteUrl } from "@/lib/site";
+
+import { magicCheckoutEnabled, type MagicLineItem, type MagicOrder } from "./magic";
 import { isValidPaymentSignature, isValidWebhookSignature } from "./signature";
 
 const API = "https://api.razorpay.com/v1";
@@ -39,13 +42,26 @@ export interface RazorpayStatus {
   mode: "live" | "test" | null;
   /** RAZORPAY_WEBHOOK_SECRET is set, so payments are confirmed even if the customer closes the page. */
   webhook: boolean;
+  /** Magic Checkout: whether Buy now opens Razorpay's window, and the addresses Razorpay's dashboard asks for. */
+  magic: { on: boolean; shippingInfoUrl: string; getPromotionsUrl: string; applyPromotionsUrl: string };
 }
 
 /** For the admin's Settings page. Never exposes the keys themselves. */
 export function razorpayStatus(): RazorpayStatus {
   const found = keys();
   const mode = found?.keyId.startsWith("rzp_live_") ? "live" : found?.keyId.startsWith("rzp_test_") ? "test" : null;
-  return { connected: found !== null, mode, webhook: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET) };
+  const base = `${siteUrl()}/api/magic-checkout`;
+  return {
+    connected: found !== null,
+    mode,
+    webhook: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
+    magic: {
+      on: magicCheckoutEnabled(),
+      shippingInfoUrl: `${base}/shipping-info`,
+      getPromotionsUrl: `${base}/promotions`,
+      applyPromotionsUrl: `${base}/apply-promotion`,
+    },
+  };
 }
 
 /** The public key id, which Razorpay Checkout needs in the browser. */
@@ -63,13 +79,16 @@ export interface RazorpayOrder {
 
 /**
  * Create a Razorpay order: it locks the amount server-side so the browser
- * cannot change what the customer pays.
+ * cannot change what the customer pays. With `lineItems` it is a Magic
+ * Checkout order: `amountPaise` is then the items' total, and Razorpay adds
+ * the delivery charge and takes off a coupon itself (see magic.ts).
  */
 export async function createRazorpayOrder(input: {
   amountPaise: number;
   receipt: string;
   notes?: Record<string, string>;
   test?: boolean;
+  lineItems?: MagicLineItem[];
 }): Promise<RazorpayOrder> {
   const { keyId, keySecret } = requireKeys({ test: input.test });
   const response = await fetch(`${API}/orders`, {
@@ -83,6 +102,7 @@ export async function createRazorpayOrder(input: {
       currency: "INR",
       receipt: input.receipt,
       notes: input.notes,
+      ...(input.lineItems ? { line_items_total: input.amountPaise, line_items: input.lineItems } : {}),
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
@@ -93,6 +113,25 @@ export async function createRazorpayOrder(input: {
     throw new Error(`Razorpay order creation failed (${response.status}): ${detail.slice(0, 300)}`);
   }
   return (await response.json()) as RazorpayOrder;
+}
+
+/**
+ * A Magic Checkout order as Razorpay has it once paid: who bought it, where
+ * it ships, the delivery charge and any coupon. Read with the keys the order
+ * was made with.
+ */
+export async function fetchRazorpayOrder(id: string, mode: Mode = {}): Promise<MagicOrder> {
+  const { keyId, keySecret } = requireKeys(mode);
+  const response = await fetch(`${API}/orders/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Razorpay order ${id} could not be read (${response.status}): ${detail.slice(0, 300)}`);
+  }
+  return (await response.json()) as MagicOrder;
 }
 
 /**

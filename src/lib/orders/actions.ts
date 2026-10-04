@@ -1,7 +1,6 @@
 "use server";
 
 import { keepCheckoutAddress } from "@/db/addresses";
-import { findOfferByCode } from "@/db/offers";
 import { attachRazorpayOrder, createOrder, isTestRazorpayOrder, markOrderPaid } from "@/db/orders";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isTestAccount } from "@/lib/auth/test-account";
@@ -9,7 +8,8 @@ import { lineProblemText, priceCart } from "@/lib/cart";
 import { paymentResponseSchema, placeOrderSchema, type CheckoutField } from "@/lib/checkout";
 import { notifyLater, notifyOrderPaid } from "@/lib/email/notify";
 import { formatOrderNumber } from "@/lib/format";
-import { CODE_PATTERN, couponProblem, normaliseCode, toAppliedCoupon, type AppliedCoupon } from "@/lib/offers/model";
+import type { AppliedCoupon } from "@/lib/offers/model";
+import { couponFor, type CouponCheck } from "@/lib/orders/coupon";
 import { orderPath } from "@/lib/orders/path";
 import { getFreshStoreCatalogue, productsChanged } from "@/lib/products/catalogue";
 import {
@@ -33,16 +33,7 @@ export type PlaceOrderResult =
 
 const SIGNED_OUT = "Your session has ended. Refresh the page to continue.";
 
-export type CheckCouponResult = { ok: true; coupon: AppliedCoupon } | { ok: false; error: string };
-
-/** The coupon behind a code, if it can be used now, or why not. */
-async function couponFor(raw: unknown): Promise<CheckCouponResult> {
-  const code = normaliseCode(typeof raw === "string" ? raw : "");
-  if (!code) return { ok: false, error: "Enter a coupon code." };
-  const offer = CODE_PATTERN.test(code) && process.env.DATABASE_URL ? await findOfferByCode(code) : undefined;
-  const problem = couponProblem(offer);
-  return problem || !offer ? { ok: false, error: problem ?? "This code isn't valid." } : { ok: true, coupon: toAppliedCoupon(offer) };
-}
+export type CheckCouponResult = CouponCheck;
 
 /**
  * Check a coupon code the customer typed in the cart. The cart keeps what

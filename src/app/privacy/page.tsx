@@ -115,7 +115,8 @@ export default async function PrivacyPage() {
           <ul>
             <li>
               <strong>Razorpay</strong> processes payments, and receives your name, email address, mobile number
-              and the order amount.
+              and the order amount. Where Buy now opens Razorpay’s own checkout window, you give Razorpay your
+              mobile number and delivery address there, and Razorpay passes them to us with your order.
             </li>
             <li>
               <strong>Resend</strong> sends our order emails, and receives your name, email address, mobile number,

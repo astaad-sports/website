@@ -1,5 +1,6 @@
 import { findPaidOrderId, markOrderPaid } from "@/db/orders";
 import { notifyLater, notifyOrderPaid, notifyRefunded } from "@/lib/email/notify";
+import { completeMagicCheckout } from "@/lib/orders/magic";
 import { productsChanged } from "@/lib/products/catalogue";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay";
 import { processedRefund } from "@/lib/payments/refund";
@@ -16,7 +17,8 @@ interface RazorpayWebhook {
  * Razorpay webhooks. Subscribe to `order.paid` and `refund.processed` in the
  * Razorpay dashboard with this URL and RAZORPAY_WEBHOOK_SECRET as the secret.
  * `order.paid` marks the order paid, and sends its emails, even when the
- * customer closes the tab before the checkout handler runs.
+ * customer closes the tab before the checkout handler runs. For a Magic
+ * Checkout, whose order is made only once it is paid, it makes the order too.
  * `refund.processed` emails the customer that a refund made in the dashboard
  * is on its way.
  */
@@ -48,6 +50,15 @@ export async function POST(request: Request) {
     if (stockChanged) productsChanged();
     // After the response; if the checkout page already sent the emails, nothing goes twice.
     if (order && order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
+    if (!order) {
+      // No order yet: a Magic Checkout becomes one now, even if Razorpay gave no address for it.
+      // If Razorpay cannot be reached, it sends the event again later.
+      const completion = await completeMagicCheckout(
+        { razorpayOrderId, razorpayPaymentId: payment.id },
+        { withoutAddress: true }
+      );
+      if (completion.status === "failed") return new Response(completion.reason, { status: 500 });
+    }
   }
 
   const refund = processedRefund(event);

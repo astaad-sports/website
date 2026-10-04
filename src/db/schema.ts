@@ -13,6 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import type { CartItem, PricedCart } from "@/lib/cart";
 import { BAT_SIDES } from "@/lib/catalogue";
 
 const timestamps = {
@@ -116,7 +117,11 @@ export const orders = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     /** The customer-facing number, shown as AST-10001. */
     number: integer("number").notNull().unique().generatedAlwaysAsIdentity({ startWith: 10001 }),
-    /** The customer's account. Null for an order placed as a guest, which goes by its `email`. */
+    /**
+     * The customer's account. Null for an order placed as a guest, which goes
+     * by its `email`; a guest who paid through Razorpay Magic Checkout may
+     * have given Razorpay only a mobile number.
+     */
     userId: uuid("user_id").references(() => users.id, { onDelete: "restrict" }),
     status: orderStatus("status").notNull().default("pending_payment"),
     currency: text("currency").notNull().default("INR"),
@@ -166,12 +171,38 @@ export const orders = pgTable(
   (table) => [
     index("orders_user_id_created_at_idx").on(table.userId, table.createdAt),
     index("orders_status_created_at_idx").on(table.status, table.createdAt),
-    // A guest has no account to write to, so their order always carries an email.
-    check("orders_guest_has_email", sql`${table.userId} is not null or ${table.email} is not null`),
   ]
 );
 
 export type Order = typeof orders.$inferSelect;
+
+/**
+ * A checkout started in Razorpay Magic Checkout: Razorpay's own window takes
+ * the mobile number, address, coupon and payment, so the store has no address
+ * for an order until it is paid. This row holds what was chosen and what it
+ * costs until then; once paid it becomes an order (`orderId`). Its id is the
+ * Razorpay order's receipt, which Razorpay quotes when it asks for the
+ * delivery charge or checks a coupon. See src/lib/orders/magic.ts.
+ */
+export const magicCheckouts = pgTable("magic_checkouts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  /** The signed-in customer, or null for a guest. */
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  /** From a test account: paid in Razorpay's test mode (see orders.isTest). */
+  isTest: boolean("is_test").notNull().default(false),
+  /** What was chosen, to price again when a coupon is tried. */
+  items: jsonb("items").$type<CartItem[]>().notNull(),
+  /** The priced cart the customer pays for, as it was when the window opened. */
+  cart: jsonb("cart").$type<PricedCart>().notNull(),
+  /** Each coupon code Razorpay asked about that takes money off, with the cart priced with it. */
+  couponCarts: jsonb("coupon_carts").$type<Record<string, PricedCart>>().notNull().default({}),
+  razorpayOrderId: text("razorpay_order_id").unique(),
+  /** The order this became once it was paid. */
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  ...timestamps,
+});
+
+export type MagicCheckout = typeof magicCheckouts.$inferSelect;
 
 /** A chosen option as the customer saw it, e.g. { label: "Size", value: "SH / Full Size" }. */
 export interface OrderItemOption {
