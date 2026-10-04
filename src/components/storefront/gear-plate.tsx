@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { BuyNowLink } from "@/components/cart/buy-now-link";
-import { Button } from "@/components/ui/button";
 import { gearHref } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { gearLine, type StoreGear } from "@/lib/products/model";
@@ -18,9 +17,8 @@ import { WishlistButton } from "./wishlist-button";
 /**
  * One gear product on its grey plate: badges, wishlist heart, name, note,
  * price (with the rating beside it once reviewed, and the running offer under
- * it) and two actions. Buy Now opens the product's page, where its size and
- * hand are chosen; nothing is added to the cart from here. Out of stock, it
- * says so.
+ * it) and Buy Now, which opens the product's page, where its size and hand
+ * are chosen; nothing is added to the cart from here. Out of stock, it says so.
  */
 export function GearPlate({ product }: { product: StoreGear }) {
   const href = gearHref(product);
@@ -74,17 +72,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
         </div>
         {product.offer && <OfferNote offer={product.offer} />}
       </div>
-      <div className="flex gap-3">
-        <BuyNowLink href={href} soldOut={product.soldOut} className="relative z-10 h-12 flex-1 rounded-xs font-bold" />
-        <Button
-          variant="secondary"
-          render={<Link href={href} />}
-          nativeButton={false}
-          className="relative z-10 h-12 rounded-xs border border-border px-5 hover:border-border-strong hover:bg-transparent"
-        >
-          View Product
-        </Button>
-      </div>
+      <BuyNowLink href={href} soldOut={product.soldOut} className="relative z-10 h-12 w-full rounded-xs font-bold" />
       <CardCover href={href} />
     </article>
   );

@@ -112,9 +112,9 @@ export function BatCard({ bat }: { bat: StoreBat }) {
 
 /**
  * One bat on its plate: the blade, name, grade, price (with the rating beside
- * it once reviewed, and the running offer under it) and two actions. Buy Now
- * opens the bat's page, where its size and build are chosen; nothing is added
- * to the cart from here. Out of stock, it says so.
+ * it once reviewed, and the running offer under it) and Buy Now, which opens
+ * the bat's page, where its size and build are chosen; nothing is added to
+ * the cart from here. Out of stock, it says so.
  */
 export function BatPlate({ bat }: { bat: StoreBat }) {
   const href = `/bats/${bat.slug}`;
@@ -187,17 +187,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
         </div>
         {bat.offer && <OfferNote offer={bat.offer} />}
       </div>
-      <div className="flex gap-3">
-        <BuyNowLink href={href} soldOut={bat.soldOut} className="relative z-10 h-12 flex-1 rounded-xs font-bold" />
-        <Button
-          variant="secondary"
-          render={<Link href={href} />}
-          nativeButton={false}
-          className="relative z-10 h-12 rounded-xs border border-border px-5 hover:border-border-strong hover:bg-transparent"
-        >
-          View Product
-        </Button>
-      </div>
+      <BuyNowLink href={href} soldOut={bat.soldOut} className="relative z-10 h-12 w-full rounded-xs font-bold" />
       <CardCover href={href} />
     </article>
   );
