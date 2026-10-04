@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { ChevronDown, Mail, MapPin, Phone } from "lucide-react";
 
+import { CustomerReviewsBadge } from "@/components/analytics/customer-reviews-badge";
 import { Crest } from "@/components/astaad";
 import { STORE_CATEGORIES } from "@/lib/catalogue";
+import { MERCHANT_ID } from "@/lib/customer-reviews";
 import { mobileHref } from "@/lib/format";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/instagram/model";
 import { getStoreSettings } from "@/lib/settings/store";
@@ -107,8 +109,10 @@ function FooterContact({
 /**
  * The near-black footer: crest and blurb, Shop and Support columns (with the
  * store's contact details), and the legal line with the store's name and GSTIN.
- * On phones the two columns fold away under their headings. It also carries
- * the WhatsApp button pinned to the corner of every page that has a footer.
+ * On phones the two columns fold away under their headings. Under the crest
+ * is Google's Customer Reviews badge, once Google has a rating to show. It
+ * also carries the WhatsApp button pinned to the corner of every page that
+ * has a footer.
  */
 export async function SiteFooter() {
   const settings = await getStoreSettings();
@@ -124,22 +128,27 @@ export async function SiteFooter() {
     <footer className="bg-surface-dark-sunken text-on-dark">
       <div className="site-shell flex flex-col gap-8 pt-10 pb-8 md:pt-14">
         <div className="grid gap-6 md:grid-cols-[2fr_1fr_1fr] md:gap-10">
-          <div className="flex flex-col items-start gap-4">
+          {/* min-w-0: a badge wider than a phone is clipped, not left to widen the page. */}
+          <div className="flex min-w-0 flex-col items-start gap-4">
             <Crest size={56} />
             <p className="max-w-[360px] text-[15px] leading-[22px] text-on-dark-subtle">
               Astaad Sports makes premium cricket equipment for players who never
               settle. Designed, built and sold by Astaad, across India.
             </p>
-            <a
-              href={INSTAGRAM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${LINK} inline-flex items-center gap-2`}
-            >
-              <InstagramGlyph className="size-4 shrink-0 text-on-dark-subtle" />
-              @{INSTAGRAM_HANDLE}
-              <span className="sr-only"> on Instagram</span>
-            </a>
+            {/* One item of the column, so the badge adds no gap until Google shows it. */}
+            <div className="flex max-w-full flex-col items-start">
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${LINK} inline-flex items-center gap-2`}
+              >
+                <InstagramGlyph className="size-4 shrink-0 text-on-dark-subtle" />
+                @{INSTAGRAM_HANDLE}
+                <span className="sr-only"> on Instagram</span>
+              </a>
+              <CustomerReviewsBadge merchantId={MERCHANT_ID} className="mt-4" />
+            </div>
           </div>
           <FooterNav {...shop} className="hidden md:flex" />
           <div className="flex flex-col gap-5">

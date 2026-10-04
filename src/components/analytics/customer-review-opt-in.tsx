@@ -1,17 +1,10 @@
 "use client";
 
-import Script from "next/script";
+import { useEffect } from "react";
 
 import type { ReviewOptIn } from "@/lib/customer-reviews";
 
-declare global {
-  interface Window {
-    gapi?: {
-      load(module: "surveyoptin", ready: () => void): void;
-      surveyoptin?: { render(optIn: ReviewOptIn): void };
-    };
-  }
-}
+import { loadGooglePlatform } from "./google-platform";
 
 // One mark per order in this browser's localStorage, so reloading the
 // confirmation page, or coming back to it, does not ask again.
@@ -40,18 +33,25 @@ function rememberAsked(key: string) {
  * there is anything to ask (see reviewOptIn).
  */
 export function CustomerReviewOptIn({ optIn }: { optIn: ReviewOptIn }) {
-  return (
-    <Script
-      src="https://apis.google.com/js/platform.js"
-      strategy="afterInteractive"
-      onReady={() => {
-        const key = `${ASKED_KEY}-${optIn.order_id}`;
-        if (alreadyAsked(key)) return;
-        window.gapi?.load("surveyoptin", () => {
-          window.gapi?.surveyoptin?.render(optIn);
+  useEffect(() => {
+    const key = `${ASKED_KEY}-${optIn.order_id}`;
+    if (alreadyAsked(key)) return;
+    let left = false;
+    loadGooglePlatform()
+      .then((gapi) => {
+        if (left) return;
+        gapi.load("surveyoptin", () => {
+          if (left) return;
+          gapi.surveyoptin?.render(optIn);
           rememberAsked(key);
         });
-      }}
-    />
-  );
+      })
+      .catch(() => {
+        // Blocked by the browser or an extension: the customer is simply not asked.
+      });
+    return () => {
+      left = true;
+    };
+  }, [optIn]);
+  return null;
 }
