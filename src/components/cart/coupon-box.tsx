@@ -19,8 +19,10 @@ const FAILED = "Something went wrong. Try again.";
  * the code as it is now, so a stale copy would show the wrong total and fail
  * every Pay with "Prices changed". The server's terms replace the stored
  * ones; a code that no longer works is removed and `onRemoved` says why.
+ * With `onOpen` false it checks only when asked: the checkout has a coupon
+ * box, which does the check on opening.
  */
-export function useCouponRecheck(onRemoved: (message: string) => void): () => Promise<void> {
+export function useCouponRecheck(onRemoved: (message: string) => void, onOpen = true): () => Promise<void> {
   const { priced, coupon, setCoupon } = useCart();
   const latest = useRef(coupon);
   useEffect(() => {
@@ -50,10 +52,10 @@ export function useCouponRecheck(onRemoved: (message: string) => void): () => Pr
   const loaded = priced !== null;
   const checked = useRef(false);
   useEffect(() => {
-    if (!loaded || checked.current) return;
+    if (!onOpen || !loaded || checked.current) return;
     checked.current = true;
     void recheck();
-  }, [loaded, recheck]);
+  }, [onOpen, loaded, recheck]);
 
   return recheck;
 }
@@ -61,12 +63,14 @@ export function useCouponRecheck(onRemoved: (message: string) => void): () => Pr
 /**
  * The coupon the customer entered: "DIWALI20 applied · Diwali Sale", or why
  * it takes nothing off this cart, with Remove. `applied` and `covered` are
- * PricedCart's coupon.applied and coupon.covered. The checkout shows it too.
+ * PricedCart's coupon.applied and coupon.covered. `noun` is what is being
+ * priced: the cart, or the order when "Buy it now" skipped the cart.
  */
-export function CouponStatus({
+function CouponStatus({
   coupon,
   applied,
   covered,
+  noun,
   onRemove,
   removeRef,
 }: {
@@ -74,6 +78,7 @@ export function CouponStatus({
   applied: boolean;
   /** The code covers something in the cart, but an offer already on it takes more off. */
   covered: boolean;
+  noun: "cart" | "order";
   onRemove: () => void;
   removeRef?: Ref<HTMLButtonElement>;
 }) {
@@ -90,7 +95,7 @@ export function CouponStatus({
             <span className="font-semibold">{coupon.code}</span>
             {/* An expired code is removed when the cart or checkout checks it with the server. */}
             <span className="text-ink-muted">
-              {covered ? "Your cart already has a better offer." : "This code doesn't apply to anything in your cart."}
+              {covered ? `Your ${noun} already has a better offer.` : `This code doesn't apply to anything in your ${noun}.`}
             </span>
           </>
         )}
@@ -111,15 +116,17 @@ export function CouponStatus({
 }
 
 /**
- * The cart's coupon box: a code field and Apply, checked on the server, then
- * the coupon's status with Remove. Focus follows the change: to Remove once a
- * code is applied, back to the field once it is removed. A stored code that
- * no longer works is removed when the cart opens, with the reason under the
- * field.
+ * The coupon box in the cart and the checkout: a code field and Apply,
+ * checked on the server, then the coupon's status with Remove. Focus follows
+ * the change: to Remove once a code is applied, back to the field once it is
+ * removed. A stored code that no longer works is removed when the page opens,
+ * with the reason under the field. `source` is what the code is priced
+ * against (see useCart): the cart, or the one product "Buy it now" chose.
+ * It has a form of its own, so it cannot sit inside another form.
  */
-export function CouponBox() {
+export function CouponBox({ source = "cart" }: { source?: "cart" | "buy-now" }) {
   const id = useId();
-  const { coupon, priced, setCoupon } = useCart();
+  const { coupon, priced, setCoupon } = useCart(source);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -175,6 +182,7 @@ export function CouponBox() {
           coupon={coupon}
           applied={priced?.coupon?.applied ?? false}
           covered={priced?.coupon?.covered ?? false}
+          noun={source === "buy-now" ? "order" : "cart"}
           onRemove={remove}
           removeRef={removeRef}
         />

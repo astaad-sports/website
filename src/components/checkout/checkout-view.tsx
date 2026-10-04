@@ -8,7 +8,7 @@ import { useEffect, useId, useRef, useState, useTransition, type FormEvent } fro
 
 import { trackEvent } from "@/components/analytics/track";
 import { EmptyCart } from "@/components/cart/cart-view";
-import { CouponStatus, useCouponRecheck } from "@/components/cart/coupon-box";
+import { CouponBox, useCouponRecheck } from "@/components/cart/coupon-box";
 import { lineOfferText, RegularPrice } from "@/components/cart/line-offer";
 import { OrderSummary } from "@/components/cart/order-summary";
 import { useCart } from "@/components/cart/use-cart";
@@ -48,9 +48,11 @@ type Stage = "form" | "confirming" | "confirmed";
 const FIELDS = ADDRESS_FIELDS.map((field) => ({ ...field, autoComplete: `shipping ${field.autoComplete}` }));
 
 /**
- * The checkout page body: the delivery address beside the order and the Pay
- * button. Paying places the order on the server, opens Razorpay Checkout,
- * then confirms the payment and opens the order. The page hands down a
+ * The checkout page body: the delivery address beside the order, the coupon
+ * box and the Pay button. The address is the form; Pay sits outside it and
+ * submits it, so the coupon box can have a form of its own. Paying places the
+ * order on the server, opens Razorpay Checkout, then confirms the payment and
+ * opens the order. The page hands down a
  * catalogue read fresh from the database and the coupon is checked again, so
  * the total shown is the total placeOrder charges. The form starts on the
  * customer's default saved address; choosing another of theirs fills it in.
@@ -87,8 +89,8 @@ export function CheckoutView({
 }) {
   const id = useId();
   const router = useRouter();
-  const { items, priced, coupon, setCoupon, clear } = useCart(buyNow ? "buy-now" : "cart");
-  const payRef = useRef<HTMLButtonElement>(null);
+  const source = buyNow ? "buy-now" : "cart";
+  const { items, priced, coupon, clear } = useCart(source);
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<CheckoutField, string>>>({});
@@ -102,7 +104,8 @@ export function CheckoutView({
     edited: false,
   }));
   const starting: Partial<ShippingAddress> = filled.from ?? defaults;
-  const recheckCoupon = useCouponRecheck(setError);
+  // The coupon box checks the stored code when the page opens; this checks it again after a failed Pay.
+  const recheckCoupon = useCouponRecheck(setError, false);
   // A placed order is reused while the cart, address and total are unchanged
   // (say the payment window failed to load). Closing the window forgets it,
   // so paying later places the order again against current stock and prices.
@@ -229,12 +232,6 @@ export function CheckoutView({
     });
   }
 
-  // The Pay button now shows the new total, so focus moves there.
-  function removeCoupon() {
-    setCoupon(null);
-    payRef.current?.focus();
-  }
-
   const errorId = (name: CheckoutField) => `${id}-${name}-error`;
   // "Buy it now" has one line: the product it was chosen on.
   const productHref = buyNow ? priced.lines[0].href : null;
@@ -242,13 +239,12 @@ export function CheckoutView({
   return (
     <>
       <Script src={CHECKOUT_SCRIPT} strategy="afterInteractive" />
-      <form
-        onSubmit={pay}
-        noValidate
-        className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start"
-        aria-busy={pending}
-      >
-        <section
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        <form
+          id={`${id}-form`}
+          onSubmit={pay}
+          noValidate
+          aria-busy={pending}
           aria-labelledby={`${id}-address`}
           className="flex flex-col gap-6 rounded-md border border-border bg-surface-raised p-6 shadow-card md:p-8"
         >
@@ -396,7 +392,7 @@ export function CheckoutView({
               Save this address to my account
             </label>
           )}
-        </section>
+        </form>
 
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">
           <section
@@ -449,16 +445,7 @@ export function CheckoutView({
             shippingPaise={priced.shippingPaise}
             totalPaise={priced.totalPaise}
           >
-            {coupon && (
-              <div className="border-t border-border pt-5">
-                <CouponStatus
-                  coupon={coupon}
-                  applied={priced.coupon?.applied ?? false}
-                  covered={priced.coupon?.covered ?? false}
-                  onRemove={removeCoupon}
-                />
-              </div>
-            )}
+            <CouponBox source={source} />
             {testAccount && (
               <p className="rounded-sm bg-surface-sunken p-3 type-body-sm">
                 <span className="font-semibold">Test account.</span> This is a test order: Razorpay opens in test
@@ -496,8 +483,8 @@ export function CheckoutView({
               </p>
             )}
             <Button
-              ref={payRef}
               type="submit"
+              form={`${id}-form`}
               size="lg"
               className="w-full"
               disabled={pending || !paymentsReady || priced.unavailable > 0}
@@ -517,7 +504,7 @@ export function CheckoutView({
             </p>
           </OrderSummary>
         </div>
-      </form>
+      </div>
     </>
   );
 }
