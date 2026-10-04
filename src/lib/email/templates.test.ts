@@ -265,6 +265,14 @@ describe("order confirmation", () => {
     expect(email.text).toContain("We will pack your order and email you");
   });
 
+  test("a guest's order links to its own page, not to an account", () => {
+    const id = "5d0c2a1e-0000-4000-8000-00000000000a";
+    const email = orderConfirmationEmail({ order: { ...order, id, userId: null }, store });
+    expect(email.html).toContain(`href="https://astaadsports.com/orders/${id}"`);
+    expect(email.text).toContain(`View your order: https://astaadsports.com/orders/${id}`);
+    expect(email.html).not.toContain("/account/orders/");
+  });
+
   test("sent again once the order is packed, it says so", () => {
     const packed = orderConfirmationEmail({ order: { ...order, status: "packed" }, store });
     const next = "Your order is packed. We will email you the courier and tracking ID as soon as it ships.";

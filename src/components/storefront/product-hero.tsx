@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Leaf, Scale, ShoppingCart, Target, Zap } from "lucide-react";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { BuyNowButton } from "@/components/cart/buy-now-button";
 import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
@@ -23,8 +24,8 @@ import { WishlistButton } from "./wishlist-button";
  * (from the bat's own published reviews), stock, price (with any running
  * offer), delivery promises and actions on the right. From xl it is 760px
  * tall, growing when an offer or a dispatch time needs the room. With `size`
- * (from the address, see sizeInAddress), the price and the cart button are
- * that size's.
+ * (from the address, see sizeInAddress), the price and the cart and buy
+ * buttons are that size's.
  */
 export function ProductHero({
   bat,
@@ -53,6 +54,15 @@ export function ProductHero({
   const standard = chosen ?? startingVariant(bat);
   const others = otherPrices(shown);
   const atThisPrice = bat.sizes.filter((size) => !others.some((variant) => variant.size === size.code));
+  // What Add to cart and Buy it now sell: the standard build. The size is
+  // named when the address chose it, or when the price above is not this size's.
+  const standardItem = batCartItem(bat, standardBatConfig(bat, chosen?.size));
+  const standardSoldOut = chosen ? variantSoldOut(bat, chosen) : bat.soldOut;
+  const standardSize = chosen
+    ? ` · ${chosen.sizeLabel}`
+    : standard.regularPrice !== bat.regularPrice
+      ? ` · ${standard.sizeLabel} ${formatPrice(standard.price)}`
+      : "";
 
   return (
     <section aria-labelledby="pdp-title" className="grid grid-cols-1 lg:grid-cols-[54%_1fr] xl:min-h-[760px]">
@@ -129,20 +139,28 @@ export function ProductHero({
             <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
           </Button>
           <AddToCartButton
-            item={batCartItem(bat, standardBatConfig(bat, chosen?.size))}
+            item={standardItem}
             productName={`Astaad ${bat.name}`}
-            soldOut={chosen ? variantSoldOut(bat, chosen) : bat.soldOut}
+            soldOut={standardSoldOut}
             size="lg"
             variant="secondary"
-            className="h-13 w-full rounded-xs border border-border bg-surface-raised text-sm font-bold tracking-[0.1em] uppercase hover:border-border-strong hover:bg-surface-raised"
+            // With a size named the label is too long for one line on a phone, so it may wrap.
+            className="w-full rounded-xs border border-border bg-surface-raised text-sm font-bold tracking-[0.1em] whitespace-normal uppercase hover:border-border-strong hover:bg-surface-raised"
           >
             <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
             Add to cart · standard build
-            {/* The size is named when the address chose it, or when the price above is not this size's. */}
-            {chosen
-              ? ` · ${chosen.sizeLabel}`
-              : standard.regularPrice !== bat.regularPrice && ` · ${standard.sizeLabel} ${formatPrice(standard.price)}`}
+            {standardSize}
           </AddToCartButton>
+          <BuyNowButton
+            item={standardItem}
+            soldOut={standardSoldOut}
+            size="lg"
+            className="w-full rounded-xs text-sm font-bold tracking-[0.1em] whitespace-normal uppercase"
+          >
+            Buy it now · standard build
+            {standardSize}
+            <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
+          </BuyNowButton>
         </div>
         <ul aria-label="Highlights" className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3">
           {highlights.map((item) => (

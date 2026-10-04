@@ -96,9 +96,25 @@ export const ADDRESS_FIELDS: {
   { name: "pincode", label: "PIN code", autoComplete: "postal-code", inputMode: "numeric", maxLength: 6 },
 ];
 
+/** Checkout with "?buy=now" sells the one product "Buy it now" chose, not the cart. */
+export const BUY_NOW_CHECKOUT = "/checkout?buy=now";
+
+/** The checkout form's fields that can be wrong: the address, and a guest's email. */
+export type CheckoutField = AddressField | "email";
+
 export const placeOrderSchema = z.object({
   items: z.array(cartItemSchema).min(1).max(MAX_LINES),
   address: addressSchema,
+  /**
+   * A guest's email, for their order confirmation and delivery updates. A
+   * signed-in customer's order goes by their account's email instead.
+   */
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email("Enter a valid email address.").max(254, "Enter a valid email address."))
+    .optional(),
   /** The total the customer was shown; if prices changed since, the order is not placed. */
   expectedTotalPaise: z.number().int().nonnegative().optional(),
   /** The coupon code in the cart, checked again here. */

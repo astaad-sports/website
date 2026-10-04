@@ -49,9 +49,10 @@ export default async function TermsPage() {
       body: (
         <>
           <p>
-            You need an account to place an order. You can sign in with Google or with an email address and
-            password. Please give us accurate details and keep your password to yourself: you are responsible
-            for orders placed from your account.
+            You can place an order with an account or as a guest. With an account, you sign in with Google or
+            with an email address and password, and it keeps your orders and addresses. As a guest, you give an
+            email address for your order confirmation and delivery updates. Please give us accurate details and
+            keep your password to yourself: you are responsible for orders placed from your account.
           </p>
           <p>
             You must be 18 or older to place an order. If you are younger, a parent or guardian must place the
@@ -121,7 +122,8 @@ export default async function TermsPage() {
             delivery. Your card, UPI and bank details go straight to Razorpay; we never see or store them.
           </p>
           <p>
-            Your order is confirmed once your payment succeeds, and it then appears in your account. If money
+            Your order is confirmed once your payment succeeds. It then appears in your account or, for a guest
+            order, on the order page linked in your confirmation email. If money
             left your account but you have no order, contact us with the Razorpay payment ID and we will sort it
             out.
           </p>
@@ -146,7 +148,7 @@ export default async function TermsPage() {
           </p>
           <p>
             We ship with trusted couriers such as Trackon Couriers and Delhivery. Once your order ships, your
-            account shows the courier and tracking number. Delivery times depend on your pincode, and couriers
+            order page and your shipping email show the courier and tracking number. Delivery times depend on your pincode, and couriers
             can be delayed by events outside our control.
           </p>
           <p>

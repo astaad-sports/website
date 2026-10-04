@@ -6,6 +6,7 @@ import { ArrowRight, Lock, Pin, RotateCcw, Truck } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { BuyNowButton } from "@/components/cart/buy-now-button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { batCartItem, cleanEngravingInput, type CartItem } from "@/lib/cart";
@@ -185,8 +186,8 @@ function SizeSection({
 }
 
 /**
- * Price (with any running offer) and Add to cart for a bat sold only in its
- * standard build, under the size picker. The price and `soldOut` are for the
+ * Price (with any running offer), Add to cart and Buy it now for a bat sold
+ * only in its standard build, under the size picker. The price and `soldOut` are for the
  * size chosen.
  */
 function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreVariant; item: CartItem; soldOut: boolean }) {
@@ -216,6 +217,15 @@ function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreV
         Add to cart
         <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
       </AddToCartButton>
+      <BuyNowButton
+        item={item}
+        soldOut={soldOut}
+        size="lg"
+        className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
+      >
+        Buy it now
+        <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
+      </BuyNowButton>
     </div>
   );
 }
@@ -224,7 +234,8 @@ function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreV
  * The configurator (size first, then weight, profile, toe, handle, engraving,
  * knocking, scuff sheet) with a live preview and a pinned order summary.
  * Only the options this bat offers appear. A bat that cannot be customised
- * gets just the size picker, with its price and Add to cart. `size` (from the
+ * gets just the size picker, with its price and Add to cart. Buy it now sits
+ * under each Add to cart, for the same build. `size` (from the
  * address, see sizeInAddress) is the size it starts on.
  */
 export function ProductBuilder({
@@ -504,6 +515,16 @@ export function ProductBuilder({
               Add to cart
               <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
             </AddToCartButton>
+            <BuyNowButton
+              item={item}
+              soldOut={soldOut}
+              tone="dark"
+              size="lg"
+              className="h-14 w-full rounded-xs text-sm font-bold tracking-[0.1em] uppercase"
+            >
+              Buy it now
+              <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
+            </BuyNowButton>
             <ul className="flex flex-wrap justify-between gap-2 text-[11px] leading-[14px] font-medium text-on-dark-subtle">
               {trustRow(deliveryFeePaise).map((entry) => (
                 <li key={entry.label} className="inline-flex items-center gap-1.5">

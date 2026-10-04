@@ -3,11 +3,12 @@
 // owner's alerts for a new order, an unpaid order and a new review. Each is a
 // one-line subject plus HTML and plain text carrying the same information.
 // Lines, totals and dates follow the customer's order page
-// (src/app/account/orders/[number]/page.tsx), so an email never disagrees
+// (src/components/orders/order-view.tsx), so an email never disagrees
 // with it. Pure: src/lib/email/notify.ts loads the order and sends them.
 import type { Order, OrderItem, OrderItemOffer } from "@/db/schema";
 import { formatMobile, formatOrderDate, formatOrderNumber, formatPaise, mobileHref, whatsappHref } from "@/lib/format";
 import { stockShortfallNotice } from "@/lib/orders/fulfilment";
+import { orderPath } from "@/lib/orders/path";
 import { CARRIERS, carrierName, isCarrierId } from "@/lib/shipping";
 
 import { escapeHtml, html, raw, type SafeHtml } from "./html";
@@ -59,8 +60,9 @@ function link(store: EmailStore, path: string): string {
   return `${store.siteUrl.replace(/\/+$/, "")}${path}`;
 }
 
+/** The customer's order page: in their account, or a guest's own address for it. */
 function orderUrl(store: EmailStore, order: EmailOrder): string {
-  return link(store, `/account/orders/${order.number}`);
+  return link(store, orderPath(order));
 }
 
 function oneLine(value: string): string {

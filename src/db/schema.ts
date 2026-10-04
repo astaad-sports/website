@@ -116,9 +116,8 @@ export const orders = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     /** The customer-facing number, shown as AST-10001. */
     number: integer("number").notNull().unique().generatedAlwaysAsIdentity({ startWith: 10001 }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+    /** The customer's account. Null for an order placed as a guest, which goes by its `email`. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "restrict" }),
     status: orderStatus("status").notNull().default("pending_payment"),
     currency: text("currency").notNull().default("INR"),
     subtotalPaise: integer("subtotal_paise").notNull(),
@@ -167,6 +166,8 @@ export const orders = pgTable(
   (table) => [
     index("orders_user_id_created_at_idx").on(table.userId, table.createdAt),
     index("orders_status_created_at_idx").on(table.status, table.createdAt),
+    // A guest has no account to write to, so their order always carries an email.
+    check("orders_guest_has_email", sql`${table.userId} is not null or ${table.email} is not null`),
   ]
 );
 

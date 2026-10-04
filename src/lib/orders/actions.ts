@@ -6,10 +6,11 @@ import { attachRazorpayOrder, createOrder, isTestRazorpayOrder, markOrderPaid } 
 import { getCurrentUser } from "@/lib/auth/session";
 import { isTestAccount } from "@/lib/auth/test-account";
 import { lineProblemText, priceCart } from "@/lib/cart";
-import { paymentResponseSchema, placeOrderSchema, type AddressField } from "@/lib/checkout";
+import { paymentResponseSchema, placeOrderSchema, type CheckoutField } from "@/lib/checkout";
 import { notifyLater, notifyOrderPaid } from "@/lib/email/notify";
 import { formatOrderNumber } from "@/lib/format";
 import { CODE_PATTERN, couponProblem, normaliseCode, toAppliedCoupon, type AppliedCoupon } from "@/lib/offers/model";
+import { orderPath } from "@/lib/orders/path";
 import { getFreshStoreCatalogue, productsChanged } from "@/lib/products/catalogue";
 import {
   createRazorpayOrder,
@@ -28,9 +29,9 @@ export interface CheckoutPayment {
 
 export type PlaceOrderResult =
   | { ok: true; payment: CheckoutPayment }
-  | { ok: false; error: string; fieldErrors?: Partial<Record<AddressField, string>> };
+  | { ok: false; error: string; fieldErrors?: Partial<Record<CheckoutField, string>> };
 
-const SIGNED_OUT = "Your session has ended. Sign in again to place your order.";
+const SIGNED_OUT = "Your session has ended. Refresh the page to continue.";
 
 export type CheckCouponResult = { ok: true; coupon: AppliedCoupon } | { ok: false; error: string };
 
@@ -54,19 +55,20 @@ export async function checkCoupon(code: unknown): Promise<CheckCouponResult> {
 /**
  * Turn the cart and address into an order and a Razorpay order to pay.
  * Every price is recomputed here from the catalogue; the browser only says
- * what was chosen.
+ * what was chosen. No account is needed: a signed-out customer orders as a
+ * guest, with the email they give.
  */
 export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: SIGNED_OUT };
 
   const parsed = placeOrderSchema.safeParse(input);
   if (!parsed.success) {
-    const fieldErrors: Partial<Record<AddressField, string>> = {};
+    const fieldErrors: Partial<Record<CheckoutField, string>> = {};
     for (const issue of parsed.error.issues) {
       const [group, field] = issue.path;
-      if (group === "address" && typeof field === "string" && !(field in fieldErrors)) {
-        fieldErrors[field as AddressField] = issue.message;
+      const name = group === "address" ? field : group === "email" ? group : undefined;
+      if (typeof name === "string" && !(name in fieldErrors)) {
+        fieldErrors[name as CheckoutField] = issue.message;
       }
     }
     return Object.keys(fieldErrors).length
@@ -75,6 +77,9 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   }
 
   const { items, address, expectedTotalPaise, couponCode, saveAddress } = parsed.data;
+  // The guest form always sends an email. Without one, the page was opened signed in and the session has ended.
+  if (!user && parsed.data.email === undefined) return { ok: false, error: SIGNED_OUT };
+  const email = user ? user.email : (parsed.data.email ?? null);
   let coupon: AppliedCoupon | null = null;
   if (couponCode) {
     const checked = await couponFor(couponCode);
@@ -98,8 +103,8 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
     return { ok: false, error: "Prices changed since you opened this page. Check your order, then pay again." };
   }
 
-  // A test account's order is paid in Razorpay's test mode, so no money moves.
-  const test = isTestAccount(user);
+  // A test account's order is paid in Razorpay's test mode, so no money moves. A guest's never is.
+  const test = user ? isTestAccount(user) : false;
   if (!razorpayConfigured({ test })) {
     return {
       ok: false,
@@ -109,8 +114,8 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
     };
   }
 
-  const order = await createOrder({ userId: user.id, email: user.email, address, cart, test });
-  if (saveAddress) await keepCheckoutAddress(user.id, address);
+  const order = await createOrder({ userId: user?.id ?? null, email, address, cart, test });
+  if (saveAddress && user) await keepCheckoutAddress(user.id, address);
 
   let razorpayOrder;
   try {
@@ -133,22 +138,24 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
       razorpayOrderId: razorpayOrder.id,
       amountPaise: order.totalPaise,
       orderNumber: order.number,
-      prefill: { name: address.name, email: user.email ?? undefined, contact: address.phone },
+      prefill: { name: address.name, email: email ?? undefined, contact: address.phone },
     },
   };
 }
 
-export type ConfirmPaymentResult = { ok: true; orderNumber: number } | { ok: false; error: string };
+export type ConfirmPaymentResult =
+  /** `orderPath` is where the customer opens the order (see orderPath). */
+  { ok: true; orderNumber: number; orderPath: string } | { ok: false; error: string };
 
 /**
  * Called with Razorpay Checkout's success response. The signature proves
  * Razorpay issued this payment for this order; only then is it marked paid
  * and its emails sent. The order.paid webhook does the same if the customer
- * never returns here.
+ * never returns here. A guest's order then opens at its own address; an
+ * account's order in that account, after signing in again if the session ended.
  */
 export async function confirmPayment(input: unknown): Promise<ConfirmPaymentResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: SIGNED_OUT };
 
   const parsed = paymentResponseSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "The payment response was incomplete." };
@@ -173,8 +180,9 @@ export async function confirmPayment(input: unknown): Promise<ConfirmPaymentResu
   // Emails go after the response, whoever is signed in: the payment is real either way.
   // The webhook asks too; each email still goes once.
   if (order && order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
-  if (!order || order.userId !== user.id) {
+  // Someone else's account never opens the order; its own account, or the guest who paid, does.
+  if (!order || (order.userId && user && order.userId !== user.id)) {
     return { ok: false, error: "We could not find the order for this payment. Contact us with your payment ID." };
   }
-  return { ok: true, orderNumber: order.number };
+  return { ok: true, orderNumber: order.number, orderPath: orderPath(order) };
 }

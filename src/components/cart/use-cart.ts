@@ -21,6 +21,8 @@ import { useCatalogue } from "./catalogue-provider";
 const STORAGE_KEY = "astaad-cart";
 /** The coupon the server accepted; checked again when the order is placed. */
 const COUPON_KEY = "astaad-coupon";
+/** The one product "Buy it now" chose: checkout sells it instead of the cart. */
+const BUY_NOW_KEY = "astaad-buy-now";
 
 const couponSchema: z.ZodType<AppliedCoupon> = z.object({
   code: z.string().max(20),
@@ -36,6 +38,7 @@ const couponSchema: z.ZodType<AppliedCoupon> = z.object({
 interface CartState {
   items: CartItem[];
   coupon: AppliedCoupon | null;
+  buyNow: CartItem | null;
 }
 
 const listeners = new Set<() => void>();
@@ -69,12 +72,27 @@ function readCoupon(): AppliedCoupon | null {
   }
 }
 
+function readBuyNow(): CartItem | null {
+  try {
+    const parsed = cartItemSchema.safeParse(JSON.parse(window.localStorage.getItem(BUY_NOW_KEY) ?? "null"));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 function setSnapshot(state: CartState) {
   snapshot = state;
 }
 
 function readState(): CartState {
-  return { items: readStorage(), coupon: readCoupon() };
+  return { items: readStorage(), coupon: readCoupon(), buyNow: readBuyNow() };
+}
+
+/** Keep `value` under `key`; null removes it. */
+function store(key: string, value: unknown) {
+  if (value === null) window.localStorage.removeItem(key);
+  else window.localStorage.setItem(key, JSON.stringify(value));
 }
 
 function emit() {
@@ -84,11 +102,9 @@ function emit() {
 function write(next: Partial<CartState>) {
   setSnapshot({ ...getSnapshot(), ...next });
   try {
-    if (next.items) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next.items));
-    if (next.coupon !== undefined) {
-      if (next.coupon) window.localStorage.setItem(COUPON_KEY, JSON.stringify(next.coupon));
-      else window.localStorage.removeItem(COUPON_KEY);
-    }
+    if (next.items) store(STORAGE_KEY, next.items);
+    if (next.coupon !== undefined) store(COUPON_KEY, next.coupon);
+    if (next.buyNow !== undefined) store(BUY_NOW_KEY, next.buyNow);
   } catch {
     // Private mode or a full quota: the cart still works for this page view.
   }
@@ -101,7 +117,7 @@ function subscribe(listener: () => void) {
   if (!listeningToStorage) {
     listeningToStorage = true;
     window.addEventListener("storage", (event) => {
-      if (event.key !== STORAGE_KEY && event.key !== COUPON_KEY && event.key !== null) return;
+      if (event.key !== null && ![STORAGE_KEY, COUPON_KEY, BUY_NOW_KEY].includes(event.key)) return;
       setSnapshot(readState());
       emit();
     });
@@ -140,14 +156,24 @@ const actions = {
   clear() {
     write({ items: [], coupon: null });
   },
+  /** "Buy it now": the one product checkout then sells. The cart stays as it is. */
+  buyNow(item: CartItem) {
+    write({ buyNow: item });
+  },
+  /** After a "Buy it now" order is placed: that product and the coupon are done with. The cart stays. */
+  clearBuyNow() {
+    write({ buyNow: null, coupon: null });
+  },
 };
 
 /**
  * The shopping cart, priced against the current catalogue and the customer's coupon. `items` (the lines
  * that can be shown) and `priced` are null during server rendering and the
- * first client render, then the stored cart.
+ * first client render, then the stored cart. With `source` "buy-now" (the
+ * checkout that "Buy it now" opens), they are the one product chosen there
+ * instead, and `clear` leaves the cart alone; `count` is always the cart's.
  */
-export function useCart() {
+export function useCart(source: "cart" | "buy-now" = "cart") {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const catalogue = useCatalogue();
   // Bats saved before toe shapes existed get their toe once, so the same build merges into one line.
@@ -158,18 +184,24 @@ export function useCart() {
       write({ items: resolved.reduce<CartItem[]>((items, item) => addToItems(items, item), []) });
     }
   }, [state, catalogue]);
-  const priced = useMemo(
+  const cart = useMemo(
     // The coupon's dates were checked by the server, not this device's clock (see couponRunning).
     () => (state ? priceCart(state.items, catalogue, state.coupon, null) : null),
     [state, catalogue]
   );
+  const bought = useMemo(
+    () => (state && source === "buy-now" ? priceCart(state.buyNow ? [state.buyNow] : [], catalogue, state.coupon, null) : null),
+    [state, catalogue, source]
+  );
+  const priced = source === "buy-now" ? bought : cart;
   const items = useMemo(() => priced?.lines.map((line) => line.item) ?? null, [priced]);
   return {
     items,
     priced,
     /** The coupon as the customer entered it, even if it takes nothing off this cart. */
     coupon: state?.coupon ?? null,
-    count: priced?.count ?? 0,
+    count: cart?.count ?? 0,
     ...actions,
+    clear: source === "buy-now" ? actions.clearBuyNow : actions.clear,
   };
 }

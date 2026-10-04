@@ -7,9 +7,9 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { listAddresses } from "@/db/addresses";
 import { getLastShippingAddress } from "@/db/orders";
-import { requireUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 import { isTestAccount } from "@/lib/auth/test-account";
-import type { ShippingAddress } from "@/lib/checkout";
+import { BUY_NOW_CHECKOUT, type ShippingAddress } from "@/lib/checkout";
 import { razorpayConfigured } from "@/lib/payments/razorpay";
 import { getFreshStoreCatalogue } from "@/lib/products/catalogue";
 import { getStoreSettings } from "@/lib/settings/store";
@@ -19,19 +19,24 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default async function CheckoutPage() {
-  const user = await requireUser("/checkout");
-  const test = isTestAccount(user);
+/**
+ * Checkout for the cart, or with "?buy=now" for the one product "Buy it now"
+ * chose. No account is needed: a signed-out customer checks out as a guest.
+ */
+export default async function CheckoutPage({ searchParams }: PageProps<"/checkout">) {
+  const buyNow = (await searchParams).buy === "now";
+  const user = await getCurrentUser();
+  const test = user ? isTestAccount(user) : false;
   const [addresses, lastAddress, catalogue, settings] = await Promise.all([
-    listAddresses(user.id),
-    getLastShippingAddress(user.id),
+    user ? listAddresses(user.id) : [],
+    user ? getLastShippingAddress(user.id) : null,
     getFreshStoreCatalogue(),
     getStoreSettings(),
   ]);
   // With no saved address to start on: the last order's, or at least the name and phone on the account.
   const defaults: Partial<ShippingAddress> = lastAddress ?? {
-    name: user.name ?? undefined,
-    phone: user.phone ?? undefined,
+    name: user?.name ?? undefined,
+    phone: user?.phone ?? undefined,
   };
 
   return (
@@ -47,7 +52,10 @@ export default async function CheckoutPage() {
               the root layout's cached catalogue; the nearest provider wins. */}
           <CatalogueProvider catalogue={catalogue}>
             <CheckoutView
-              email={user.email}
+              buyNow={buyNow}
+              guest={!user}
+              signInHref={`/login?next=${encodeURIComponent(buyNow ? BUY_NOW_CHECKOUT : "/checkout")}`}
+              email={user?.email ?? null}
               defaults={defaults}
               addresses={addresses}
               paymentsReady={razorpayConfigured({ test })}

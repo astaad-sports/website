@@ -1,0 +1,227 @@
+import Link from "next/link";
+import { ArrowLeft, CircleCheck } from "lucide-react";
+
+import { CustomerReviewOptIn } from "@/components/analytics/customer-review-opt-in";
+import { TrackEvent } from "@/components/analytics/track-event";
+import { lineOfferText, RegularPrice } from "@/components/cart/line-offer";
+import { Eyebrow } from "@/components/storefront/eyebrow";
+import { SiteFooter } from "@/components/storefront/site-footer";
+import { SiteHeader } from "@/components/storefront/site-header";
+import type { OrderWithItems } from "@/db/orders";
+import { purchaseEvent } from "@/lib/analytics-events";
+import { reviewOptIn } from "@/lib/customer-reviews";
+import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
+import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
+import { getStoreCatalogue } from "@/lib/products/catalogue";
+import { categoryName } from "@/lib/products/model";
+import { cn } from "@/lib/utils";
+
+import { OrderProgress } from "./order-progress";
+
+/**
+ * One order, as its customer sees it: its items (with the offer or coupon
+ * behind each price), totals with the discount and coupon, delivery address
+ * and payment. The account's order page and a guest's are both this. `placed`
+ * is the first view after paying: the thank-you, and the sale is counted. A
+ * `guest` has no account to go back to.
+ */
+export async function OrderView({
+  order,
+  placed,
+  guest = false,
+}: {
+  order: OrderWithItems;
+  placed: boolean;
+  guest?: boolean;
+}) {
+  const confirmed = order.status !== "pending_payment" && order.status !== "cancelled";
+  const justPlaced = placed && confirmed;
+  // Google asks, on the confirmation only, whether it may email a survey about the order.
+  const optIn = justPlaced ? reviewOptIn(order) : null;
+  // Google Analytics counts the sale there too. A test order is not a sale.
+  const purchase =
+    justPlaced && !order.isTest
+      ? purchaseEvent(
+          order,
+          Object.fromEntries(
+            (await getStoreCatalogue()).gear.map((product) => [product.slug, categoryName(product.categorySlug)])
+          )
+        )
+      : null;
+
+  return (
+    <>
+      <SiteHeader />
+      <main className="flex-1 bg-surface-sunken">
+        <div className="site-shell flex flex-col gap-8 py-12 md:py-16">
+          <div className="flex flex-col gap-3">
+            <Eyebrow bar>
+              {!guest && (
+                <>
+                  <Link href="/account" className="transition-colors hover:text-foreground">
+                    Your account
+                  </Link>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
+              <span>Order {formatOrderNumber(order.number)}</span>
+            </Eyebrow>
+            {justPlaced ? (
+              <h1 className="flex items-center gap-3 type-heading-xl">
+                <CircleCheck className="size-8 shrink-0 text-success" strokeWidth={1.75} aria-hidden="true" />
+                Thank you. Your order is confirmed.
+              </h1>
+            ) : (
+              <h1 className="type-heading-xl">Order {formatOrderNumber(order.number)}</h1>
+            )}
+            <p className="type-body text-ink-muted">
+              {justPlaced && <>Order {formatOrderNumber(order.number)} · </>}
+              Placed on {formatOrderDate(order.createdAt)} ·{" "}
+              <span className={cn("font-semibold", orderStatusTone(order.status))}>
+                {ORDER_STATUS_LABEL[order.status]}
+              </span>
+            </p>
+            {order.isTest && (
+              <p className="max-w-[640px] type-body">
+                <span className="font-semibold">Test order.</span> It was paid in Razorpay&apos;s test mode, so no
+                money was taken and nothing will ship.
+              </p>
+            )}
+            {order.status === "pending_payment" && (
+              <p className="max-w-[640px] type-body text-ink-muted">
+                We have not received the payment for this order. If money left your account, it
+                will show as confirmed within a few minutes.
+              </p>
+            )}
+            {guest && justPlaced && order.email && (
+              <p className="max-w-[640px] type-body text-ink-muted">
+                Your confirmation is on its way to <span className="font-semibold text-foreground">{order.email}</span>.
+                The link in it opens this page again, so you can check on your order any time.
+              </p>
+            )}
+          </div>
+
+          {confirmed && <OrderProgress order={order} />}
+
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+            <section
+              aria-labelledby="order-items"
+              className="flex flex-col rounded-md border border-border bg-surface-raised shadow-card"
+            >
+              <h2 id="order-items" className="type-heading-sm border-b border-border px-6 py-4">
+                Items
+              </h2>
+              <ul className="flex flex-col">
+                {order.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-col gap-2 border-b border-border px-6 py-5 last:border-b-0 sm:flex-row sm:justify-between sm:gap-6"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <p className="font-semibold">{item.productName}</p>
+                      {item.options.length > 0 && (
+                        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 type-body-sm">
+                          {item.options.map((option) => (
+                            <div key={option.label} className="contents">
+                              <dt className="text-ink-muted">{option.label}</dt>
+                              <dd>{option.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
+                      {item.offer && <p className="type-body-sm font-semibold">{lineOfferText(item.offer)}</p>}
+                    </div>
+                    <div className="flex shrink-0 flex-col sm:items-end">
+                      <span className="flex flex-wrap items-baseline gap-x-2 sm:justify-end">
+                        <span className="font-semibold tabular-nums">{formatPaise(item.lineTotalPaise)}</span>
+                        {item.offer && item.offer.regularPricePaise > item.unitPricePaise && (
+                          <RegularPrice paise={item.offer.regularPricePaise * item.quantity} />
+                        )}
+                      </span>
+                      <span className="type-body-sm text-ink-muted">
+                        {item.quantity} × {formatPaise(item.unitPricePaise)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <div className="flex flex-col gap-4">
+              <section
+                aria-labelledby="order-total"
+                className="flex flex-col gap-3 rounded-md border border-border bg-surface-raised p-6 shadow-card"
+              >
+                <h2 id="order-total" className="type-heading-sm">
+                  Payment
+                </h2>
+                <dl className="flex flex-col gap-2 type-body">
+                  {/* At regular prices, so the rows add up with the discount taken off. */}
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-ink-muted">Subtotal</dt>
+                    <dd className="tabular-nums">{formatPaise(order.subtotalPaise + order.discountPaise)}</dd>
+                  </div>
+                  {order.discountPaise > 0 && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-muted">Discount</dt>
+                      <dd className="tabular-nums">&minus;{formatPaise(order.discountPaise)}</dd>
+                    </div>
+                  )}
+                  {order.couponCode && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-muted">Coupon</dt>
+                      <dd className="font-semibold">{order.couponCode}</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-ink-muted">Delivery</dt>
+                    <dd>{order.shippingPaise ? formatPaise(order.shippingPaise) : "Free"}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4 border-t border-border pt-3">
+                    <dt className="font-semibold">Total</dt>
+                    <dd className="type-price-lg tabular-nums">{formatPaise(order.totalPaise)}</dd>
+                  </div>
+                </dl>
+                {order.razorpayPaymentId && order.paidAt && (
+                  <p className="type-body-sm text-ink-muted">
+                    Paid on {formatOrderDate(order.paidAt)} · Razorpay {order.isTest && "test "}payment{" "}
+                    {order.razorpayPaymentId}
+                  </p>
+                )}
+              </section>
+
+              <section
+                aria-labelledby="order-address"
+                className="flex flex-col gap-3 rounded-md border border-border bg-surface-raised p-6 shadow-card"
+              >
+                <h2 id="order-address" className="type-heading-sm">
+                  Delivery address
+                </h2>
+                <address className="flex flex-col type-body not-italic">
+                  <span className="font-semibold">{order.shipName}</span>
+                  <span>{order.shipLine1}</span>
+                  {order.shipLine2 && <span>{order.shipLine2}</span>}
+                  <span>
+                    {order.shipCity}, {order.shipState} {order.shipPincode}
+                  </span>
+                  <span className="text-ink-muted">+91 {order.shipPhone}</span>
+                </address>
+              </section>
+
+              <Link
+                href={guest ? "/shop" : "/account"}
+                className="inline-flex items-center gap-2 self-start type-body-sm font-semibold underline underline-offset-4"
+              >
+                <ArrowLeft className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                {guest ? "Continue shopping" : "All orders"}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+      <SiteFooter />
+      {optIn && <CustomerReviewOptIn optIn={optIn} />}
+      {purchase && <TrackEvent name="purchase" params={purchase} once={`astaad-purchase-${order.number}`} />}
+    </>
+  );
+}

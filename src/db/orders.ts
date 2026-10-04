@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, exists, gt, ilike, inArray, isNotNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, gt, ilike, inArray, isNotNull, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 
 import type { PricedCart } from "@/lib/cart";
@@ -28,10 +28,11 @@ export interface OrderWithItems extends Order {
 /**
  * Record a priced cart as a `pending_payment` order with its items, in one
  * transaction. Also keeps the checkout phone on the account if it has none.
+ * A guest's order has no account (`userId` null) and goes by its `email`.
  * `test` marks a test account's order.
  */
 export async function createOrder(input: {
-  userId: string;
+  userId: string | null;
   email: string | null;
   address: ShippingAddress;
   cart: PricedCart;
@@ -75,10 +76,12 @@ export async function createOrder(input: {
       }))
     );
 
-    await tx
-      .update(users)
-      .set({ phone: sql`coalesce(${users.phone}, ${address.phone})` })
-      .where(eq(users.id, userId));
+    if (userId) {
+      await tx
+        .update(users)
+        .set({ phone: sql`coalesce(${users.phone}, ${address.phone})` })
+        .where(eq(users.id, userId));
+    }
 
     return order;
   });
@@ -184,7 +187,8 @@ export async function listUnpaidCheckouts(options: { minMinutes?: number; maxDay
         lt(orders.createdAt, sql`now() - make_interval(mins => ${minMinutes})`),
         gt(orders.createdAt, sql`now() - make_interval(days => ${maxDays})`),
         // Spelled out: inside `sql`, a column of a one-table select is written without its table.
-        sql`not exists (select 1 from orders later where later.user_id = "orders"."user_id" and later.created_at > "orders"."created_at")`,
+        // A guest has no account, so their tries are the orders with their email.
+        sql`not exists (select 1 from orders later where later.created_at > "orders"."created_at" and (later.user_id = "orders"."user_id" or ("orders"."user_id" is null and later.user_id is null and lower(later.email) = lower("orders"."email"))))`,
         sql`not exists (select 1 from order_emails alert where alert.order_id = "orders"."id" and alert.kind = 'unpaid_order_alert' and alert.status = 'sent')`
       )
     )
@@ -215,6 +219,22 @@ export async function listOrdersForUser(userId: string, limit = 50): Promise<Ord
     .orderBy(desc(orders.createdAt))
     .limit(limit);
   return withItems(rows);
+}
+
+/**
+ * An order placed as a guest, by its id: the address of its order page, which
+ * only the guest holds (see orderPath). Undefined for an account's order,
+ * which opens only for that account.
+ */
+export async function getGuestOrder(id: string): Promise<OrderWithItems | undefined> {
+  const [order] = await getDb()
+    .select()
+    .from(orders)
+    .where(and(eq(orders.id, id), isNull(orders.userId)))
+    .limit(1);
+  if (!order) return undefined;
+  const [withLines] = await withItems([order]);
+  return withLines;
 }
 
 /** One of the customer's orders by its number, or undefined if it is not theirs. */
@@ -361,6 +381,7 @@ export async function countOrdersByStatus(
 }
 
 export interface AdminOrder extends OrderWithItems {
+  /** From the customer's account; both null for a guest's order. */
   customer: { name: string | null; email: string | null };
 }
 
@@ -369,7 +390,7 @@ async function findAdminOrder(condition: SQL): Promise<AdminOrder | undefined> {
   const [row] = await getDb()
     .select({ order: orders, name: users.name, email: users.email })
     .from(orders)
-    .innerJoin(users, eq(users.id, orders.userId))
+    .leftJoin(users, eq(users.id, orders.userId))
     .where(condition)
     .limit(1);
   if (!row) return undefined;

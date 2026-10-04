@@ -222,12 +222,20 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
         <div className="flex flex-col lg:order-1">
           <Section id="customer-title" title="Customer">
             <div className="flex flex-col items-start">
-              <Link
-                href={`/admin/customers/${order.userId}`}
-                className="inline-flex min-h-11 items-center text-[15px] leading-[22px] font-semibold underline underline-offset-4"
-              >
-                {customerName}
-              </Link>
+              {order.userId ? (
+                <Link
+                  href={`/admin/customers/${order.userId}`}
+                  className="inline-flex min-h-11 items-center text-[15px] leading-[22px] font-semibold underline underline-offset-4"
+                >
+                  {customerName}
+                </Link>
+              ) : (
+                // Ordered without an account, so there is no customer page to open.
+                <p className="flex min-h-11 flex-wrap items-center gap-x-2 text-[15px] leading-[22px]">
+                  <span className="font-semibold">{customerName}</span>
+                  <span className="text-ink-muted">Guest checkout</span>
+                </p>
+              )}
               <a href={mobileHref(order.shipPhone)} className="flex min-h-11 items-center gap-2.5 text-[15px] leading-[22px] tabular-nums">
                 <Phone className="size-5 text-ink-muted" strokeWidth={1.5} aria-hidden="true" />
                 {formatMobile(order.shipPhone)}

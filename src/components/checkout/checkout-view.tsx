@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { addressSummary, type SavedAddress } from "@/lib/addresses/model";
 import { cartEvent } from "@/lib/analytics-events";
 import { lineProblemText } from "@/lib/cart";
-import { ADDRESS_FIELDS, INDIAN_STATES, type AddressField, type ShippingAddress } from "@/lib/checkout";
+import { ADDRESS_FIELDS, INDIAN_STATES, type CheckoutField, type ShippingAddress } from "@/lib/checkout";
 import { formatOrderNumber, formatPaise } from "@/lib/format";
 import { confirmPayment, placeOrder, type CheckoutPayment } from "@/lib/orders/actions";
 import { cn } from "@/lib/utils";
@@ -54,8 +54,14 @@ const FIELDS = ADDRESS_FIELDS.map((field) => ({ ...field, autoComplete: `shippin
  * catalogue read fresh from the database and the coupon is checked again, so
  * the total shown is the total placeOrder charges. The form starts on the
  * customer's default saved address; choosing another of theirs fills it in.
+ * A `guest` has no account: they give an email for the order instead. With
+ * `buyNow` the order is the one product "Buy it now" chose, and the cart is
+ * left as it is.
  */
 export function CheckoutView({
+  buyNow,
+  guest,
+  signInHref,
   email,
   defaults,
   addresses,
@@ -63,6 +69,11 @@ export function CheckoutView({
   testAccount,
   storeName,
 }: {
+  buyNow: boolean;
+  guest: boolean;
+  /** Sign in, then come back to this checkout. */
+  signInHref: string;
+  /** The account's email. */
   email: string | null;
   /** What the form starts with when the customer has no saved address. */
   defaults: Partial<ShippingAddress>;
@@ -76,11 +87,11 @@ export function CheckoutView({
 }) {
   const id = useId();
   const router = useRouter();
-  const { items, priced, coupon, setCoupon, clear } = useCart();
+  const { items, priced, coupon, setCoupon, clear } = useCart(buyNow ? "buy-now" : "cart");
   const payRef = useRef<HTMLButtonElement>(null);
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<AddressField, string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<CheckoutField, string>>>({});
   const [pending, startTransition] = useTransition();
   // The saved address the form was last filled from, how many times it has
   // been filled (each one starts the fields afresh), and whether the customer
@@ -108,6 +119,13 @@ export function CheckoutView({
     });
   }, [priced]);
 
+  // "Buy it now" with nothing chosen in this browser (its order is paid, or
+  // the address was opened somewhere else): the cart instead.
+  const nothingToBuy = buyNow && stage === "form" && priced?.lines.length === 0;
+  useEffect(() => {
+    if (nothingToBuy) router.replace("/cart");
+  }, [nothingToBuy, router]);
+
   if (stage !== "form") {
     return (
       <div role="status" className="rounded-md border border-border bg-surface-raised p-8 shadow-card">
@@ -117,7 +135,7 @@ export function CheckoutView({
       </div>
     );
   }
-  if (!priced || !items) {
+  if (!priced || !items || nothingToBuy) {
     return <div aria-busy="true" aria-label="Loading your cart" className="h-[420px] animate-pulse rounded-md bg-surface-raised" />;
   }
   if (priced.lines.length === 0) return <EmptyCart />;
@@ -155,7 +173,7 @@ export function CheckoutView({
           }
           setStage("confirmed");
           placed.current = null;
-          router.replace(`/account/orders/${result.orderNumber}?placed=1`);
+          router.replace(`${result.orderPath}?placed=1`);
           clear();
         });
       },
@@ -177,15 +195,24 @@ export function CheckoutView({
       [...FIELDS.map((field) => field.name), "state"].map((name) => [name, String(form.get(name) ?? "")])
     );
     const saveAddress = form.get("saveAddress") === "on";
+    // A guest's order goes by the email they type; an account's by its own.
+    const guestEmail = guest ? String(form.get("email") ?? "") : undefined;
     setError(null);
     setFieldErrors({});
 
     startTransition(async () => {
       const couponCode = coupon?.code;
-      const fingerprint = JSON.stringify({ items, address, shownTotal, couponCode });
+      const fingerprint = JSON.stringify({ items, address, guestEmail, shownTotal, couponCode });
       let payment = placed.current?.fingerprint === fingerprint ? placed.current.payment : null;
       if (!payment) {
-        const result = await placeOrder({ items, address, expectedTotalPaise: shownTotal, couponCode, saveAddress });
+        const result = await placeOrder({
+          items,
+          address,
+          email: guestEmail,
+          expectedTotalPaise: shownTotal,
+          couponCode,
+          saveAddress,
+        });
         if (!result.ok) {
           setError(result.error);
           setFieldErrors(result.fieldErrors ?? {});
@@ -208,7 +235,9 @@ export function CheckoutView({
     payRef.current?.focus();
   }
 
-  const errorId = (name: AddressField) => `${id}-${name}-error`;
+  const errorId = (name: CheckoutField) => `${id}-${name}-error`;
+  // "Buy it now" has one line: the product it was chosen on.
+  const productHref = buyNow ? priced.lines[0].href : null;
 
   return (
     <>
@@ -227,8 +256,45 @@ export function CheckoutView({
             <h2 id={`${id}-address`} className="type-heading-md">
               Delivery address
             </h2>
-            {email && <p className="type-body-sm text-ink-muted">Signed in as {email}</p>}
+            {guest ? (
+              <p className="type-body-sm text-ink-muted">
+                Checking out as a guest. Have an account?{" "}
+                <Link href={signInHref} className="font-semibold text-foreground underline underline-offset-4">
+                  Sign in
+                </Link>
+              </p>
+            ) : (
+              email && <p className="type-body-sm text-ink-muted">Signed in as {email}</p>
+            )}
           </div>
+
+          {guest && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`${id}-email`}>Email</Label>
+              <Input
+                id={`${id}-email`}
+                name="email"
+                type="email"
+                inputMode="email"
+                maxLength={254}
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                aria-invalid={fieldErrors.email ? true : undefined}
+                aria-describedby={fieldErrors.email ? errorId("email") : `${id}-email-help`}
+              />
+              {fieldErrors.email ? (
+                <p id={errorId("email")} className="type-body-sm text-danger">
+                  {fieldErrors.email}
+                </p>
+              ) : (
+                <p id={`${id}-email-help`} className="type-body-sm text-ink-muted">
+                  Your order confirmation and delivery updates go here.
+                </p>
+              )}
+            </div>
+          )}
 
           {addresses.length > 0 && (
             <div role="group" aria-labelledby={`${id}-saved`} className="flex flex-col gap-3">
@@ -323,11 +389,13 @@ export function CheckoutView({
             </div>
           </div>
 
-          {/* An address already on the account is not saved twice. */}
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start type-body">
-            <input type="checkbox" name="saveAddress" defaultChecked className="size-5 shrink-0 accent-foreground" />
-            Save this address to my account
-          </label>
+          {/* An address already on the account is not saved twice. A guest has no account to keep it on. */}
+          {!guest && (
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start type-body">
+              <input type="checkbox" name="saveAddress" defaultChecked className="size-5 shrink-0 accent-foreground" />
+              Save this address to my account
+            </label>
+          )}
         </section>
 
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">
@@ -339,8 +407,8 @@ export function CheckoutView({
               <h2 id={`${id}-items`} className="type-heading-md">
                 Your order
               </h2>
-              <Link href="/cart" className="type-body-sm font-semibold underline underline-offset-4">
-                Edit cart
+              <Link href={productHref ?? "/cart"} className="type-body-sm font-semibold underline underline-offset-4">
+                {productHref ? "Back to product" : "Edit cart"}
               </Link>
             </div>
             <ul className="flex flex-col divide-y divide-border">
@@ -355,7 +423,10 @@ export function CheckoutView({
                     <span className="type-body-sm text-ink-muted">Qty {line.item.quantity}</span>
                     {line.offer && <span className="type-body-sm font-semibold">{lineOfferText(line.offer)}</span>}
                     {line.problem && (
-                      <span className="type-body-sm font-semibold text-danger">{lineProblemText(line)}</span>
+                      <span className="type-body-sm font-semibold text-danger">
+                        {/* The cart's words say how to fix the cart; "Buy it now" has none to fix. */}
+                        {buyNow ? "Out of stock." : lineProblemText(line)}
+                      </span>
                     )}
                   </span>
                   <span className="flex shrink-0 flex-col items-end">
@@ -402,15 +473,23 @@ export function CheckoutView({
                   : "Online payment is not set up yet, so orders cannot be placed."}
               </p>
             )}
-            {priced.unavailable > 0 && (
-              <p className="type-body-sm font-semibold text-danger">
-                Some items can&apos;t be bought right now.{" "}
-                <Link href="/cart" className="underline underline-offset-4">
-                  Update your cart
-                </Link>{" "}
-                to continue.
-              </p>
-            )}
+            {priced.unavailable > 0 &&
+              (productHref ? (
+                <p className="type-body-sm font-semibold text-danger">
+                  This is out of stock right now.{" "}
+                  <Link href={productHref} className="underline underline-offset-4">
+                    Back to product
+                  </Link>
+                </p>
+              ) : (
+                <p className="type-body-sm font-semibold text-danger">
+                  Some items can&apos;t be bought right now.{" "}
+                  <Link href="/cart" className="underline underline-offset-4">
+                    Update your cart
+                  </Link>{" "}
+                  to continue.
+                </p>
+              ))}
             {error && (
               <p role="alert" className="type-body-sm text-danger">
                 {error}

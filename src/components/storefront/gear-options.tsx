@@ -6,6 +6,7 @@ import { ArrowRight, ShoppingCart } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { BuyNowButton } from "@/components/cart/buy-now-button";
 import { Button } from "@/components/ui/button";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { gearCartItem } from "@/lib/cart";
@@ -62,10 +63,10 @@ export type GearOptionsProduct = Pick<
 >;
 
 /**
- * Size and hand choices (where the product has them), the selection line and
- * Add to cart. Each size and hand has its own stock: one with none left is
- * struck through, and the button reads "Out of stock" and cannot be pressed
- * when the chosen one cannot be bought. `size` (from the address) is the size
+ * Size and hand choices (where the product has them), the selection line,
+ * Add to cart and Buy it now. Each size and hand has its own stock: one with
+ * none left is struck through, and the button reads "Out of stock" and cannot
+ * be pressed when the chosen one cannot be bought. `size` (from the address) is the size
  * it starts on, in the first hand that can be bought.
  */
 export function GearOptions({
@@ -142,6 +143,15 @@ export function GearOptions({
           <ShoppingCart className="size-[18px]" strokeWidth={2} aria-hidden="true" />
           Add to cart
         </AddToCartButton>
+        <BuyNowButton
+          item={gearCartItem(product, variant)}
+          soldOut={variantSoldOut(product, variant)}
+          size="lg"
+          className="h-15 w-full rounded-xs text-[15px] font-bold tracking-[0.1em] uppercase"
+        >
+          Buy it now
+          <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
+        </BuyNowButton>
         <Button
           size="lg"
           variant="secondary"
