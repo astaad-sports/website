@@ -29,7 +29,7 @@ export type BuyNowButtonProps = Omit<ButtonProps, "onClick" | "children" | "vari
 };
 
 /**
- * "Buy it now": opens checkout for `item` alone, one of it, without adding it
+ * "Buy now": opens checkout for `item` alone, one of it, without adding it
  * to the cart. Whatever is in the cart stays there for later.
  */
 export function BuyNowButton({ item, soldOut = false, tone = "light", children, className, ...props }: BuyNowButtonProps) {

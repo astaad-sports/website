@@ -14,7 +14,7 @@ const BUTTON =
   "h-12 w-full gap-1.5 rounded-xs px-2 text-[13px] leading-4 font-bold tracking-[0.08em] whitespace-normal uppercase";
 
 /**
- * Add to cart and Buy it now for one item: side by side and the same size,
+ * Add to cart and Buy now for one item: side by side and the same size,
  * or one above the other where the column is too narrow for two (the bat
  * builder's summary). Out of stock, they are one greyed "Out of stock" button.
  */
@@ -54,7 +54,7 @@ export function BuyButtons({
           Add to cart
         </AddToCartButton>
         <BuyNowButton item={item} soldOut={soldOut} tone={tone} className={BUTTON}>
-          Buy it now
+          Buy now
           <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
         </BuyNowButton>
       </div>

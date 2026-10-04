@@ -53,7 +53,7 @@ export function ProductHero({
   const standard = chosen ?? startingVariant(bat);
   const others = otherPrices(shown);
   const atThisPrice = bat.sizes.filter((size) => !others.some((variant) => variant.size === size.code));
-  // What Add to cart and Buy it now sell: the standard build, as the line
+  // What Add to cart and Buy now sell: the standard build, as the line
   // above them says. The size is named when the address chose it, or when the
   // price above is not this size's.
   const standardItem = batCartItem(bat, standardBatConfig(bat, chosen?.size));

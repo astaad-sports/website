@@ -62,7 +62,7 @@ export type GearOptionsProduct = Pick<
 
 /**
  * Size and hand choices (where the product has them), the selection line,
- * Add to cart beside Buy it now, and a link to the rest of the category. Each
+ * Add to cart beside Buy now, and a link to the rest of the category. Each
  * size and hand has its own stock: one with none left is struck through, and
  * the button reads "Out of stock" and cannot be pressed when the chosen one
  * cannot be bought. `size` (from the address) is the size

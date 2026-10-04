@@ -57,7 +57,7 @@ const FIELDS = ADDRESS_FIELDS.map((field) => ({ ...field, autoComplete: `shippin
  * the total shown is the total placeOrder charges. The form starts on the
  * customer's default saved address; choosing another of theirs fills it in.
  * A `guest` has no account: they give an email for the order instead. With
- * `buyNow` the order is the one product "Buy it now" chose, and the cart is
+ * `buyNow` the order is the one product "Buy now" chose, and the cart is
  * left as it is.
  */
 export function CheckoutView({
@@ -122,7 +122,7 @@ export function CheckoutView({
     });
   }, [priced]);
 
-  // "Buy it now" with nothing chosen in this browser (its order is paid, or
+  // "Buy now" with nothing chosen in this browser (its order is paid, or
   // the address was opened somewhere else): the cart instead.
   const nothingToBuy = buyNow && stage === "form" && priced?.lines.length === 0;
   useEffect(() => {
@@ -233,7 +233,7 @@ export function CheckoutView({
   }
 
   const errorId = (name: CheckoutField) => `${id}-${name}-error`;
-  // "Buy it now" has one line: the product it was chosen on.
+  // "Buy now" has one line: the product it was chosen on.
   const productHref = buyNow ? priced.lines[0].href : null;
 
   return (
@@ -420,7 +420,7 @@ export function CheckoutView({
                     {line.offer && <span className="type-body-sm font-semibold">{lineOfferText(line.offer)}</span>}
                     {line.problem && (
                       <span className="type-body-sm font-semibold text-danger">
-                        {/* The cart's words say how to fix the cart; "Buy it now" has none to fix. */}
+                        {/* The cart's words say how to fix the cart; "Buy now" has none to fix. */}
                         {buyNow ? "Out of stock." : lineProblemText(line)}
                       </span>
                     )}

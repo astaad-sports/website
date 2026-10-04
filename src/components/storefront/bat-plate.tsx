@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { BuyNowLink } from "@/components/cart/buy-now-link";
 import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
 import { BAT_IMAGE } from "@/lib/catalogue";
@@ -111,8 +112,9 @@ export function BatCard({ bat }: { bat: StoreBat }) {
 
 /**
  * One bat on its plate: the blade, name, grade, price (with the rating beside
- * it once reviewed, and the running offer under it) and two actions. Out of
- * stock, it says so and cannot be added.
+ * it once reviewed, and the running offer under it) and two actions. Buy Now
+ * opens the bat's page, where its size and build are chosen; nothing is added
+ * to the cart from here. Out of stock, it says so.
  */
 export function BatPlate({ bat }: { bat: StoreBat }) {
   const href = `/bats/${bat.slug}`;
@@ -186,14 +188,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
         {bat.offer && <OfferNote offer={bat.offer} />}
       </div>
       <div className="flex gap-3">
-        <AddToCartButton
-          item={batCartItem(bat)}
-          productName={`Astaad ${bat.name}`}
-          soldOut={bat.soldOut}
-          className="relative z-10 h-12 flex-1 rounded-xs font-bold"
-        >
-          Add to Cart
-        </AddToCartButton>
+        <BuyNowLink href={href} soldOut={bat.soldOut} className="relative z-10 h-12 flex-1 rounded-xs font-bold" />
         <Button
           variant="secondary"
           render={<Link href={href} />}

@@ -21,7 +21,7 @@ import { useCatalogue } from "./catalogue-provider";
 const STORAGE_KEY = "astaad-cart";
 /** The coupon the server accepted; checked again when the order is placed. */
 const COUPON_KEY = "astaad-coupon";
-/** The one product "Buy it now" chose: checkout sells it instead of the cart. */
+/** The one product "Buy now" chose: checkout sells it instead of the cart. */
 const BUY_NOW_KEY = "astaad-buy-now";
 
 const couponSchema: z.ZodType<AppliedCoupon> = z.object({
@@ -156,11 +156,11 @@ const actions = {
   clear() {
     write({ items: [], coupon: null });
   },
-  /** "Buy it now": the one product checkout then sells. The cart stays as it is. */
+  /** "Buy now": the one product checkout then sells. The cart stays as it is. */
   buyNow(item: CartItem) {
     write({ buyNow: item });
   },
-  /** After a "Buy it now" order is placed: that product and the coupon are done with. The cart stays. */
+  /** After a "Buy now" order is placed: that product and the coupon are done with. The cart stays. */
   clearBuyNow() {
     write({ buyNow: null, coupon: null });
   },
@@ -170,7 +170,7 @@ const actions = {
  * The shopping cart, priced against the current catalogue and the customer's coupon. `items` (the lines
  * that can be shown) and `priced` are null during server rendering and the
  * first client render, then the stored cart. With `source` "buy-now" (the
- * checkout that "Buy it now" opens), they are the one product chosen there
+ * checkout that "Buy now" opens), they are the one product chosen there
  * instead, and `clear` leaves the cart alone; `count` is always the cart's.
  */
 export function useCart(source: "cart" | "buy-now" = "cart") {

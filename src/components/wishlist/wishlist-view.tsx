@@ -39,7 +39,7 @@ function EmptyWishlist() {
 
 /**
  * The wishlist page body: the saved products on their plates, newest first,
- * each with its heart (tap it to take the product off) and Add to Cart.
+ * each with its heart (tap it to take the product off) and Buy Now.
  */
 export function WishlistView() {
   const { entries } = useWishlist();

@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Checkout for the cart, or with "?buy=now" for the one product "Buy it now"
+ * Checkout for the cart, or with "?buy=now" for the one product "Buy now"
  * chose. No account is needed: a signed-out customer checks out as a guest.
  */
 export default async function CheckoutPage({ searchParams }: PageProps<"/checkout">) {

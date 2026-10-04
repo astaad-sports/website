@@ -64,7 +64,7 @@ export function useCouponRecheck(onRemoved: (message: string) => void, onOpen = 
  * The coupon the customer entered: "DIWALI20 applied · Diwali Sale", or why
  * it takes nothing off this cart, with Remove. `applied` and `covered` are
  * PricedCart's coupon.applied and coupon.covered. `noun` is what is being
- * priced: the cart, or the order when "Buy it now" skipped the cart.
+ * priced: the cart, or the order when "Buy now" skipped the cart.
  */
 function CouponStatus({
   coupon,
@@ -121,7 +121,7 @@ function CouponStatus({
  * the change: to Remove once a code is applied, back to the field once it is
  * removed. A stored code that no longer works is removed when the page opens,
  * with the reason under the field. `source` is what the code is priced
- * against (see useCart): the cart, or the one product "Buy it now" chose.
+ * against (see useCart): the cart, or the one product "Buy now" chose.
  * It has a form of its own, so it cannot sit inside another form.
  */
 export function CouponBox({ source = "cart" }: { source?: "cart" | "buy-now" }) {

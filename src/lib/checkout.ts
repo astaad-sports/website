@@ -96,7 +96,7 @@ export const ADDRESS_FIELDS: {
   { name: "pincode", label: "PIN code", autoComplete: "postal-code", inputMode: "numeric", maxLength: 6 },
 ];
 
-/** Checkout with "?buy=now" sells the one product "Buy it now" chose, not the cart. */
+/** Checkout with "?buy=now" sells the one product "Buy now" chose, not the cart. */
 export const BUY_NOW_CHECKOUT = "/checkout?buy=now";
 
 /** The checkout form's fields that can be wrong: the address, and a guest's email. */

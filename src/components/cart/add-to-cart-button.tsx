@@ -11,14 +11,8 @@ import { priceCartItem, type CartItem } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
 import { useCatalogue } from "./catalogue-provider";
+import { SOLD_OUT_CLASSES } from "./sold-out";
 import { useCart } from "./use-cart";
-
-/**
- * Greys out whatever look the caller gave the button, keeping its size. The
- * hairline keeps its outline visible on the grey kit tiles.
- */
-const SOLD_OUT_CLASSES =
-  "cursor-not-allowed border-border bg-surface-sunken text-ink-muted hover:border-border hover:bg-surface-sunken";
 
 export type AddToCartButtonProps = Omit<ButtonProps, "onClick" | "children"> & {
   item: CartItem;

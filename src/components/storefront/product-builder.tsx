@@ -185,7 +185,7 @@ function SizeSection({
 }
 
 /**
- * Price (with any running offer), Add to cart and Buy it now for a bat sold
+ * Price (with any running offer), Add to cart and Buy now for a bat sold
  * only in its standard build, under the size picker. The price and `soldOut` are for the
  * size chosen.
  */
@@ -215,7 +215,7 @@ function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreV
  * The configurator (size first, then weight, profile, toe, handle, engraving,
  * knocking, scuff sheet) with a live preview and a pinned order summary.
  * Only the options this bat offers appear. A bat that cannot be customised
- * gets just the size picker, with its price and Add to cart. Buy it now sits
+ * gets just the size picker, with its price and Add to cart. Buy now sits
  * with each Add to cart, for the same build. `size` (from the
  * address, see sizeInAddress) is the size it starts on.
  */

@@ -2,9 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { BuyNowLink } from "@/components/cart/buy-now-link";
 import { Button } from "@/components/ui/button";
-import { gearCartItem } from "@/lib/cart";
 import { gearHref } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { gearLine, type StoreGear } from "@/lib/products/model";
@@ -19,7 +18,9 @@ import { WishlistButton } from "./wishlist-button";
 /**
  * One gear product on its grey plate: badges, wishlist heart, name, note,
  * price (with the rating beside it once reviewed, and the running offer under
- * it) and Add to Cart. Out of stock, it says so and cannot be added.
+ * it) and two actions. Buy Now opens the product's page, where its size and
+ * hand are chosen; nothing is added to the cart from here. Out of stock, it
+ * says so.
  */
 export function GearPlate({ product }: { product: StoreGear }) {
   const href = gearHref(product);
@@ -74,14 +75,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
         {product.offer && <OfferNote offer={product.offer} />}
       </div>
       <div className="flex gap-3">
-        <AddToCartButton
-          item={gearCartItem(product)}
-          productName={`Astaad ${product.name}`}
-          soldOut={product.soldOut}
-          className="relative z-10 h-12 flex-1 rounded-xs font-bold"
-        >
-          Add to Cart
-        </AddToCartButton>
+        <BuyNowLink href={href} soldOut={product.soldOut} className="relative z-10 h-12 flex-1 rounded-xs font-bold" />
         <Button
           variant="secondary"
           render={<Link href={href} />}
