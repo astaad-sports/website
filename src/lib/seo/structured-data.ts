@@ -59,6 +59,10 @@ function storeReturnPolicy(base: string): JsonLd {
   };
 }
 
+/** Who the store is, in a sentence, as the footer and /about put it. */
+const STORE_DESCRIPTION =
+  "Astaad Sports designs and builds cricket bats and gear in Delhi and sells them directly to players across India: English willow and Kashmir willow bats built to order, plus pads, gloves, helmets and kitbags.";
+
 /** A 10-digit Indian number as "+919876543210"; anything else as typed. */
 function telephone(phone: string): string {
   const digits = phone.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
@@ -83,7 +87,10 @@ export function storeJsonLd(
       "@id": id,
       name: settings.storeName,
       url: base,
+      description: STORE_DESCRIPTION,
       logo: absoluteUrl("/brand/astaad-crest.png", base),
+      areaServed: "IN",
+      currenciesAccepted: "INR",
       ...(sameAs.length ? { sameAs } : {}),
       ...(settings.supportEmail ? { email: settings.supportEmail } : {}),
       ...(settings.supportPhone ? { telephone: telephone(settings.supportPhone) } : {}),

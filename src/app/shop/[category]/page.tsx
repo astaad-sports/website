@@ -46,11 +46,16 @@ export async function generateMetadata({
       ? catalogue.bats
       : gearInCategory(catalogue, slug);
   const from = products.length ? Math.min(...products.map((product) => product.price)) : null;
-  return pageMetadata({
-    title: entry.seoTitle,
-    description: categoryDescription(entry, products.length, from),
-    path: entry.href,
-  });
+  return {
+    ...pageMetadata({
+      title: entry.seoTitle,
+      description: categoryDescription(entry, products.length, from),
+      path: entry.href,
+    }),
+    // A range with nothing on sale only says "Coming soon": kept out of search
+    // results (and the sitemap) until it has something to offer.
+    ...(products.length === 0 ? { robots: { index: false, follow: true } } : {}),
+  };
 }
 
 /** The category's trail for search engines, as its hero shows it: Home, Shop (or Bats for a range), the category. */

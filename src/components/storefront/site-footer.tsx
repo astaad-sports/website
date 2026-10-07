@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronDown, Mail, MapPin, Phone } from "lucide-react";
+import { ChevronDown, Lock, Mail, MapPin, Phone } from "lucide-react";
 
 import { CustomerReviewsBadge } from "@/components/analytics/customer-reviews-badge";
 import { Crest } from "@/components/astaad";
@@ -14,7 +14,9 @@ import { InstagramGlyph } from "./instagram-glyph";
 import { WhatsAppButton } from "./whatsapp-button";
 
 const SUPPORT_LINKS = [
+  { label: "About Astaad", href: "/about" },
   { label: "Track Order", href: "/track-order" },
+  { label: "Delivery", href: "/delivery" },
   { label: "Returns", href: "/returns" },
   { label: "Warranty", href: "/warranty" },
   { label: "Size Guide", href: "/size-guide" },
@@ -108,7 +110,8 @@ function FooterContact({
 
 /**
  * The near-black footer: crest and blurb, Shop and Support columns (with the
- * store's contact details), and the legal line with the store's name and GSTIN.
+ * store's contact details), and the legal line with the store's name, GSTIN
+ * and the ways to pay.
  * On phones the two columns fold away under their headings. Under the crest
  * is Google's Customer Reviews badge, once Google has a rating to show. It
  * also carries the WhatsApp button pinned to the corner of every page that
@@ -167,6 +170,11 @@ export async function SiteFooter() {
               © {new Date().getFullYear()} {holder}. All rights reserved.
             </span>
             {settings.gstin && <span className="tabular-nums">GSTIN {settings.gstin}</span>}
+            {/* The ways to pay, where Google's merchant checks look for them. */}
+            <span className="inline-flex items-center gap-1.5">
+              <Lock className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              Secure payments by Razorpay: UPI, cards and net banking
+            </span>
           </span>
           <span className="inline-flex gap-6">
             <Link href="/privacy" className="transition-colors hover:text-on-dark">

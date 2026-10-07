@@ -19,11 +19,13 @@ export const metadata: Metadata = pageMetadata({
 
 const QUICK_LINKS = [
   { href: "/track-order", title: "Track your order", detail: "See where your parcel is" },
+  { href: "/delivery", title: "Delivery", detail: "Where, how much, how long" },
   { href: "/returns", title: "Returns and refunds", detail: "Send something back" },
   { href: "/warranty", title: "Warranty", detail: "Repairs and replacements" },
   { href: "/size-guide", title: "Size guide", detail: "Bats, pads, gloves and helmets" },
   { href: "/terms", title: "Terms of service", detail: "Orders, delivery and payment" },
   { href: "/privacy", title: "Privacy policy", detail: "What we keep and why" },
+  { href: "/about", title: "About Astaad Sports", detail: "Who we are and what we make" },
 ];
 
 const ACTION = "type-body-sm inline-flex min-h-11 items-center gap-1.5 font-semibold underline underline-offset-4";

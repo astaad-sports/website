@@ -10,11 +10,13 @@ import { realPhotos } from "./structured-data";
 
 /** Public pages that are always there. Cart, checkout, account, sign-in and the admin are private and carry noindex. */
 const STATIC_PAGES = [
+  "/about",
   "/reviews",
   "/size-guide",
   "/contact",
   "/track-order",
   "/warranty",
+  "/delivery",
   "/returns",
   "/terms",
   "/privacy",

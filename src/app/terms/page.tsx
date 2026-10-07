@@ -149,7 +149,8 @@ export default async function TermsPage() {
           <p>
             We ship with trusted couriers such as Trackon Couriers and Delhivery. Once your order ships, your
             order page and your shipping email show the courier and tracking number. Delivery times depend on your pincode, and couriers
-            can be delayed by events outside our control.
+            can be delayed by events outside our control. Our <Link href="/delivery">delivery page</Link> has the
+            details and is part of these terms.
           </p>
           <p>
             Please check that your delivery address and mobile number are correct. If a parcel is returned to us
