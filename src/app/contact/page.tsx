@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { mobileHref } from "@/lib/format";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { getStoreSettings } from "@/lib/settings/store";
+import { mapsPlaceUrl } from "@/lib/store-location";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = pageMetadata({
@@ -49,9 +50,8 @@ function ContactCard({ icon: Icon, title, children }: { icon: LucideIcon; title:
 export default async function ContactPage() {
   const settings = await getStoreSettings();
   const { supportPhone: phone, supportEmail: email, storeAddress: address } = settings;
-  const directions = address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
-    : null;
+  // The shop's own listing on Google Maps, so directions start from the right pin.
+  const directions = address ? mapsPlaceUrl(address) : null;
 
   return (
     <>

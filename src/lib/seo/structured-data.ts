@@ -6,6 +6,7 @@ import { variantSoldOut } from "@/lib/products/variants";
 import { summariseReviews, type PublicReview } from "@/lib/reviews/model";
 import type { Settings } from "@/lib/settings/model";
 import { absoluteUrl } from "@/lib/site";
+import { SHOP_COORDINATES, mapsPlaceUrl } from "@/lib/store-location";
 
 export type JsonLd = Record<string, unknown>;
 
@@ -95,7 +96,17 @@ export function storeJsonLd(
       ...(settings.supportEmail ? { email: settings.supportEmail } : {}),
       ...(settings.supportPhone ? { telephone: telephone(settings.supportPhone) } : {}),
       ...(settings.storeAddress
-        ? { address: { "@type": "PostalAddress", streetAddress: settings.storeAddress, addressCountry: "IN" } }
+        ? {
+            address: { "@type": "PostalAddress", streetAddress: settings.storeAddress, addressCountry: "IN" },
+            // The shop itself: its pin and its Google Maps listing, which ties the website to it.
+            location: {
+              "@type": "Place",
+              name: settings.storeName,
+              address: { "@type": "PostalAddress", streetAddress: settings.storeAddress, addressCountry: "IN" },
+              geo: { "@type": "GeoCoordinates", ...SHOP_COORDINATES },
+              hasMap: mapsPlaceUrl(settings.storeAddress),
+            },
+          }
         : {}),
       hasMerchantReturnPolicy: storeReturnPolicy(base),
     },

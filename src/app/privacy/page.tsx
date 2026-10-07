@@ -11,7 +11,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/privacy",
 });
 
-const UPDATED = "5 October 2026";
+const UPDATED = "7 October 2026";
 
 /**
  * Privacy policy. Describes what the site actually does: Firebase sign-in,
@@ -19,8 +19,9 @@ const UPDATED = "5 October 2026";
  * courier hand-off, one sign-in cookie and a cart in local storage,
  * Google Analytics counting visits (see src/lib/analytics.ts) and Google
  * Customer Reviews asking about a survey once an order is paid (see
- * src/lib/customer-reviews.ts) and showing its badge in the footer, with no
- * advertising.
+ * src/lib/customer-reviews.ts) and showing its badge in the footer, and the
+ * Google map of the shop in the footer (see src/lib/store-location.ts), with
+ * no advertising.
  * Update it when any of that changes.
  */
 export default async function PrivacyPage() {
@@ -141,6 +142,11 @@ export default async function PrivacyPage() {
               sees your IP address, device and browser when it loads.
             </li>
             <li>
+              <strong>Google Maps</strong> shows the map of our shop at the foot of our pages. The map is loaded
+              from Google when you scroll to it, and Google sees your IP address, device and browser when it
+              loads, under Google’s privacy policy. Nothing about you is sent with it.
+            </li>
+            <li>
               <strong>Neon</strong> hosts our database, and <strong>Vercel</strong> hosts the website.
             </li>
             <li>
@@ -179,8 +185,8 @@ export default async function PrivacyPage() {
           <p>
             Your cart and any coupon you enter are saved in your browser’s local storage, on your device only,
             until you check out. Google’s sign-in window, Google’s review badge and its survey question on your
-            order confirmation, and Razorpay’s payment window may set their own cookies under their own privacy
-            policies, for example to prevent fraud. When the home page shows our
+            order confirmation, the Google map of our shop, and Razorpay’s payment window may set their own
+            cookies under their own privacy policies, for example to prevent fraud. When the home page shows our
             Instagram posts through Instagram’s own embed, Instagram may set cookies too, under Meta’s privacy
             policy. We use no advertising cookies.
           </p>
