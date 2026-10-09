@@ -358,9 +358,13 @@ describe("the store", () => {
       "@id": "https://astaadsports.com/#store",
       name: "Astaad Sports",
       url: BASE,
+      description: store.description,
       logo: "https://astaadsports.com/brand/astaad-crest.png",
+      areaServed: "IN",
+      currenciesAccepted: "INR",
       hasMerchantReturnPolicy: store.hasMerchantReturnPolicy,
     });
+    expect(store.description).toContain("across India");
     expect(site).toMatchObject({ "@type": "WebSite", name: "Astaad Sports", url: BASE });
   });
 
