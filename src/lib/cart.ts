@@ -10,6 +10,7 @@ import {
   BAT_TOES,
   ENGRAVING_MAX,
   HANDS,
+  profileMadeIn,
   type BatConfig,
   type Hand,
 } from "./catalogue";
@@ -23,6 +24,7 @@ import {
 } from "./offers/model";
 import {
   MAX_SLUG_LENGTH,
+  profilesMadeIn,
   standardBatConfig,
   startingBatConfig,
   weightLabelsFor,
@@ -187,14 +189,16 @@ export function batCartItem(bat: BatForCart, config: BatConfig = standardBatConf
   const { slug, customization } = bat;
   const on = customization.enabled;
   const size = (findVariant(bat, config.size) ?? startingVariant(bat)).size ?? "";
+  // The weight ranges are the size's own (see batWeightsFor).
+  const weight = on ? pick(weightLabelsFor(size), customization.weights, config.weight) : "";
   return {
     kind: "bat",
     slug,
     options: {
       size,
-      // The weight ranges are the size's own (see batWeightsFor).
-      weight: on ? pick(weightLabelsFor(size), customization.weights, config.weight) : "",
-      profile: on ? pick(BAT_PROFILES.map((entry) => entry.label), customization.profiles, config.profile) : "",
+      weight,
+      // Only a profile the bat is made with in that weight (see profileMadeIn).
+      profile: on ? pick(BAT_PROFILES.map((entry) => entry.label), profilesMadeIn(customization, weight), config.profile) : "",
       toe: on && customization.toes.length ? pick(BAT_TOES.map((entry) => entry.label), customization.toes, config.toe) : undefined,
       handle: on ? pick(BAT_HANDLES.map((entry) => entry.label), customization.handles, config.handle) : "",
       engraving: on && customization.engraving ? normaliseEngraving(config.name) : "",
@@ -251,6 +255,7 @@ function batOptionsValid(options: BatCartItem["options"], customization: BatCust
     weightLabelsFor(options.size).includes(options.weight) &&
     customization.weights.includes(options.weight) &&
     customization.profiles.includes(options.profile) &&
+    profileMadeIn(options.profile, options.weight) &&
     (options.toe === undefined || customization.toes.includes(options.toe)) &&
     customization.handles.includes(options.handle) &&
     (customization.engraving || !options.engraving) &&

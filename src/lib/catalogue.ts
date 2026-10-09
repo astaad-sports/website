@@ -535,6 +535,16 @@ export const BAT_PROFILES: BatOption[] = [
   { label: "Full Spine", hint: "Max wood, high spine", picture: siteImage("bat-options/profile-full") },
 ];
 
+/** Weight ranges a profile is not made in, by profile label: a Full Spine is not made in the lightest full-size range. */
+const PROFILES_NOT_MADE_IN: Record<string, string[]> = {
+  "Full Spine": ["1120–1150 g"],
+};
+
+/** Whether a bat is made with this profile in this weight range (both labels). */
+export function profileMadeIn(profile: string, weight: string): boolean {
+  return !PROFILES_NOT_MADE_IN[profile]?.includes(weight);
+}
+
 export const BAT_HANDLES: BatOption[] = [
   { label: "Round", hint: "Classic grip" },
   { label: "Semi Oval", hint: "Balanced feel" },

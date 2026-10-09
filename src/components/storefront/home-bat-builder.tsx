@@ -14,9 +14,17 @@ import {
   BAT_TOES,
   batWeightsFor,
   ENGRAVING_MAX,
+  profileMadeIn,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { countInWords, listInWords, standardBatConfig, type StoreBat } from "@/lib/products/model";
+import {
+  countInWords,
+  listInWords,
+  standardBatConfig,
+  startingProfile,
+  weightLabelsFor,
+  type StoreBat,
+} from "@/lib/products/model";
 import { findVariant, startingVariant } from "@/lib/products/variants";
 
 import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat-options";
@@ -97,6 +105,14 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
   const item = batCartItem(bat, config);
   const engraved = custom.engraving ? config.name.trim() : "";
   const toes = custom.toes.length > 0;
+  // Some profiles are not made in every weight range: moving to one leaves such a profile for one that is.
+  const onWeightChange = (weight: number) => {
+    update("weight", weight);
+    update("profile", startingProfile(custom, weightLabelsFor(size.size)[weight] ?? "", config.profile));
+  };
+  const notMade = BAT_PROFILES.filter(
+    (option) => custom.profiles.includes(option.label) && !profileMadeIn(option.label, item.options.weight)
+  ).map((option) => option.label);
   const chips = [
     item.options.weight,
     BAT_PROFILES[config.profile].label,
@@ -177,10 +193,27 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
 
           <div className="flex flex-1 flex-col justify-between gap-4">
             <OptionGroup label="Weight">
-              <ChoiceButtons label="Weight" options={batWeightsFor(size.size)} offered={custom.weights} value={config.weight} onChange={(v) => update("weight", v)} />
+              <ChoiceButtons label="Weight" options={batWeightsFor(size.size)} offered={custom.weights} value={config.weight} onChange={onWeightChange} />
             </OptionGroup>
-            <OptionGroup label="Profile">
-              <ChoiceButtons label="Profile" options={BAT_PROFILES} offered={custom.profiles} value={config.profile} onChange={(v) => update("profile", v)} />
+            <OptionGroup
+              label="Profile"
+              badge={
+                // Beside the label, not under it: the column is as tall as the preview, so a line more would push it past.
+                notMade.length > 0 && (
+                  <span className="text-xs leading-4 text-ink-muted">
+                    {listInWords(notMade)} {notMade.length > 1 ? "are" : "is"} not available in {item.options.weight}
+                  </span>
+                )
+              }
+            >
+              <ChoiceButtons
+                label="Profile"
+                options={BAT_PROFILES}
+                offered={custom.profiles}
+                value={config.profile}
+                onChange={(v) => update("profile", v)}
+                unavailable={(index) => (notMade.includes(BAT_PROFILES[index].label) ? `Not available in ${item.options.weight}` : null)}
+              />
             </OptionGroup>
             {toes && (
               <OptionGroup label="Toe shape">

@@ -158,6 +158,13 @@ describe("the builder's starting choices", () => {
     expect(config.size).toBe(DEFAULT_BAT_CONFIG.size);
   });
 
+  test("a profile not made in the starting weight moves to one that is", () => {
+    const config = startingBatConfig({ ...FULL_CUSTOMIZATION, weights: ["1120–1150 g"] }, { ...DEFAULT_BAT_CONFIG, profile: 2 });
+    expect(config.weight).toBe(0);
+    expect(config.profile).toBe(0);
+    expect(startingBatConfig(FULL_CUSTOMIZATION, { ...DEFAULT_BAT_CONFIG, profile: 2 }).profile).toBe(2);
+  });
+
   test("knocking and the scuff sheet start off when the bat does not offer them", () => {
     const config = startingBatConfig({ ...FULL_CUSTOMIZATION, matchReady: false, scuffSheet: false });
     expect(config.knock).toBe(false);

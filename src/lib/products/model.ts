@@ -14,6 +14,7 @@ import {
   batWeightsFor,
   DEFAULT_BAT_CONFIG,
   GEAR,
+  profileMadeIn,
   STORE_CATEGORIES,
   weightGroupName,
   type Bat,
@@ -728,19 +729,35 @@ export function startingWeight(customization: BatCustomization, size: string | n
   return firstOffered(weightLabelsFor(size), customization.weights, current);
 }
 
+/** The profiles a bat offers that it is made with in this weight range (see profileMadeIn). */
+export function profilesMadeIn(customization: Pick<BatCustomization, "profiles">, weight: string): string[] {
+  return customization.profiles.filter((profile) => profileMadeIn(profile, weight));
+}
+
+/**
+ * The profile a builder moves to when the weight changes: `current` (an index
+ * into BAT_PROFILES) when the bat is made with it in `weight` (a label),
+ * otherwise the first offered profile it is made with in that range.
+ */
+export function startingProfile(customization: BatCustomization, weight: string, current: number): number {
+  return firstOffered(PROFILE_OPTIONS, profilesMadeIn(customization, weight), current);
+}
+
 /**
  * A builder's first choices for a bat's build: the usual one wherever the bat
- * offers it, otherwise the first option it does offer. Indexes refer to the
+ * offers it, otherwise the first option it does offer; the profile must also
+ * be one made in the weight chosen. Indexes refer to the
  * weight ranges of `base`'s size and the full BAT_PROFILES, BAT_TOES and
  * BAT_HANDLES lists; extras the bat does not offer start switched off. The
  * size is left as it is.
  */
 export function startingBatConfig(customization: BatCustomization, base: BatConfig = DEFAULT_BAT_CONFIG): BatConfig {
   const on = customization.enabled;
+  const weight = startingWeight(customization, base.size, base.weight);
   return {
     ...base,
-    weight: startingWeight(customization, base.size, base.weight),
-    profile: firstOffered(PROFILE_OPTIONS, customization.profiles, base.profile),
+    weight,
+    profile: startingProfile(customization, weightLabelsFor(base.size)[weight] ?? "", base.profile),
     toe: firstOffered(TOE_OPTIONS, customization.toes, base.toe),
     handle: firstOffered(HANDLE_OPTIONS, customization.handles, base.handle),
     name: on && customization.engraving ? base.name : "",

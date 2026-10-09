@@ -96,6 +96,8 @@ export interface ChoiceButtonsProps {
    */
   variant?: "button" | "card" | "picture";
   glyph?: (index: number) => ReactNode;
+  /** Why an option cannot be chosen with the rest of the build, or null when it can. */
+  unavailable?: (index: number) => string | null;
   className?: string;
 }
 
@@ -108,6 +110,7 @@ export function ChoiceButtons({
   onChange,
   variant = "button",
   glyph,
+  unavailable,
   className,
 }: ChoiceButtonsProps) {
   return (
@@ -117,17 +120,23 @@ export function ChoiceButtons({
       onValueChange={(next) => onChange(Number(next))}
       className={cn("flex w-auto flex-wrap gap-2", variant !== "button" && "gap-3", className)}
     >
-      {options.map((option, index) =>
-        offered && !offered.includes(option.label) ? null : (
+      {options.map((option, index) => {
+        if (offered && !offered.includes(option.label)) return null;
+        // An option that does not go with the rest of the build stays in view, greyed, with the reason.
+        const note = unavailable?.(index) ?? null;
+        return (
           <RadioPrimitive.Root
             key={option.label}
             value={String(index)}
+            disabled={note !== null}
+            title={variant === "button" ? (note ?? undefined) : undefined}
             className={cn(
               variant === "button"
                 ? "inline-flex h-11 cursor-pointer items-center justify-center rounded-xs px-5 text-left text-sm leading-5 font-medium text-foreground transition-shadow data-checked:bg-brand-yellow data-checked:font-bold not-data-checked:bg-surface-raised not-data-checked:shadow-card"
                 : cn(CHOICE_CARD, "flex-1"),
               variant === "card" && "basis-[180px] items-center gap-3 px-4 py-3.5 md:h-[88px]",
-              variant === "picture" && "basis-[128px] flex-col gap-3 p-2 pb-3.5"
+              variant === "picture" && "basis-[128px] flex-col gap-3 p-2 pb-3.5",
+              "data-disabled:cursor-not-allowed data-disabled:text-ink-muted data-disabled:shadow-none!"
             )}
           >
             {variant === "picture" && option.picture && (
@@ -138,7 +147,7 @@ export function ChoiceButtons({
                   alt={`${option.label} ${label.toLowerCase()} of a cricket bat`}
                   fill
                   sizes="176px"
-                  className="object-contain"
+                  className={cn("object-contain", note && "opacity-35 grayscale")}
                 />
               </span>
             )}
@@ -146,14 +155,14 @@ export function ChoiceButtons({
             {variant !== "button" ? (
               <span className={cn("flex flex-col gap-0.5", variant === "picture" && "px-1.5")}>
                 <span className="text-[15px] leading-5 font-bold">{option.label}</span>
-                <span className="text-xs leading-4 opacity-70">{option.hint}</span>
+                <span className={cn("text-xs leading-4", note ? "font-semibold" : "opacity-70")}>{note ?? option.hint}</span>
               </span>
             ) : (
               option.label
             )}
           </RadioPrimitive.Root>
-        )
-      )}
+        );
+      })}
     </RadioGroup>
   );
 }

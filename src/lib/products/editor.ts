@@ -11,6 +11,7 @@ import {
   normaliseCustomization,
   NO_CUSTOMIZATION,
   PROFILE_OPTIONS,
+  profilesMadeIn,
   TOE_OPTIONS,
   WEIGHT_OPTIONS,
   weightLabelsFor,
@@ -261,8 +262,12 @@ export function parseProductForm(form: FormData): ParsedProductForm {
         const unweighted = sizeOptions(category, subcategory).filter(
           (size) => sizes.includes(size.code) && !weightLabelsFor(size.code).some((label) => weights.includes(label))
         );
+        // A profile may not be made in every range (see profileMadeIn): each weight ticked needs a profile that is.
+        const unshaped = weights.filter((weight) => !profilesMadeIn({ profiles }, weight).length);
         if (unweighted.length) {
           errors.customization = `Pick at least one weight for ${listInWords(unweighted.map((size) => size.label))}.`;
+        } else if (unshaped.length) {
+          errors.customization = `${listInWords(profiles)} ${profiles.length > 1 ? "are" : "is"} not made in ${listInWords(unshaped)}. Tick another profile too, or untick ${unshaped.length > 1 ? "those weights" : "that weight"}.`;
         }
       }
       customization = normaliseCustomization({

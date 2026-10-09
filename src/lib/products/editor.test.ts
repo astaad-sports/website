@@ -180,6 +180,18 @@ describe("the product editor's fields", () => {
     expect(oneEach.ok).toBe(true);
   });
 
+  test("a weight range needs a profile ticked that is made in it", () => {
+    const parsed = parseProductForm(form({ ...BAT, customProfiles: ["Full Spine"] }));
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.fieldErrors.customization).toBe(
+        "Full Spine is not made in 1120–1150 g. Tick another profile too, or untick that weight."
+      );
+    }
+    const heavier = FULL_CUSTOMIZATION.weights.filter((weight) => weight !== "1120–1150 g");
+    expect(parseProductForm(form({ ...BAT, customProfiles: ["Full Spine"], customWeights: heavier })).ok).toBe(true);
+  });
+
   test("an enabled build needs a weight, a profile and a handle", () => {
     const parsed = parseProductForm(form({ ...BAT, customWeights: [] }));
     expect(parsed.ok).toBe(false);

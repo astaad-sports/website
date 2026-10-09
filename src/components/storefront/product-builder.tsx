@@ -15,9 +15,16 @@ import {
   BAT_TOES,
   batWeightsFor,
   ENGRAVING_MAX,
+  profileMadeIn,
 } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
-import { standardBatConfig, startingWeight, type StoreBat } from "@/lib/products/model";
+import {
+  standardBatConfig,
+  startingProfile,
+  startingWeight,
+  weightLabelsFor,
+  type StoreBat,
+} from "@/lib/products/model";
 import {
   findVariant,
   otherPrices,
@@ -234,10 +241,15 @@ export function ProductBuilder({
   // The bat may have changed under the page (a size removed): fall back to where the picker starts.
   const size = findVariant(bat, config.size) ?? startingVariant(bat);
   const soldOut = variantSoldOut(bat, size);
+  // Some profiles are not made in every weight range: moving to one leaves such a profile for one that is.
+  const onWeightChange = (code: string | null, weight: number) => {
+    update("weight", weight);
+    update("profile", startingProfile(custom, weightLabelsFor(code)[weight] ?? "", config.profile));
+  };
   // Each size has weight ranges of its own: keep the same weight (light, balanced, heavy) where the bat offers it.
   const onSizeChange = (code: string) => {
     update("size", code);
-    update("weight", startingWeight(custom, code, config.weight));
+    onWeightChange(code, startingWeight(custom, code, config.weight));
   };
 
   if (!custom.enabled) {
@@ -350,7 +362,7 @@ export function ProductBuilder({
                 options={batWeightsFor(size.size)}
                 offered={custom.weights}
                 value={config.weight}
-                onChange={(value) => update("weight", value)}
+                onChange={(value) => onWeightChange(size.size, value)}
               />
             </OptionGroup>
             <OptionGroup label="Profile" hint="The side view: the glow marks the sweet spot">
@@ -361,6 +373,11 @@ export function ProductBuilder({
                 offered={custom.profiles}
                 value={config.profile}
                 onChange={(value) => update("profile", value)}
+                unavailable={(index) =>
+                  profileMadeIn(BAT_PROFILES[index].label, item.options.weight)
+                    ? null
+                    : `Not available in ${item.options.weight}`
+                }
               />
             </OptionGroup>
             {toes && (
