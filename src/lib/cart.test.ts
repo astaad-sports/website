@@ -309,7 +309,7 @@ describe("a bat sells only the build options it offers", () => {
   });
 });
 
-describe("Full Spine is not made in 1120–1150 g", () => {
+describe("Full Spine is not made in the lightest range of any size", () => {
   // Weight 0 in SH is 1120–1150 g; profile 2 is Full Spine.
   test("a builder's light Full Spine goes in the cart as the first profile made in that weight", () => {
     expect(build({ weight: 0, profile: 2 }).options).toMatchObject({ weight: "1120–1150 g", profile: "Duckbill Players" });
@@ -322,10 +322,15 @@ describe("Full Spine is not made in 1120–1150 g", () => {
     expect(priceCartItem({ ...light, options: { ...light.options, profile: "Full Spine" } })).toBeNull();
   });
 
-  test("Size 6 and Harrow ranges are made in Full Spine", () => {
+  test("nor in the lightest Size 6 and Harrow ranges, but in their others", () => {
     const goat = batIn(seeded, "goat");
-    const harrow = batCartItem(goat, { ...standardBatConfig(goat), size: "H", weight: 0, profile: 2 });
-    expect(priceCartItem(harrow)!.item.options).toMatchObject({ weight: "1050–1075 g", profile: "Full Spine" });
+    const fullSpine = (size: string, weight: number) =>
+      batCartItem(goat, { ...standardBatConfig(goat), size, weight, profile: 2 }).options;
+    expect(fullSpine("6", 0)).toMatchObject({ weight: "950–975 g", profile: "Duckbill Players" });
+    expect(fullSpine("H", 0)).toMatchObject({ weight: "1050–1075 g", profile: "Duckbill Players" });
+    expect(fullSpine("6", 1)).toMatchObject({ weight: "975–1000 g", profile: "Full Spine" });
+    const harrow = batCartItem(goat, { ...standardBatConfig(goat), size: "H", weight: 1, profile: 2 });
+    expect(priceCartItem(harrow)!.item.options).toMatchObject({ weight: "1075–1100 g", profile: "Full Spine" });
   });
 });
 

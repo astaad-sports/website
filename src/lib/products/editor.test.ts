@@ -185,10 +185,11 @@ describe("the product editor's fields", () => {
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) {
       expect(parsed.fieldErrors.customization).toBe(
-        "Full Spine is not made in 1120–1150 g. Tick another profile too, or untick that weight."
+        "Full Spine is not made in 950–975 g, 1050–1075 g and 1120–1150 g. Tick another profile too, or untick those weights."
       );
     }
-    const heavier = FULL_CUSTOMIZATION.weights.filter((weight) => weight !== "1120–1150 g");
+    const lightest = ["950–975 g", "1050–1075 g", "1120–1150 g"];
+    const heavier = FULL_CUSTOMIZATION.weights.filter((weight) => !lightest.includes(weight));
     expect(parseProductForm(form({ ...BAT, customProfiles: ["Full Spine"], customWeights: heavier })).ok).toBe(true);
   });
 
