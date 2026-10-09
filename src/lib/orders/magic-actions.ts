@@ -9,7 +9,7 @@ import { cartItemSchema, MAX_LINES, priceCart } from "@/lib/cart";
 import { paymentResponseSchema } from "@/lib/checkout";
 import { completeMagicCheckout } from "@/lib/orders/magic";
 import { orderPath } from "@/lib/orders/path";
-import { magicCheckoutEnabled, magicLineItems } from "@/lib/payments/magic";
+import { magicLineItems } from "@/lib/payments/magic";
 import {
   createRazorpayOrder,
   razorpayConfigured,
@@ -38,13 +38,12 @@ const startSchema = z.object({ items: z.array(cartItemSchema).min(1).max(MAX_LIN
  * Start a Razorpay Magic Checkout for what "Buy now" chose: price it from the
  * database, keep it, and make the Razorpay order the window opens. Razorpay's
  * window then takes the mobile number, address, coupon and payment. No
- * account is needed. Whenever this cannot be done (it is switched off, the
- * product is out of stock, Razorpay turned the order down), the answer is a
- * plain "no" and Buy now opens the store's own checkout, which says what is
- * wrong.
+ * account is needed. Whenever this cannot be done (the product is out of
+ * stock, Razorpay turned the order down), the answer is a plain "no" and Buy
+ * now opens the store's own checkout, which says what is wrong.
  */
 export async function startMagicCheckout(input: unknown): Promise<StartMagicCheckoutResult> {
-  if (!magicCheckoutEnabled() || !process.env.DATABASE_URL) return { ok: false };
+  if (!process.env.DATABASE_URL) return { ok: false };
   const parsed = startSchema.safeParse(input);
   if (!parsed.success) return { ok: false };
 

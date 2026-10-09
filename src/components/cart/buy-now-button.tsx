@@ -9,7 +9,7 @@ import { cartEvent } from "@/lib/analytics-events";
 import { priceCartItem, type CartItem } from "@/lib/cart";
 import { BUY_NOW_CHECKOUT } from "@/lib/checkout";
 import { confirmMagicPayment, startMagicCheckout } from "@/lib/orders/magic-actions";
-import { MAGIC_CHECKOUT_SCRIPT, magicCheckoutEnabled } from "@/lib/payments/magic";
+import { MAGIC_CHECKOUT_SCRIPT } from "@/lib/payments/magic";
 import { cn } from "@/lib/utils";
 
 import { useCatalogue } from "./catalogue-provider";
@@ -20,9 +20,6 @@ const TONE = {
   light: "border-surface-dark bg-surface-dark text-on-dark hover:border-surface-dark-raised hover:bg-surface-dark-raised",
   dark: "border-on-dark bg-on-dark text-surface-dark hover:border-on-dark-muted hover:bg-on-dark-muted",
 };
-
-/** Set when the site is built: whether Buy now opens Razorpay's Magic Checkout window (see magic.ts). */
-const MAGIC = magicCheckoutEnabled();
 
 interface PaymentResponse {
   razorpay_order_id: string;
@@ -63,11 +60,10 @@ export type BuyNowButtonProps = Omit<ButtonProps, "onClick" | "children" | "vari
 
 /**
  * "Buy now": buys `item` alone, one of it, without adding it to the cart.
- * Whatever is in the cart stays there for later. It opens the store's
- * checkout for the item; or, with Magic Checkout switched on, Razorpay's own
- * window, which takes the mobile number, address, coupon and payment, and
- * then the paid order. If that window cannot be opened, the store's checkout
- * opens instead.
+ * Whatever is in the cart stays there for later. It opens Razorpay's Magic
+ * Checkout window, which takes the mobile number, address, coupon and
+ * payment, and then the paid order. If that window cannot be opened, the
+ * store's own checkout opens for the item instead.
  */
 export function BuyNowButton({ item, soldOut = false, tone = "light", children, className, ...props }: BuyNowButtonProps) {
   const { buyNow, coupon, setCoupon } = useCart();
@@ -80,6 +76,7 @@ export function BuyNowButton({ item, soldOut = false, tone = "light", children, 
 
   if (soldOut) return null;
 
+  /** The store's own checkout for the item: where Buy now goes when Razorpay's window cannot open. */
   function openCheckoutPage() {
     buyNow(item);
     startTransition(() => router.push(BUY_NOW_CHECKOUT));
@@ -142,7 +139,7 @@ export function BuyNowButton({ item, soldOut = false, tone = "light", children, 
         disabled={waiting}
         focusableWhenDisabled
         aria-busy={waiting}
-        onClick={() => (MAGIC ? void openMagicCheckout() : openCheckoutPage())}
+        onClick={() => void openMagicCheckout()}
         className={cn(TONE[tone], className)}
       >
         {waiting ? "Please wait…" : children}

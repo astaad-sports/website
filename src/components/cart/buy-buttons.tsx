@@ -1,7 +1,6 @@
 import { ArrowRight, Lock, ShoppingCart } from "lucide-react";
 
 import type { CartItem } from "@/lib/cart";
-import { magicCheckoutEnabled } from "@/lib/payments/magic";
 import { cn } from "@/lib/utils";
 
 import { AddToCartButton } from "./add-to-cart-button";
@@ -18,8 +17,7 @@ const BUTTON =
  * Add to cart and Buy now for one item: side by side and the same size,
  * or one above the other where the column is too narrow for two (the bat
  * builder's summary). Out of stock, they are one greyed "Out of stock" button.
- * With Magic Checkout switched on, a line under them says Buy now pays
- * through Razorpay.
+ * A line under them says Buy now pays through Razorpay.
  */
 export function BuyButtons({
   item,
@@ -61,7 +59,7 @@ export function BuyButtons({
           <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
         </BuyNowButton>
       </div>
-      {magicCheckoutEnabled() && !soldOut && (
+      {!soldOut && (
         <p
           className={cn(
             "mt-2 flex flex-wrap items-center justify-center gap-x-1.5 text-xs leading-4",

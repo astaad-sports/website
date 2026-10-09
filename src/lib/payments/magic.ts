@@ -1,7 +1,8 @@
 // Razorpay Magic Checkout: Razorpay's own window asks for the mobile number,
 // delivery address and coupon, then takes the payment, so "Buy now" needs no
-// checkout page of ours. Razorpay has to enable it on the account; until
-// NEXT_PUBLIC_MAGIC_CHECKOUT is "on", Buy now opens the store's checkout.
+// checkout page of ours. Razorpay enabled it for the account on 2026-10-09;
+// its dashboard holds the store's three addresses (see settings-payment.tsx).
+// Whenever the window cannot open, Buy now opens the store's checkout instead.
 // This file is the pure part: what the store sends Razorpay, what it answers
 // when Razorpay asks for the delivery charge or checks a coupon, and how it
 // reads the paid order back. Tests pass their own values.
@@ -13,11 +14,6 @@ import { absoluteUrl } from "@/lib/site";
 
 /** Razorpay's script for the Magic Checkout window. */
 export const MAGIC_CHECKOUT_SCRIPT = "https://checkout.razorpay.com/v1/magic-checkout.js";
-
-/** Whether Buy now opens Razorpay's window. Off unless NEXT_PUBLIC_MAGIC_CHECKOUT is "on". */
-export function magicCheckoutEnabled(value: string | undefined = process.env.NEXT_PUBLIC_MAGIC_CHECKOUT): boolean {
-  return value?.trim().toLowerCase() === "on";
-}
 
 /** One product in a Magic Checkout order. Amounts are paise, for one of it. */
 export interface MagicLineItem {

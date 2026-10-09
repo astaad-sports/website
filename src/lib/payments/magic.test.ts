@@ -7,7 +7,6 @@ import {
   ADDRESS_MISSING,
   customerFromMagicOrder,
   customerWithoutAddress,
-  magicCheckoutEnabled,
   magicLineItems,
   promotionCode,
   promotionResponse,
@@ -57,14 +56,6 @@ const cart: PricedCart = {
   totalPaise: 989800,
   coupon: null,
 };
-
-test("magicCheckoutEnabled is on only for \"on\"", () => {
-  expect(magicCheckoutEnabled("on")).toBe(true);
-  expect(magicCheckoutEnabled(" ON ")).toBe(true);
-  expect(magicCheckoutEnabled("")).toBe(false);
-  expect(magicCheckoutEnabled("true")).toBe(false);
-  expect(magicCheckoutEnabled(undefined)).toBe(false);
-});
 
 describe("magicLineItems", () => {
   const items = magicLineItems(cart, "https://astaadsports.com");

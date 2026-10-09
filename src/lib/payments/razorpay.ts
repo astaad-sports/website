@@ -3,7 +3,7 @@ import "server-only";
 import { razorpayKeys, type RazorpayKeys } from "./keys";
 import { siteUrl } from "@/lib/site";
 
-import { magicCheckoutEnabled, type MagicLineItem, type MagicOrder } from "./magic";
+import type { MagicLineItem, MagicOrder } from "./magic";
 import { isValidPaymentSignature, isValidWebhookSignature } from "./signature";
 
 const API = "https://api.razorpay.com/v1";
@@ -42,8 +42,8 @@ export interface RazorpayStatus {
   mode: "live" | "test" | null;
   /** RAZORPAY_WEBHOOK_SECRET is set, so payments are confirmed even if the customer closes the page. */
   webhook: boolean;
-  /** Magic Checkout: whether Buy now opens Razorpay's window, and the addresses Razorpay's dashboard asks for. */
-  magic: { on: boolean; shippingInfoUrl: string; getPromotionsUrl: string; applyPromotionsUrl: string };
+  /** Magic Checkout: the store's addresses Razorpay's dashboard asks for. */
+  magic: { shippingInfoUrl: string; getPromotionsUrl: string; applyPromotionsUrl: string };
 }
 
 /** For the admin's Settings page. Never exposes the keys themselves. */
@@ -56,7 +56,6 @@ export function razorpayStatus(): RazorpayStatus {
     mode,
     webhook: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
     magic: {
-      on: magicCheckoutEnabled(),
       shippingInfoUrl: `${base}/shipping-info`,
       getPromotionsUrl: `${base}/promotions`,
       applyPromotionsUrl: `${base}/apply-promotion`,
