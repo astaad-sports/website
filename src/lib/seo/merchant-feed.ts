@@ -2,8 +2,8 @@
 // item for every size of every product the public can see, with the names,
 // identifiers, prices and addresses the site's own product data gives Google
 // (see structured-data.ts). Pure: the route is src/app/feeds/google.xml.
-import { BAT_SIZES, type GearCategorySlug } from "@/lib/catalogue";
-import type { StoreBat, StoreCatalogue, StoreGear } from "@/lib/products/model";
+import { BAT_SIZES, profileMadeIn, type GearCategorySlug } from "@/lib/catalogue";
+import { listInWords, weightLabelsFor, type StoreBat, type StoreCatalogue, type StoreGear } from "@/lib/products/model";
 import { absoluteUrl } from "@/lib/site";
 
 import { colourInName, realPhotos, sizeListings, type SizeListing } from "./structured-data";
@@ -101,6 +101,28 @@ function productItems(
   });
 }
 
+/**
+ * The weight ranges and profiles a customisable bat offers in a size: the
+ * size's own ranges, and each profile with the ranges it is not made in (see
+ * profileMadeIn). A profile made in none of them is left out.
+ */
+function buildDetails(bat: StoreBat, size: SizeListing | undefined): FeedDetail[] {
+  const custom = bat.customization;
+  if (!custom.enabled) return [];
+  const code = size ? bat.sizes.find((entry) => entry.label === size.label)?.code : undefined;
+  const weights = weightLabelsFor(code).filter((label) => custom.weights.includes(label));
+  if (weights.length === 0) return [];
+  const profiles = custom.profiles.flatMap((profile) => {
+    const notMade = weights.filter((weight) => !profileMadeIn(profile, weight));
+    if (notMade.length === weights.length) return [];
+    return [notMade.length ? `${profile} (not available in ${listInWords(notMade)})` : profile];
+  });
+  return [
+    { section: "Build", name: "Weight options", value: weights.join(", ") },
+    ...(profiles.length ? [{ section: "Build", name: "Profile options", value: profiles.join(", ") }] : []),
+  ];
+}
+
 function batItems(bat: StoreBat, base: string): FeedItem[] {
   const custom = bat.customization;
   const willow =
@@ -128,6 +150,7 @@ function batItems(bat: StoreBat, base: string): FeedItem[] {
               { section: "Bat", name: "Player height", value: guide.height.replace(/"/g, " in").replace(/'/g, " ft ") },
             ]
           : []),
+        ...buildDetails(bat, size),
       ];
     },
   });

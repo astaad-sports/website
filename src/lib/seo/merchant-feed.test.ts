@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { NO_CUSTOMIZATION, seedProductRows, toStoreCatalogue, type ProductWithImages } from "@/lib/products/model";
+import { FULL_CUSTOMIZATION, NO_CUSTOMIZATION, seedProductRows, toStoreCatalogue, type ProductWithImages } from "@/lib/products/model";
 
 import { feedItems, feedXml, type FeedItem } from "./merchant-feed";
 
@@ -65,9 +65,32 @@ describe("the feed's items", () => {
       { section: "Bat", name: "Length", value: "33.5 inches" },
       { section: "Bat", name: "Player age", value: "15+ years" },
       { section: "Bat", name: "Player height", value: "5 ft 4 in – 5 ft 10 in" },
+      { section: "Build", name: "Weight options", value: "1120–1150 g, 1150–1180 g, 1180–1220 g" },
+      {
+        section: "Build",
+        name: "Profile options",
+        value: "Duckbill Players, Mid to Low, Full Spine (not available in 1120–1150 g)",
+      },
     ]);
     const plain = byId(items({ goat: { customization: NO_CUSTOMIZATION } }), "goat-sh");
     expect(plain.highlights).toEqual(["Grade 1 English Willow"]);
+    expect(plain.details.map((detail) => detail.section)).not.toContain("Build");
+  });
+
+  test("each size lists its own weight ranges, and the profiles made in them", () => {
+    const size6 = byId(feed, "goat-6").details.filter((detail) => detail.section === "Build");
+    expect(size6).toEqual([
+      { section: "Build", name: "Weight options", value: "950–975 g, 975–1000 g, 1000–1025 g" },
+      { section: "Build", name: "Profile options", value: "Duckbill Players, Mid to Low, Full Spine (not available in 950–975 g)" },
+    ]);
+    // Only the ranges the bat offers count: Full Spine made in all of them reads plainly, and one made in none is left out.
+    const heavy = byId(items({ goat: { customization: { ...FULL_CUSTOMIZATION, weights: ["1150–1180 g"] } } }), "goat-sh");
+    expect(heavy.details.at(-1)).toEqual({ section: "Build", name: "Profile options", value: "Duckbill Players, Mid to Low, Full Spine" });
+    const light = byId(
+      items({ goat: { customization: { ...FULL_CUSTOMIZATION, weights: ["1120–1150 g"], profiles: ["Mid to Low", "Full Spine"] } } }),
+      "goat-sh"
+    );
+    expect(light.details.at(-1)).toEqual({ section: "Build", name: "Profile options", value: "Mid to Low" });
   });
 
   test("a product in one size is one item at its own address, with no group", () => {
