@@ -8,27 +8,27 @@ import {
   Layers,
   MessageSquareQuote,
   Plus,
-  Truck,
   type LucideIcon,
 } from "lucide-react";
 
 import { HomeAttention, type StockAttention } from "@/components/admin/home-attention";
 import { offerHref } from "@/components/admin/offer-rows";
-import { OrderRow } from "@/components/admin/order-rows";
+import { itemsSummary, OrderRow } from "@/components/admin/order-rows";
 import { byStoreOrder, matchesStockFilter, toProductListItem } from "@/components/admin/product-row";
+import { QuickFulfilment, type QuickOrder } from "@/components/admin/quick-fulfilment";
 import { BUTTON_SECONDARY, PAGE, SECTION_LABEL } from "@/components/admin/styles";
 import { listOrdersWithUnsentEmails } from "@/db/emails";
 import { listActiveOffers } from "@/db/offers";
-import { listOrdersForAdmin, listStaleShipments } from "@/db/orders";
+import { listOrdersForAdmin, type OrderWithItems } from "@/db/orders";
 import { listProductsWithImages } from "@/db/products";
 import { countNewReviews } from "@/db/reviews";
-import type { Order } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { emailsToSendAgain, ORDER_EMAIL_LABEL } from "@/lib/email/kinds";
 import { formatOrderNumber } from "@/lib/format";
-import { daysSince, STALE_SHIPMENT_DAYS } from "@/lib/orders/fulfilment";
+import { daysSince, isFulfilmentStatus, STALE_SHIPMENT_DAYS, stockShortfallNotice } from "@/lib/orders/fulfilment";
 import { daysLeft, offerNote } from "@/lib/offers/model";
-import { shortfallName } from "@/lib/products/variants";
+import { defaultCarrier } from "@/lib/settings/model";
+import { getStoreSettings } from "@/lib/settings/store";
 import { cn } from "@/lib/utils";
 
 // The layout's title template only reaches child segments, so this page spells out its own.
@@ -138,20 +138,22 @@ function QuickActions({ className, tiles }: { className?: string; tiles?: boolea
 }
 
 /**
- * Home: what needs the admin now (orders to ship, emails to send again,
- * products running out, reviews to check, offers about to end), then the
- * latest orders. Not a report.
+ * Home: orders to ship and parcels on the way, each with its action in the
+ * row; then what else needs the admin (emails to send again, products
+ * running out, reviews to check, offers about to end), and the latest
+ * orders. Not a report.
  */
 export default async function AdminHomePage() {
   await requireAdmin("/admin");
-  const [unshipped, stale, recent, products, offers, newReviews, unsentEmails] = await Promise.all([
+  const [unshipped, shipped, recent, products, offers, newReviews, unsentEmails, settings] = await Promise.all([
     listOrdersForAdmin({ filter: "pending" }),
-    listStaleShipments(STALE_SHIPMENT_DAYS),
+    listOrdersForAdmin({ filter: "shipped" }),
     listOrdersForAdmin({ limit: 5 }),
     listProductsWithImages(),
     listActiveOffers(),
     countNewReviews(),
     listOrdersWithUnsentEmails(),
+    getStoreSettings(),
   ]);
   const now = new Date();
   const toShip = unshipped.length;
@@ -169,23 +171,27 @@ export default async function AdminHomePage() {
   const stockRows = flagged.slice(0, STOCK_ROWS);
   const moreStock = flagged.length - stockRows.length;
 
-  const orderRows = (orders: Order[], detail: (order: Order) => string): AttentionItem[] =>
-    orders.map((order) => ({
-      key: order.id,
-      href: `/admin/orders/${order.number}`,
-      title: `#${formatOrderNumber(order.number)}`,
-      detail: detail(order),
-      action: "Update",
-      icon: Truck,
-    }));
-  const first = orderRows(unshipped, (order) => `${order.trackingNumber ? "Ready to ship" : "Needs tracking ID"} · ${order.shipName}`).map(
-    (row, index) => {
-      // Paid for more than was in stock: the owner restocks or refunds before anything else.
-      const short = unshipped[index].stockShortfall;
-      if (!short?.length) return row;
-      return { ...row, detail: `Paid while out of stock: ${short.map(shortfallName).join(", ")}`, action: "Check", icon: CircleAlert };
-    }
-  );
+  // Ship and deliver: oldest first, as the lists come.
+  const quick = (order: OrderWithItems): QuickOrder => {
+    const shippedDaysAgo = order.shippedAt ? daysSince(order.shippedAt, now) : null;
+    return {
+      id: order.id,
+      number: order.number,
+      label: `#${formatOrderNumber(order.number)}`,
+      status: isFulfilmentStatus(order.status) ? order.status : "paid",
+      customer: order.shipName,
+      items: itemsSummary(order),
+      carrier: order.carrier,
+      trackingNumber: order.trackingNumber,
+      shippedDaysAgo,
+      // As listStaleShipments and the morning delivery check count it.
+      overdue: order.shippedAt !== null && now.getTime() - order.shippedAt.getTime() > STALE_SHIPMENT_DAYS * 86_400_000,
+      stockNote: order.stockShortfall?.length ? stockShortfallNotice(order.stockShortfall) : null,
+    };
+  };
+  const toShipRows = unshipped.map(quick);
+  const onTheWay = [...shipped].sort((a, b) => (a.shippedAt?.getTime() ?? 0) - (b.shippedAt?.getTime() ?? 0)).map(quick);
+  const first: AttentionItem[] = [];
   // An order email that did not go (or never finished): Send again is on the order page.
   for (const { order, emails } of unsentEmails) {
     for (const email of emailsToSendAgain(emails, order, now)) {
@@ -210,7 +216,6 @@ export default async function AdminHomePage() {
       icon: Layers,
     });
   }
-  later.push(...orderRows(stale, (order) => `Shipped ${daysSince(order.shippedAt, now)} days ago · check it arrived`));
   if (newReviews > 0) {
     later.push({
       key: "new-reviews",
@@ -267,36 +272,39 @@ export default async function AdminHomePage() {
       </nav>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-10">
-        <section aria-labelledby={ATTENTION_HEADING} className="flex flex-col">
-          <div className="flex min-h-11 items-center justify-between">
-            <h2 id={ATTENTION_HEADING} tabIndex={-1} className={cn(SECTION_LABEL, "focus:outline-none")}>
-              Needs attention
-            </h2>
-            {attentionCount > 0 && (
-              <span className="text-xs leading-4 font-semibold text-ink-muted tabular-nums">{attentionCount}</span>
-            )}
-          </div>
-          <HomeAttention
-            count={attentionCount}
-            headingId={ATTENTION_HEADING}
-            before={first.map((item) => (
-              <AttentionRow key={item.key} item={item} />
-            ))}
-            stock={stockRows}
-            after={later.map((item) => (
-              <AttentionRow key={item.key} item={item} />
-            ))}
-            empty={
-              <div className="flex items-center gap-3 border-y border-border py-5">
-                <CircleCheck className="size-6 shrink-0 text-success" strokeWidth={1.5} aria-hidden="true" />
-                <div className="flex flex-col">
-                  <p className="text-[15px] leading-[22px] font-semibold">All caught up</p>
-                  <p className="text-[13px] leading-[18px] text-ink-muted">New orders show up here as soon as they are paid.</p>
+        <div className="flex flex-col gap-8">
+          <QuickFulfilment toShip={toShipRows} onTheWay={onTheWay} defaultCarrier={defaultCarrier(settings)} />
+          <section aria-labelledby={ATTENTION_HEADING} className="flex flex-col">
+            <div className="flex min-h-11 items-center justify-between">
+              <h2 id={ATTENTION_HEADING} tabIndex={-1} className={cn(SECTION_LABEL, "focus:outline-none")}>
+                Needs attention
+              </h2>
+              {attentionCount > 0 && (
+                <span className="text-xs leading-4 font-semibold text-ink-muted tabular-nums">{attentionCount}</span>
+              )}
+            </div>
+            <HomeAttention
+              count={attentionCount}
+              headingId={ATTENTION_HEADING}
+              before={first.map((item) => (
+                <AttentionRow key={item.key} item={item} />
+              ))}
+              stock={stockRows}
+              after={later.map((item) => (
+                <AttentionRow key={item.key} item={item} />
+              ))}
+              empty={
+                <div className="flex items-center gap-3 border-y border-border py-5">
+                  <CircleCheck className="size-6 shrink-0 text-success" strokeWidth={1.5} aria-hidden="true" />
+                  <div className="flex flex-col">
+                    <p className="text-[15px] leading-[22px] font-semibold">All caught up</p>
+                    <p className="text-[13px] leading-[18px] text-ink-muted">Emails to send again, stock running low, new reviews and ending offers show up here.</p>
+                  </div>
                 </div>
-              </div>
-            }
-          />
-        </section>
+              }
+            />
+          </section>
+        </div>
 
         <section aria-labelledby="recent-title" className="flex flex-col">
           <div className="flex min-h-11 items-center justify-between">
