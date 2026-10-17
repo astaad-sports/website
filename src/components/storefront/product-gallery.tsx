@@ -10,6 +10,7 @@ import { batAlt, batPhotoAlt } from "@/lib/seo/titles";
 import { cn } from "@/lib/utils";
 
 import { BatTurn } from "./bat-turn";
+import { GalleryVideo } from "./gallery-video";
 import { PhotoTrack } from "./photo-track";
 import { StageCaption } from "./stage-caption";
 import { PhotoThumbnails, StageRail, StageThumb } from "./stage-thumbnails";
@@ -136,16 +137,21 @@ function StudioViews({ bat }: { bat: StoreBat }) {
   );
 }
 
+/** Where a photo or video sits on the stage, clear of the thumbnails and the caption. */
+const SLIDE_BOX = "absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24";
+
 /**
- * The bat's own photos, primary first, with thumbnails when there is more than
- * one. Swipe (or drag with a mouse) left or right between them. A bat whose
- * sides are marked also gets a "360°" thumbnail: the turn-around (see BatTurn).
+ * The bat's own photos, primary first, then its videos, with thumbnails when
+ * there is more than one. Swipe (or drag with a mouse) left or right between
+ * them. A bat whose sides are marked also gets a "360°" thumbnail: the
+ * turn-around (see BatTurn).
  */
 function Photos({ bat }: { bat: StoreBat }) {
   const [active, setActive] = useState(0);
   const [turning, setTurning] = useState(false);
   const [side, setSide] = useState(0);
-  const count = bat.images.length;
+  const photos = bat.images.length;
+  const count = photos + bat.videos.length;
   const turn = bat.turn.length > 0;
 
   return (
@@ -157,23 +163,34 @@ function Photos({ bat }: { bat: StoreBat }) {
         <BatTurn bat={bat} index={side} onChange={setSide} />
       ) : (
         <PhotoTrack count={count} active={active} onChange={setActive}>
-          {(index, near) => (
-            <div className="absolute inset-x-16 top-10 bottom-16 md:inset-x-28 md:bottom-24">
-              <Image
-                src={bat.images[index]}
-                alt={batPhotoAlt(bat, index)}
-                fill
-                preload={index === 0}
-                loading={index === 0 ? undefined : near ? "eager" : "lazy"}
-                sizes="(min-width: 1024px) 40vw, 80vw"
-                className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
+          {(index, near) =>
+            index >= photos ? (
+              <GalleryVideo
+                video={bat.videos[index - photos]}
+                active={index === active}
+                near={near}
+                label={`${bat.name}, video ${index - photos + 1} of ${bat.videos.length}`}
+                className={SLIDE_BOX}
               />
-            </div>
-          )}
+            ) : (
+              <div className={SLIDE_BOX}>
+                <Image
+                  src={bat.images[index]}
+                  alt={batPhotoAlt(bat, index)}
+                  fill
+                  preload={index === 0}
+                  loading={index === 0 ? undefined : near ? "eager" : "lazy"}
+                  sizes="(min-width: 1024px) 40vw, 80vw"
+                  className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
+                />
+              </div>
+            )
+          }
         </PhotoTrack>
       )}
       <PhotoThumbnails
         images={bat.images}
+        videos={bat.videos}
         alt={(index) => batPhotoAlt(bat, index)}
         active={turning ? null : active}
         onSelect={(index) => {
@@ -194,9 +211,9 @@ function Photos({ bat }: { bat: StoreBat }) {
 
 /**
  * The dark product stage. The standard cut-out gets six studio views; a bat
- * with its own photos shows those instead.
+ * with its own photos or videos shows those instead.
  */
 export function ProductGallery({ bat }: { bat: StoreBat }) {
-  const studio = bat.images.length === 1 && bat.images[0] === BAT_IMAGE;
+  const studio = bat.images.length === 1 && bat.images[0] === BAT_IMAGE && bat.videos.length === 0;
   return studio ? <StudioViews bat={bat} /> : <Photos bat={bat} />;
 }

@@ -28,16 +28,18 @@ import {
   orderItems,
   productImages,
   products,
+  productVideos,
   type NewProduct,
   type Order,
   type OrderStockShortfall,
   type Product,
   type ProductAvailability,
   type ProductImage,
+  type ProductVideo,
   type VariantStock,
 } from "./schema";
 
-export type ProductWithAllImages = Product & { images: ProductImage[] };
+export type ProductWithAllImages = Product & { images: ProductImage[]; videos: ProductVideo[] };
 
 type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 
@@ -51,20 +53,27 @@ function isUniqueViolation(error: unknown, constraint?: string): boolean {
 
 async function attachImages(rows: Product[]): Promise<ProductWithAllImages[]> {
   if (rows.length === 0) return [];
-  const images = await getDb()
-    .select()
-    .from(productImages)
-    .where(
-      inArray(
-        productImages.productId,
-        rows.map((row) => row.id)
-      )
-    )
-    .orderBy(asc(productImages.position), asc(productImages.createdAt));
-  return rows.map((row) => ({ ...row, images: images.filter((image) => image.productId === row.id) }));
+  const ids = rows.map((row) => row.id);
+  const [images, videos] = await Promise.all([
+    getDb()
+      .select()
+      .from(productImages)
+      .where(inArray(productImages.productId, ids))
+      .orderBy(asc(productImages.position), asc(productImages.createdAt)),
+    getDb()
+      .select()
+      .from(productVideos)
+      .where(inArray(productVideos.productId, ids))
+      .orderBy(asc(productVideos.position), asc(productVideos.createdAt)),
+  ]);
+  return rows.map((row) => ({
+    ...row,
+    images: images.filter((image) => image.productId === row.id),
+    videos: videos.filter((video) => video.productId === row.id),
+  }));
 }
 
-/** Every product with its photos (primary first), hidden ones included. The store has a few dozen at most. */
+/** Every product with its photos (primary first) and videos, hidden ones included. The store has a few dozen at most. */
 export async function listProductsWithImages(): Promise<ProductWithAllImages[]> {
   const rows = await getDb().select().from(products).orderBy(asc(products.category), asc(products.sortOrder), asc(products.name));
   return attachImages(rows);
@@ -467,6 +476,91 @@ export async function setImageSide(imageId: string, side: BatSide | null): Promi
 }
 
 // ---------------------------------------------------------------------------
+// Videos
+
+/** Add a video after the existing ones. */
+export async function addProductVideo(
+  productId: string,
+  video: { url: string; pathname: string | null; posterUrl: string | null; posterPathname: string | null }
+): Promise<ProductVideo> {
+  const [{ next }] = await getDb()
+    .select({ next: sql<number>`coalesce(max(${productVideos.position}) + 1, 0)` })
+    .from(productVideos)
+    .where(eq(productVideos.productId, productId));
+  const [row] = await getDb()
+    .insert(productVideos)
+    .values({ productId, ...video, position: Number(next) })
+    .returning();
+  return row;
+}
+
+/** Whether another video row (a duplicated product's) uses this video's file, and its poster's. */
+async function videoFilesUsedElsewhere(
+  tx: Tx,
+  video: ProductVideo
+): Promise<{ fileStillUsed: boolean; posterStillUsed: boolean }> {
+  const others = ne(productVideos.id, video.id);
+  const [file] = await tx
+    .select({ id: productVideos.id })
+    .from(productVideos)
+    .where(and(eq(productVideos.url, video.url), others))
+    .limit(1);
+  const [poster] = video.posterUrl
+    ? await tx
+        .select({ id: productVideos.id })
+        .from(productVideos)
+        .where(and(eq(productVideos.posterUrl, video.posterUrl), others))
+        .limit(1)
+    : [];
+  return { fileStillUsed: Boolean(file), posterStillUsed: Boolean(poster) };
+}
+
+/**
+ * Remove a video and close the gap. Returns the removed row and whether its
+ * files are still used elsewhere (a duplicated product shares its videos).
+ */
+export async function deleteProductVideo(
+  videoId: string
+): Promise<{ video: ProductVideo; fileStillUsed: boolean; posterStillUsed: boolean } | undefined> {
+  return getDb().transaction(async (tx) => {
+    const [video] = await tx.delete(productVideos).where(eq(productVideos.id, videoId)).returning();
+    if (!video) return undefined;
+    const rest = await tx
+      .select({ id: productVideos.id })
+      .from(productVideos)
+      .where(eq(productVideos.productId, video.productId))
+      .orderBy(asc(productVideos.position), asc(productVideos.createdAt));
+    for (const [position, row] of rest.entries()) {
+      await tx.update(productVideos).set({ position }).where(eq(productVideos.id, row.id));
+    }
+    return { video, ...(await videoFilesUsedElsewhere(tx, video)) };
+  });
+}
+
+/** One video, to check which product it belongs to. */
+export async function getProductVideo(videoId: string): Promise<ProductVideo | undefined> {
+  const [video] = await getDb().select().from(productVideos).where(eq(productVideos.id, videoId)).limit(1);
+  return video;
+}
+
+/** Put a product's videos in this order. Ids not on the product are ignored. */
+export async function reorderProductVideos(productId: string, orderedIds: string[]): Promise<void> {
+  await getDb().transaction(async (tx) => {
+    const current = await tx
+      .select({ id: productVideos.id })
+      .from(productVideos)
+      .where(eq(productVideos.productId, productId))
+      .orderBy(asc(productVideos.position), asc(productVideos.createdAt));
+    const known = new Set(current.map((row) => row.id));
+    const ordered = orderedIds.filter((id) => known.has(id));
+    const rest = current.map((row) => row.id).filter((id) => !ordered.includes(id));
+    for (const [position, id] of [...ordered, ...rest].entries()) {
+      await tx.update(productVideos).set({ position }).where(eq(productVideos.id, id));
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Duplicating
 
 /** `base` cut so that `suffix` still fits within the cart's slug limit. */
@@ -496,34 +590,45 @@ export async function freeSlug(base: string): Promise<string> {
   }
 }
 
+/** A file that a deleted product left unused, for the caller to remove from storage. */
+export type UnusedFile = { kind: "image" | "video"; url: string; pathname: string | null };
+
 /**
- * Delete a product for good, with its photo rows. Orders keep their own copy
- * of its name, options and price, so they are untouched; offers that list it
- * stop listing it. Returns the product and the photos whose files no other
- * product uses (a duplicate shares its original's files), for the caller to
- * remove from storage once this has committed.
+ * Delete a product for good, with its photo and video rows. Orders keep their
+ * own copy of its name, options and price, so they are untouched; offers that
+ * list it stop listing it. Returns the product and the photo, video and poster
+ * files no other product uses (a duplicate shares its original's files), for
+ * the caller to remove from storage once this has committed.
  */
-export async function deleteProduct(id: string): Promise<{ product: Product; unusedImages: ProductImage[] } | undefined> {
+export async function deleteProduct(id: string): Promise<{ product: Product; unusedFiles: UnusedFile[] } | undefined> {
   return getDb().transaction(async (tx) => {
     const [product] = await tx.select().from(products).where(eq(products.id, id)).for("update");
     if (!product) return undefined;
     const images = await tx.select().from(productImages).where(eq(productImages.productId, id));
-    // Its photo rows go with it (ON DELETE CASCADE).
+    const videos = await tx.select().from(productVideos).where(eq(productVideos.productId, id));
+    // Its photo and video rows go with it (ON DELETE CASCADE).
     await tx.delete(products).where(eq(products.id, id));
     await tx
       .update(offers)
       .set({ productIds: sql`${offers.productIds} - ${id}::text` })
       .where(sql`${offers.productIds} ? ${id}::text`);
-    const unusedImages: ProductImage[] = [];
+    const unusedFiles: UnusedFile[] = [];
     for (const image of images) {
-      if (!(await fileUsedElsewhere(tx, image.url, image.id))) unusedImages.push(image);
+      if (!(await fileUsedElsewhere(tx, image.url, image.id))) unusedFiles.push({ kind: "image", ...image });
     }
-    return { product, unusedImages };
+    for (const video of videos) {
+      const { fileStillUsed, posterStillUsed } = await videoFilesUsedElsewhere(tx, video);
+      if (!fileStillUsed) unusedFiles.push({ kind: "video", url: video.url, pathname: video.pathname });
+      if (video.posterUrl && !posterStillUsed) {
+        unusedFiles.push({ kind: "image", url: video.posterUrl, pathname: video.posterPathname });
+      }
+    }
+    return { product, unusedFiles };
   });
 }
 
 /**
- * Copy a product as a hidden draft ("… copy"), with its photos and build
+ * Copy a product as a hidden draft ("… copy"), with its photos, videos and build
  * options but no stock count or SKU, so the admin can adjust it before it goes on sale.
  */
 export async function duplicateProduct(id: string): Promise<Product | undefined> {
@@ -536,7 +641,7 @@ export async function duplicateProduct(id: string): Promise<Product | undefined>
       .select({ next: sql<number>`coalesce(max(${products.sortOrder}) + 1, 0)` })
       .from(products)
       .where(eq(products.category, source.category));
-    const { images, ...fields } = source;
+    const { images, videos, ...fields } = source;
     const [copy] = await tx
       .insert(products)
       .values({
@@ -566,6 +671,18 @@ export async function duplicateProduct(id: string): Promise<Product | undefined>
           alt: image.alt,
           position: image.position,
           side: image.side,
+        }))
+      );
+    }
+    if (videos.length) {
+      await tx.insert(productVideos).values(
+        videos.map((video) => ({
+          productId: copy.id,
+          url: video.url,
+          pathname: video.pathname,
+          posterUrl: video.posterUrl,
+          posterPathname: video.posterPathname,
+          position: video.position,
         }))
       );
     }

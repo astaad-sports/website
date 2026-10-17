@@ -1,6 +1,8 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { Play } from "lucide-react";
 
+import type { StoreVideo } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,28 +53,31 @@ export function StageThumb({
 }
 
 /**
- * Thumbnails for a product's photos, primary first, after any extra thumbs in
- * `children` (the turn-around). `active` is null while an extra thumb is
- * showing. Shown only when there is something to choose between. `alt`
- * describes each photo for image search; a screen reader hears the button's
- * own label instead.
+ * Thumbnails for a product's photos, primary first, then its videos (with a
+ * play mark), after any extra thumbs in `children` (the turn-around). Videos
+ * count on from the photos: with three photos, `active` 3 is the first
+ * video. `active` is null while an extra thumb is showing. Shown only when
+ * there is something to choose between. `alt` describes each photo for image
+ * search; a screen reader hears the button's own label instead.
  */
 export function PhotoThumbnails({
   images,
+  videos = [],
   alt,
   active,
   onSelect,
   children,
 }: {
   images: string[];
+  videos?: StoreVideo[];
   alt: (index: number) => string;
   active: number | null;
   onSelect: (index: number) => void;
   children?: ReactNode;
 }) {
-  if (images.length < 2 && !children) return null;
+  if (images.length + videos.length < 2 && !children) return null;
   return (
-    <StageRail label="Product photos">
+    <StageRail label="Product photos and videos">
       {children}
       {images.map((src, index) => (
         <StageThumb
@@ -83,6 +88,21 @@ export function PhotoThumbnails({
         >
           <span className="relative block size-full">
             <Image src={src} alt={alt(index)} fill sizes="64px" className="object-contain" />
+          </span>
+        </StageThumb>
+      ))}
+      {videos.map((video, index) => (
+        <StageThumb
+          key={video.url}
+          selected={images.length + index === active}
+          onSelect={() => onSelect(images.length + index)}
+          label={`Video ${index + 1} of ${videos.length}`}
+        >
+          <span className="relative flex size-full items-center justify-center">
+            {video.poster && <Image src={video.poster} alt="" fill sizes="64px" className="object-cover" />}
+            <span className="relative flex size-6 items-center justify-center rounded-full bg-surface-dark/80 text-on-dark">
+              <Play className="size-3 translate-x-px fill-current" strokeWidth={2} aria-hidden="true" />
+            </span>
           </span>
         </StageThumb>
       ))}

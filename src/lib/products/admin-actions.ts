@@ -6,14 +6,18 @@ import { z } from "zod";
 
 import {
   addProductImage,
+  addProductVideo,
   createProduct,
   deleteProduct,
   deleteProductImage,
+  deleteProductVideo,
   duplicateProduct,
   freeSlug,
   getProductById,
   getProductImage,
+  getProductVideo,
   reorderProductImages,
+  reorderProductVideos,
   setImageSide,
   replaceProductImage,
   setProductAvailability,
@@ -29,7 +33,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { productsChanged } from "./catalogue";
 import { parseProductForm, PRODUCT_LIMITS, productColumns, type ProductFieldErrors } from "./editor";
 import { slugify } from "./model";
-import { removeStoredImage, storeImage } from "./storage";
+import { isStoredVideo, removeStoredImage, removeStoredVideo, storeImage } from "./storage";
 
 export interface ProductActionState {
   fieldErrors?: ProductFieldErrors;
@@ -107,8 +111,8 @@ export async function saveProduct(_previous: ProductActionState, form: FormData)
 }
 
 /**
- * Delete a product for good, and its photo files unless another product uses
- * them. Posts `productId`; from the editor it also posts `from=editor` and
+ * Delete a product for good, and its photo and video files unless another
+ * product uses them. Posts `productId`; from the editor it also posts `from=editor` and
  * goes back to the list, which says "Product deleted".
  */
 export async function removeProduct(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
@@ -119,7 +123,11 @@ export async function removeProduct(_previous: ProductActionState, form: FormDat
   if (!result) return failed("This product no longer exists.");
   productsChanged();
   // The files go after the response, so a slow or failing Blob store never holds up the admin.
-  after(() => Promise.allSettled(result.unusedImages.map((image) => removeStoredImage(image))));
+  after(() =>
+    Promise.allSettled(
+      result.unusedFiles.map((file) => (file.kind === "video" ? removeStoredVideo(file) : removeStoredImage(file)))
+    )
+  );
   if (form.get("from") === "editor") redirect("/admin/products?done=deleted");
   return done("Product deleted");
 }
@@ -309,4 +317,79 @@ export async function markPhotoSide(_previous: ProductActionState, form: FormDat
   productsChanged();
   const { side } = parsed.data;
   return done(side ? `Marked as the ${BAT_SIDE_LABELS[side].toLowerCase()}` : "Side cleared");
+}
+
+// ---------------------------------------------------------------------------
+// Videos. The browser uploads the file itself (see
+// src/app/api/admin/product-videos/route.ts); these record and arrange them.
+
+/**
+ * Add an uploaded video after the existing ones. Posts `productId`, the
+ * upload's `url` and `pathname`, and optionally `poster`, a still the browser
+ * took from it. An upload that can't be added is removed again.
+ */
+export async function addVideo(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
+  if (!(await signedInAdmin())) return NOT_ADMIN;
+  const parsed = z
+    .object({ productId: z.uuid(), url: z.string().min(1).max(500), pathname: z.string().min(1).max(200) })
+    .safeParse({ productId: form.get("productId"), url: form.get("url"), pathname: form.get("pathname") });
+  if (!parsed.success) return failed(SOMETHING_WRONG);
+  const { productId, url, pathname } = parsed.data;
+  // Only a file that really is one of our uploads, so nothing else can be put on the store.
+  if (!(await isStoredVideo({ url, pathname }))) return failed("The video didn't finish uploading. Try again.");
+  if (!(await getProductById(productId))) {
+    await removeStoredVideo({ url, pathname });
+    return failed("This product no longer exists.");
+  }
+
+  // The poster is a nice-to-have: without one the store shows the video's first frame.
+  const poster = form.get("poster");
+  const storedPoster = poster instanceof File && poster.size > 0 ? await storeImage(poster) : null;
+  await addProductVideo(productId, {
+    url,
+    pathname,
+    posterUrl: storedPoster?.ok ? storedPoster.image.url : null,
+    posterPathname: storedPoster?.ok ? storedPoster.image.pathname : null,
+  });
+  productsChanged();
+  return done("Video added");
+}
+
+/** Remove a video, and its files unless a duplicated product still uses them. Posts `videoId`. */
+export async function deleteVideo(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
+  if (!(await signedInAdmin())) return NOT_ADMIN;
+  const id = z.uuid().safeParse(form.get("videoId"));
+  if (!id.success) return failed(SOMETHING_WRONG);
+
+  const result = await deleteProductVideo(id.data);
+  if (!result) return failed("This video no longer exists.");
+  const { video, fileStillUsed, posterStillUsed } = result;
+  if (!fileStillUsed) await removeStoredVideo(video);
+  if (video.posterUrl && !posterStillUsed) await removeStoredImage({ url: video.posterUrl, pathname: video.posterPathname });
+  productsChanged();
+  return done("Video deleted");
+}
+
+/** Move a video "up" or "down" among the product's videos. Posts `videoId` and `move`. */
+export async function moveVideo(_previous: ProductActionState, form: FormData): Promise<ProductActionState> {
+  if (!(await signedInAdmin())) return NOT_ADMIN;
+  const parsed = z
+    .object({ videoId: z.uuid(), move: z.enum(["up", "down"]) })
+    .safeParse({ videoId: form.get("videoId"), move: form.get("move") });
+  if (!parsed.success) return failed(SOMETHING_WRONG);
+
+  const video = await getProductVideo(parsed.data.videoId);
+  const product = video && (await getProductById(video.productId));
+  if (!video || !product) return failed("This video no longer exists.");
+
+  const ids = product.videos.map((entry) => entry.id);
+  const from = ids.indexOf(video.id);
+  const to = parsed.data.move === "up" ? from - 1 : from + 1;
+  if (to < 0 || to >= ids.length) return {};
+  ids.splice(from, 1);
+  ids.splice(to, 0, video.id);
+
+  await reorderProductVideos(product.id, ids);
+  productsChanged();
+  return done("Video moved");
 }

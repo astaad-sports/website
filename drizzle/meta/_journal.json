@@ -183,6 +183,13 @@
       "when": 1792235725427,
       "tag": "0025_offer_announce_pause",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792238747804,
+      "tag": "0026_product_videos",
+      "breakpoints": true
     }
   ]
 }

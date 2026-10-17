@@ -451,6 +451,31 @@ export const productImages = pgTable(
 
 export type ProductImage = typeof productImages.$inferSelect;
 
+/**
+ * A product's videos, shown after its photos in the product page's gallery.
+ * Kept apart from the photos so cards, carts, the Merchant Center feed and
+ * structured data, which all read photos, never meet a video.
+ */
+export const productVideos = pgTable(
+  "product_videos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    pathname: text("pathname"),
+    /** A still from the video, taken in the admin's browser at upload; null when it couldn't be taken. */
+    posterUrl: text("poster_url"),
+    posterPathname: text("poster_pathname"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("product_videos_product_position_idx").on(table.productId, table.position)]
+);
+
+export type ProductVideo = typeof productVideos.$inferSelect;
+
 /** What an offer covers: every product, some categories, or chosen products. */
 export const offerScope = pgEnum("offer_scope", ["store", "categories", "products"]);
 

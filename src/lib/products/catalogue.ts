@@ -84,8 +84,8 @@ function buildCatalogue(inputs: CatalogueInputs, now: Date, ratings?: Record<str
 }
 
 // The key names what the rows hold: rows cached before products had sizes
-// and prices by size must not be read by code that expects them.
-const getCatalogueInputs = unstable_cache(loadInputs, ["store-catalogue-inputs", "size-prices", "announced"], {
+// and prices by size (or videos) must not be read by code that expects them.
+const getCatalogueInputs = unstable_cache(loadInputs, ["store-catalogue-inputs", "size-prices", "announced", "videos"], {
   tags: [PRODUCTS_TAG],
   revalidate: CATALOGUE_REVALIDATE,
 });

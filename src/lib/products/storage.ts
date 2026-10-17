@@ -4,11 +4,19 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { del, put } from "@vercel/blob";
+import { del, head, put } from "@vercel/blob";
 
 import { imageSize } from "@/lib/image-size";
 
 import { PRODUCT_LIMITS } from "./editor";
+import {
+  isVideoUploadPathname,
+  MAX_VIDEO_BYTES,
+  sniffVideo,
+  STORED_VIDEO_TYPES,
+  VIDEO_FILE_PATTERN,
+  type StoredVideoType,
+} from "./videos";
 
 // Uploaded photos: product photos, and review photos from customers and the
 // admin. With BLOB_READ_WRITE_TOKEN set they go to Vercel Blob; on a machine
@@ -37,7 +45,8 @@ export type StoreImageResult =
   | { ok: true; image: StoredImage }
   | { ok: false; error: string };
 
-function storage(): "blob" | "local" | null {
+/** Where uploads go here: the Blob store, the local folder, or nowhere (Vercel without a token). */
+export function storage(): "blob" | "local" | null {
   if (process.env.BLOB_READ_WRITE_TOKEN) return "blob";
   // Vercel's file system is read-only, so there is nowhere local to keep them.
   if (process.env.VERCEL) return null;
@@ -120,6 +129,102 @@ export async function readLocalImage(
   try {
     const bytes = await readFile(path.join(localDir(folder), name));
     const type = sniff(bytes);
+    return type ? { bytes, type } : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Videos. Too large to pass through a function (Vercel caps a request at
+// 4.5 MB), so with Blob the admin's browser uploads them straight to the
+// store (see src/app/api/admin/product-videos/route.ts) and the server only
+// checks the result. Locally they go to .uploads/videos/ through that route.
+
+const LOCAL_VIDEO_DIR = path.join(process.cwd(), ".uploads", "videos");
+const LOCAL_VIDEO_PREFIX = "/uploads/videos/";
+
+export type StoredVideo = { url: string; pathname: string };
+
+/** Save a video sent to this machine (local development only), under a new random name. */
+export async function storeLocalVideo(
+  body: ReadableStream<Uint8Array> | null
+): Promise<{ ok: true; video: StoredVideo } | { ok: false; error: string }> {
+  if (storage() !== "local") return { ok: false, error: "Videos upload straight to the Blob store here." };
+  if (!body) return { ok: false, error: "Choose a video to upload." };
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  const reader = body.getReader();
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    size += read.value.byteLength;
+    if (size > MAX_VIDEO_BYTES) {
+      await reader.cancel();
+      return { ok: false, error: "This video is too large." };
+    }
+    chunks.push(read.value);
+  }
+  const bytes = Buffer.concat(chunks);
+  const type = sniffVideo(bytes);
+  if (!type) return { ok: false, error: "Use an MP4, MOV or WebM video." };
+  const name = `${randomUUID()}.${STORED_VIDEO_TYPES[type]}`;
+  try {
+    await mkdir(LOCAL_VIDEO_DIR, { recursive: true });
+    await writeFile(path.join(LOCAL_VIDEO_DIR, name), bytes);
+  } catch (error) {
+    console.error("Storing a video locally failed", error);
+    return { ok: false, error: "The video could not be saved. Try again." };
+  }
+  return { ok: true, video: { url: `${LOCAL_VIDEO_PREFIX}${name}`, pathname: `videos/${name}` } };
+}
+
+/**
+ * Whether `video` is an upload of ours that is really there: a random name in
+ * the videos folder of this Blob store (or of .uploads/videos/ locally), of a
+ * video type and within the size limit.
+ */
+export async function isStoredVideo(video: StoredVideo): Promise<boolean> {
+  const where = storage();
+  if (where === "local") {
+    const name = video.url.slice(LOCAL_VIDEO_PREFIX.length);
+    const ours = video.url.startsWith(LOCAL_VIDEO_PREFIX) && VIDEO_FILE_PATTERN.test(name) && video.pathname === `videos/${name}`;
+    return ours && (await readLocalVideo(name)) !== null;
+  }
+  if (where !== "blob" || !isVideoUploadPathname(video.pathname)) return false;
+  try {
+    // Only this store's token can read it, so a URL from elsewhere fails here.
+    const blob = await head(video.url);
+    return (
+      blob.pathname === video.pathname &&
+      blob.contentType in STORED_VIDEO_TYPES &&
+      blob.size > 0 &&
+      blob.size <= MAX_VIDEO_BYTES
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Delete a video's file. A failure is logged, not raised: the video is already gone from its product. */
+export async function removeStoredVideo(video: { url: string; pathname: string | null }): Promise<void> {
+  if (!video.pathname) return;
+  try {
+    if (video.url.startsWith(LOCAL_VIDEO_PREFIX)) {
+      const name = video.url.slice(LOCAL_VIDEO_PREFIX.length);
+      if (VIDEO_FILE_PATTERN.test(name)) await unlink(path.join(LOCAL_VIDEO_DIR, name));
+    } else if (process.env.BLOB_READ_WRITE_TOKEN) {
+      await del(video.url);
+    }
+  } catch (error) {
+    console.error("Removing a video file failed", error);
+  }
+}
+
+/** A video from the local store, for its route, or null. */
+export async function readLocalVideo(name: string): Promise<{ bytes: Buffer; type: StoredVideoType } | null> {
+  if (!VIDEO_FILE_PATTERN.test(name)) return null;
+  try {
+    const bytes = await readFile(path.join(LOCAL_VIDEO_DIR, name));
+    const type = sniffVideo(bytes);
     return type ? { bytes, type } : null;
   } catch {
     return null;

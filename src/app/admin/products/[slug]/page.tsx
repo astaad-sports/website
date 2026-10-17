@@ -6,6 +6,7 @@ import { ProductEditor, type EditorNotice, type EditorProduct } from "@/componen
 import { getProductBySlug, type ProductWithAllImages } from "@/db/products";
 import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser, requireAdmin } from "@/lib/auth/session";
+import { storage } from "@/lib/products/storage";
 
 /** One database read for the title and the page. */
 const loadProduct = cache(getProductBySlug);
@@ -44,10 +45,12 @@ function toEditorProduct(product: ProductWithAllImages): EditorProduct {
     customization: product.customization,
     updatedAt: product.updatedAt.getTime(),
     photos: product.images.map((image) => ({ id: image.id, url: image.url, side: image.side })),
+    videos: product.videos.map((video) => ({ id: video.id, url: video.url, poster: video.posterUrl })),
+    videoStorage: storage(),
   };
 }
 
-/** Edit a product and its photos. `?created=1` and `?duplicated=1` show a one-time message. */
+/** Edit a product, its photos and its videos. `?created=1` and `?duplicated=1` show a one-time message. */
 export default async function EditProductPage({ params, searchParams }: PageProps<"/admin/products/[slug]">) {
   const { slug } = await params;
   await requireAdmin(`/admin/products/${slug}`);

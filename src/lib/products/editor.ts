@@ -42,6 +42,8 @@ export const PRODUCT_LIMITS = {
   maxThreshold: 999,
   /** A product photo, after the browser has shrunk it (see shrink-image.ts and storage.ts). */
   maxPhotoBytes: 4 * 1024 * 1024,
+  /** A product video, uploaded as it is (see videos.ts). */
+  maxVideoBytes: 100 * 1024 * 1024,
 } as const;
 
 export type ProductField =

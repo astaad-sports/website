@@ -316,6 +316,29 @@ describe("the sides of a bat", () => {
   });
 });
 
+describe("videos", () => {
+  const videos = [
+    { url: "/second.mp4", posterUrl: null, position: 1 },
+    { url: "/first.mp4", posterUrl: "/first.webp", position: 0 },
+  ];
+
+  test("come in the admin's order, after the photos and apart from them", () => {
+    const bat = findStoreBat(catalogueWith({ goat: { videos } }), "goat")!;
+    expect(bat.videos).toEqual([
+      { url: "/first.mp4", poster: "/first.webp" },
+      { url: "/second.mp4", poster: null },
+    ]);
+    // Photos, the face and the turn-around never pick up a video.
+    expect(bat.images).toEqual(findStoreBat(seeded, "goat")!.images);
+    expect(bat.faceImage).toBe(findStoreBat(seeded, "goat")!.faceImage);
+  });
+
+  test("a product without any has none", () => {
+    expect(findStoreBat(seeded, "goat")!.videos).toEqual([]);
+    expect(seeded.gear.every((item) => item.videos.length === 0)).toBe(true);
+  });
+});
+
 describe("a size in a product page's address", () => {
   const goat = findStoreBat(catalogueWith({ goat: { sizes: ["6", "SH", "LH"] } }), "goat")!;
 

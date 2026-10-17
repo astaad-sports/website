@@ -42,6 +42,7 @@ import { ChipGroup, ProductCustomization, Switch } from "./product-customization
 import { DeleteProductSheet } from "./product-delete";
 import { EditorSection, FieldError, FieldHelp, SelectField, StockField, TextAreaField, TextField } from "./product-editor-fields";
 import { ProductPhotos, type EditorPhoto } from "./product-photos";
+import { ProductVideos, type EditorVideo, type VideoStorage } from "./product-videos";
 import { ProductSizePrices, type SizePriceFields } from "./product-size-prices";
 import { safeAction } from "./safe-action";
 import { StockLabel } from "./stock-label";
@@ -75,7 +76,13 @@ export type EditorProduct = Pick<
   | "lowStockThreshold"
   | "availability"
   | "customization"
-> & { updatedAt: number; photos: EditorPhoto[] };
+> & {
+  updatedAt: number;
+  photos: EditorPhoto[];
+  videos: EditorVideo[];
+  /** Where video uploads go on this deployment. */
+  videoStorage: VideoStorage;
+};
 
 /** Why the editor opened: a product was just created, or just duplicated. */
 export type EditorNotice = "created" | "duplicated";
@@ -699,7 +706,17 @@ export function ProductEditor({
                 onSaved={(message) => setPhotoToast({ message, at: Date.now() })}
               />
             ) : (
-              <FieldHelp>You can add photos once the product is saved.</FieldHelp>
+              <FieldHelp>You can add photos and videos once the product is saved.</FieldHelp>
+            )}
+            {product && (
+              <div className="mt-2 border-t border-border pt-4">
+                <ProductVideos
+                  productId={product.id}
+                  videos={product.videos}
+                  storage={product.videoStorage}
+                  onSaved={(message) => setPhotoToast({ message, at: Date.now() })}
+                />
+              </div>
             )}
           </EditorSection>
         </div>

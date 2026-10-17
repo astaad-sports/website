@@ -2,7 +2,7 @@
 // options a bat offers, and the mapping from database rows to the shapes the
 // storefront components read (Bat and GearProduct from src/lib/catalogue.ts).
 // Pure and client-safe; the database lives in src/db/products.ts.
-import type { BatCustomization, Offer, Product, ProductAvailability, ProductImage } from "@/db/schema";
+import type { BatCustomization, Offer, Product, ProductAvailability, ProductImage, ProductVideo } from "@/db/schema";
 import {
   BAT_HANDLES,
   BAT_IMAGE,
@@ -316,6 +316,8 @@ export interface StoreBat extends Omit<Bat, "rating" | "reviews">, OfferPricing,
   faceImage: string;
   /** The sides marked in the admin, in turning order, for the gallery's turn-around (see turnViews). */
   turn: TurnView[];
+  /** Shown after the photos on the product page; nowhere else. */
+  videos: StoreVideo[];
   customization: BatCustomization;
 }
 
@@ -332,6 +334,14 @@ export interface StoreGear extends GearProduct, OfferPricing, StoreOffered {
   /** Counted stock across its sizes and hands, or null when not counted. */
   stockLeft: number | null;
   images: string[];
+  /** Shown after the photos on the product page; nowhere else. */
+  videos: StoreVideo[];
+}
+
+/** A product video on the store, with the still shown before it plays (null: the video's own first frame). */
+export interface StoreVideo {
+  url: string;
+  poster: string | null;
 }
 
 /** Every product the public can see (hidden ones are left out), in category order. */
@@ -411,7 +421,15 @@ function sizePricing(row: ProductWithImages, context: CatalogueContext): (size: 
 
 export type ProductWithImages = Product & {
   images: (Pick<ProductImage, "url" | "position"> & Partial<Pick<ProductImage, "side">>)[];
+  videos?: Pick<ProductVideo, "url" | "posterUrl" | "position">[];
 };
+
+/** A product's videos in the admin's order. */
+function storeVideos(row: ProductWithImages): StoreVideo[] {
+  return [...(row.videos ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map((video) => ({ url: video.url, poster: video.posterUrl }));
+}
 
 /** One side of a bat in its turn-around. */
 export interface TurnView {
@@ -488,6 +506,7 @@ function toStoreBat(row: ProductWithImages, context: CatalogueContext): StoreBat
     images: images.length ? images : [BAT_IMAGE],
     faceImage: sides.face ?? images[0] ?? BAT_IMAGE,
     turn: turnViews(sides),
+    videos: storeVideos(row),
     rating: context.ratings?.[row.id] ?? null,
     customization: customizationFor(row.kind, row.subcategory, row.customization),
     ...storeOffered(row, sizePricing(row, context)),
@@ -527,6 +546,7 @@ function toStoreGear(row: ProductWithImages, context: CatalogueContext): StoreGe
     soldOut: status === "out",
     stockLeft,
     images: images.length ? images : [layout.image],
+    videos: storeVideos(row),
     rating: context.ratings?.[row.id] ?? null,
     ...storeOffered(row, sizePricing(row, context)),
   };

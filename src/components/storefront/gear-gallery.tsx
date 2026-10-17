@@ -7,19 +7,21 @@ import type { StoreGear } from "@/lib/products/model";
 import { gearPhotoAlt } from "@/lib/seo/titles";
 import { cn } from "@/lib/utils";
 
+import { GalleryVideo } from "./gallery-video";
 import { PhotoTrack } from "./photo-track";
 import { StageCaption } from "./stage-caption";
 import { PhotoThumbnails } from "./stage-thumbnails";
 
 /**
- * The dark product stage for gear: the photo under the floodlight glow, with
- * thumbnails when there are several (and a swipe, or a mouse drag, left or
- * right between them). From xl it stretches to the hero's height, which grows
+ * The dark product stage for gear: the photo under the floodlight glow, then
+ * any videos, with thumbnails when there are several (and a swipe, or a mouse
+ * drag, left or right between them). From xl it stretches to the hero's height, which grows
  * past 760px when the details beside it need more room.
  */
 export function GearGallery({ product }: { product: StoreGear }) {
   const [active, setActive] = useState(0);
-  const count = product.images.length;
+  const photos = product.images.length;
+  const count = photos + product.videos.length;
   const width = product.imageWidth * 2;
   const height = product.imageHeight * 2;
   // The breadcrumb beside the stage already names the category.
@@ -39,28 +41,40 @@ export function GearGallery({ product }: { product: StoreGear }) {
         className="absolute bottom-[90px] left-1/2 hidden h-[60px] w-[380px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0)_70%)] md:block"
       />
       <PhotoTrack count={count} active={active} onChange={setActive}>
-        {(index, near) => (
-          <div className="flex size-full items-center justify-center">
-            <div
-              // Leave room for the thumbnails on a phone.
-              className={cn("relative max-w-[560px]", count > 1 ? "w-[60%] md:w-[70%]" : "w-[70%]")}
-              style={{ maxWidth: width, aspectRatio: `${width} / ${height}` }}
-            >
-              <Image
-                src={product.images[index]}
-                alt={gearPhotoAlt(product, index)}
-                fill
-                preload={index === 0}
-                loading={index === 0 ? undefined : near ? "eager" : "lazy"}
-                sizes={`${width}px`}
-                className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
-              />
+        {(index, near) =>
+          index >= photos ? (
+            <GalleryVideo
+              video={product.videos[index - photos]}
+              active={index === active}
+              near={near}
+              label={`${product.name}, video ${index - photos + 1} of ${product.videos.length}`}
+              // Clear of the thumbnails on the left and the caption below.
+              className="inset-x-16 top-10 bottom-16 md:inset-x-28 md:top-16 md:bottom-24"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <div
+                // Leave room for the thumbnails on a phone.
+                className={cn("relative max-w-[560px]", count > 1 ? "w-[60%] md:w-[70%]" : "w-[70%]")}
+                style={{ maxWidth: width, aspectRatio: `${width} / ${height}` }}
+              >
+                <Image
+                  src={product.images[index]}
+                  alt={gearPhotoAlt(product, index)}
+                  fill
+                  preload={index === 0}
+                  loading={index === 0 ? undefined : near ? "eager" : "lazy"}
+                  sizes={`${width}px`}
+                  className="object-contain drop-shadow-[0_48px_56px_rgba(0,0,0,0.8)]"
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
       </PhotoTrack>
       <PhotoThumbnails
         images={product.images}
+        videos={product.videos}
         alt={(index) => gearPhotoAlt(product, index)}
         active={active}
         onSelect={setActive}
