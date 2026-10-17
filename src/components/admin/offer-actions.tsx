@@ -1,10 +1,11 @@
 "use client";
 
 import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { Dialog } from "@base-ui/react/dialog";
-import { CircleStop, LoaderCircle, Trash2 } from "lucide-react";
+import { CircleStop, Copy, LoaderCircle, Pause, Play, Trash2 } from "lucide-react";
 
-import { endOffer, removeOffer, type OfferActionState } from "@/lib/offers/admin-actions";
+import { endOffer, pauseOffer, removeOffer, type OfferActionState } from "@/lib/offers/admin-actions";
 import { cn } from "@/lib/utils";
 
 import { ErrorLine } from "./product-row";
@@ -14,6 +15,7 @@ import { BUTTON_BASE, BUTTON_PRIMARY, BUTTON_SECONDARY } from "./styles";
 
 const safeEnd = safeAction(endOffer);
 const safeRemove = safeAction(removeOffer);
+const safePause = safeAction(pauseOffer);
 
 /** A message for the page's toast. */
 export interface OfferToast {
@@ -21,7 +23,27 @@ export interface OfferToast {
   at: number;
 }
 
-type Confirming = "end" | "delete" | null;
+type Confirming = "end" | "pause" | "resume" | "delete" | null;
+
+const SHEET: Record<Exclude<Confirming, null>, { title: (name: string) => string; detail: string }> = {
+  end: {
+    title: (name) => `End ${name} now?`,
+    detail: "It stops right away and prices go back to normal. It moves to Expired.",
+  },
+  pause: {
+    title: (name) => `Pause ${name}?`,
+    detail:
+      "Prices go back to normal, its code stops working and it leaves the offer bar, until you resume it. Its dates stay as they are.",
+  },
+  resume: {
+    title: (name) => `Resume ${name}?`,
+    detail: "It takes money off again, and shows on the site if it's set to, from now until its end date.",
+  },
+  delete: {
+    title: (name) => `Delete ${name}?`,
+    detail: "It's removed for good. Orders placed with it keep their discount.",
+  },
+};
 
 function Pending({ label }: { label: string }) {
   return (
@@ -33,16 +55,21 @@ function Pending({ label }: { label: string }) {
 }
 
 /**
- * End offer now (only while it runs) and Delete offer, each confirmed in a
- * sheet first. Ending stays on the page with "Offer ended"; deleting goes
- * back to the list, which says "Offer deleted". `onEnding` runs as the admin
- * confirms, so unsaved edits (which the sheet warns about) give way to the
- * ended offer. `fallbackFocus` takes focus when End offer now disappears.
+ * Pause or Resume (until the offer ends), End offer now (only while it runs),
+ * Run again and Delete offer. All but Run again are confirmed in a sheet
+ * first. Pausing, resuming and ending stay on the page with a toast
+ * (`onEnded`); deleting goes back to the list, which says "Offer deleted".
+ * Run again opens Create offer filled in from this one. `onEnding` runs as
+ * the admin confirms ending, so unsaved edits (which the sheet warns about)
+ * give way to the ended offer. `fallbackFocus` takes focus when the button
+ * that opened the sheet disappears.
  */
 export function OfferLifecycle({
   offerId,
   name,
   active,
+  paused,
+  ended,
   dirty,
   onEnding,
   onEnded,
@@ -50,7 +77,11 @@ export function OfferLifecycle({
 }: {
   offerId: string;
   name: string;
+  /** Within its dates (paused or not). */
   active: boolean;
+  paused: boolean;
+  /** Past its end date. */
+  ended: boolean;
   dirty: boolean;
   onEnding: () => void;
   onEnded: (toast: OfferToast) => void;
@@ -80,6 +111,19 @@ export function OfferLifecycle({
     return result;
   }, {});
   const [removeState, remove, removing] = useActionState(safeRemove, {});
+  const [pauseState, pause, pausing] = useActionState(async (previous: OfferActionState, form: FormData) => {
+    const result = await safePause(previous, form);
+    const { saved, at } = result;
+    if (saved) {
+      // Pause and Resume swap places, so focus goes to `fallbackFocus`.
+      trigger.current = null;
+      startTransition(() => {
+        setConfirming(null);
+        onEnded({ message: saved, at: at ?? Date.now() });
+      });
+    }
+    return result;
+  }, {});
 
   function open(kind: Exclude<Confirming, null>, button: HTMLElement) {
     trigger.current = button;
@@ -96,23 +140,39 @@ export function OfferLifecycle({
     if (shown === "end") {
       onEnding();
       startTransition(() => end(data));
+    } else if (shown === "pause" || shown === "resume") {
+      startTransition(() => pause(data));
     } else {
       startTransition(() => remove(data));
     }
   }
 
-  const busy = ending || removing;
-  const result = shown === "end" ? endState : removeState;
+  const busy = ending || removing || pausing;
+  const result = shown === "end" ? endState : shown === "delete" ? removeState : pauseState;
   const error = busy || (result.at ?? 0) < openedAt ? undefined : result.error;
 
   return (
     <section aria-label="Offer actions" className="flex flex-wrap items-center gap-2 border-t border-border pt-5 pb-6">
+      {!ended && (
+        <button
+          type="button"
+          onClick={(event) => open(paused ? "resume" : "pause", event.currentTarget)}
+          className={BUTTON_SECONDARY}
+        >
+          {paused ? <Play strokeWidth={1.5} aria-hidden="true" /> : <Pause strokeWidth={1.5} aria-hidden="true" />}
+          {paused ? "Resume offer" : "Pause offer"}
+        </button>
+      )}
       {active && (
         <button type="button" onClick={(event) => open("end", event.currentTarget)} className={BUTTON_SECONDARY}>
           <CircleStop strokeWidth={1.5} aria-hidden="true" />
           End offer now
         </button>
       )}
+      <Link href={`/admin/offers/new?from=${offerId}`} className={BUTTON_SECONDARY}>
+        <Copy strokeWidth={1.5} aria-hidden="true" />
+        Run again
+      </Link>
       <button
         type="button"
         onClick={(event) => open("delete", event.currentTarget)}
@@ -133,19 +193,30 @@ export function OfferLifecycle({
       >
         <form onSubmit={submit} className="flex flex-col">
           <input type="hidden" name="offerId" value={offerId} />
+          {(shown === "pause" || shown === "resume") && (
+            <input type="hidden" name="paused" value={shown === "pause" ? "true" : "false"} />
+          )}
           <Dialog.Title ref={titleRef} tabIndex={-1} className="text-lg leading-6 font-semibold break-words focus:outline-none">
-            {shown === "end" ? `End ${name} now?` : `Delete ${name}?`}
+            {SHEET[shown].title(name)}
           </Dialog.Title>
           <Dialog.Description className="mt-1 text-[13px] leading-[18px] text-ink-muted">
-            {shown === "end"
-              ? "It stops right away and prices go back to normal. It moves to Expired."
-              : "It's removed for good. Orders placed with it keep their discount."}
+            {SHEET[shown].detail}
             {shown === "end" && discards && " Your unsaved changes are discarded."}
           </Dialog.Description>
           <ErrorLine message={error} className="mt-4" />
           {shown === "end" ? (
             <button type="submit" disabled={busy} className={cn(BUTTON_PRIMARY, "mt-5 min-h-12")}>
               {ending ? <Pending label="Ending…" /> : "End offer"}
+            </button>
+          ) : shown === "pause" || shown === "resume" ? (
+            <button type="submit" disabled={busy} className={cn(BUTTON_PRIMARY, "mt-5 min-h-12")}>
+              {pausing ? (
+                <Pending label={shown === "pause" ? "Pausing…" : "Resuming…"} />
+              ) : shown === "pause" ? (
+                "Pause offer"
+              ) : (
+                "Resume offer"
+              )}
             </button>
           ) : (
             <button

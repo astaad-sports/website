@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useSyncExternalStore } from "react";
-import { ArrowRight, Tag, X } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ArrowRight, Tag, Timer, X } from "lucide-react";
 
 import { useCatalogue } from "@/components/cart/catalogue-provider";
 import { SheetClose } from "@/components/ui/sheet";
@@ -43,29 +43,40 @@ function subscribeDismissed(onChange: () => void) {
   return () => window.removeEventListener(DISMISSED_EVENT, onChange);
 }
 
-/** One offer's line: headline, time left and, for a coupon, its code. */
-function OfferLine({ offer, more }: { offer: StoreAnnouncement; more: number }) {
+/** One offer's line: headline, time left and, for a coupon, its code. In a preview nothing links away. */
+function OfferLine({ offer, more, preview }: { offer: StoreAnnouncement; more: number; preview: boolean }) {
+  const headline = (
+    <>
+      <Tag className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+      <span className="truncate">{offer.headline}</span>
+      <ArrowRight
+        className="hidden size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 md:block"
+        strokeWidth={2}
+        aria-hidden="true"
+      />
+    </>
+  );
   return (
     <div data-slide className="flex min-w-0 items-center justify-center gap-2.5 md:gap-3">
-      <Link
-        href="/offers"
-        className="group flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-yellow"
-      >
-        <Tag className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
-        <span className="truncate">{offer.headline}</span>
-        <ArrowRight
-          className="hidden size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 md:block"
-          strokeWidth={2}
-          aria-hidden="true"
-        />
-      </Link>
+      {preview ? (
+        <span className="flex min-w-0 items-center gap-1.5">{headline}</span>
+      ) : (
+        <Link
+          href="/offers"
+          className="group flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-yellow"
+        >
+          {headline}
+        </Link>
+      )}
       <span aria-hidden="true" className={cn("text-on-yellow/50", offer.code ? "hidden md:inline" : "")}>
         ·
       </span>
-      <OfferCountdown
-        endsAt={offer.endsAt}
-        className={cn("shrink-0 font-bold whitespace-nowrap", offer.code && "hidden md:inline")}
-      />
+      {/* Phones show a timer icon in place of "Ends in", leaving the headline room. */}
+      <span className={cn("flex shrink-0 items-center gap-1 font-bold whitespace-nowrap", offer.code && "hidden md:flex")}>
+        <Timer className="size-3.5 sm:hidden" strokeWidth={2} aria-label="Ends in" />
+        <span className="hidden sm:inline">Ends in </span>
+        <OfferCountdown endsAt={offer.endsAt} prefix="" />
+      </span>
       {offer.code && <CopyCode code={offer.code} tone="yellow" />}
       {more > 0 && (
         <Link href="/offers" className="hidden shrink-0 font-bold underline underline-offset-2 sm:inline">
@@ -102,7 +113,7 @@ export function OfferBar({
   const rotates = !preview && announcements.length > 1;
   const current = announcements[index % Math.max(1, announcements.length)];
 
-  const { contextSafe } = useGSAP(
+  useGSAP(
     () => {
       const shine = bar.current?.querySelector("[data-shine]");
       if (!shine) return;
@@ -114,27 +125,22 @@ export function OfferBar({
     { scope: bar }
   );
 
-  // Turn to the next offer: the line lifts out, the next rises in.
-  useGSAP(
-    () => {
-      if (!rotates || held || !motion) return;
-      const timer = window.setTimeout(
-        contextSafe(() => {
-          const slide = bar.current?.querySelector("[data-slide]");
-          gsap.to(slide ?? [], {
-            yPercent: -60,
-            autoAlpha: 0,
-            duration: 0.3,
-            ease: "power2.in",
-            onComplete: () => setIndex((value) => (value + 1) % announcements.length),
-          });
-        }),
-        ROTATE_MS
-      );
-      return () => window.clearTimeout(timer);
-    },
-    { dependencies: [rotates, held, motion, index, announcements.length], scope: bar }
-  );
+  // Turn to the next offer: the line lifts out, the next rises in. A plain
+  // effect, so holding the bar (or asking for less motion) clears the timer.
+  useEffect(() => {
+    if (!rotates || held || !motion) return;
+    const timer = window.setTimeout(() => {
+      const slide = bar.current?.querySelector("[data-slide]");
+      gsap.to(slide ?? [], {
+        yPercent: -60,
+        autoAlpha: 0,
+        duration: 0.3,
+        ease: "power2.in",
+        onComplete: () => setIndex((value) => (value + 1) % announcements.length),
+      });
+    }, ROTATE_MS);
+    return () => window.clearTimeout(timer);
+  }, [rotates, held, motion, index, announcements.length]);
 
   // The incoming offer rises in; the first one is already on screen.
   const shownIndex = useRef(index);
@@ -145,7 +151,7 @@ export function OfferBar({
       const slide = bar.current?.querySelector("[data-slide]");
       if (slide) gsap.fromTo(slide, { yPercent: 60, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.35, ease: "power3.out" });
     },
-    { dependencies: [index], scope: bar }
+    { dependencies: [index], scope: bar, revertOnUpdate: true }
   );
 
   function dismiss() {
@@ -176,9 +182,9 @@ export function OfferBar({
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-full bg-linear-to-r from-transparent via-white/45 to-transparent"
       />
-      <div className={cn("site-shell relative flex h-10 items-center gap-2", !preview && "pr-12 pl-12 md:pr-14 md:pl-14")}>
+      <div className={cn("relative flex h-10 items-center gap-2", preview ? "px-3" : "site-shell pr-12 pl-12 md:pr-14 md:pl-14")}>
         <div className="min-w-0 flex-1 overflow-hidden" aria-live={rotates ? "off" : undefined}>
-          <OfferLine key={current.id} offer={current} more={more} />
+          <OfferLine key={current.id} offer={current} more={more} preview={preview} />
         </div>
         {!preview && (
           <button

@@ -7,7 +7,7 @@ import { BadgePercent, Plus } from "lucide-react";
 import { listOffers } from "@/db/offers";
 import { listProductsWithImages } from "@/db/products";
 import type { Offer } from "@/db/schema";
-import { OFFER_STATUS_LABEL, offerStatus, type OfferStatus } from "@/lib/offers/model";
+import { OFFER_STATUS_LABEL, offerState, offerStatus, type OfferStatus } from "@/lib/offers/model";
 import { cn } from "@/lib/utils";
 
 import type { OfferProductOption } from "./offer-form";
@@ -82,6 +82,8 @@ export function OffersOverview({
   const byStatus = Object.fromEntries(TABS.map((status) => [status, [] as Offer[]])) as Record<OfferStatus, Offer[]>;
   for (const offer of offers) byStatus[offerStatus(offer, now)].push(offer);
   const rows = byStatus[tab].sort(TAB_ORDER[tab]);
+  // Paused offers stay on their tab by date, but don't count as running.
+  const paused = offers.filter((offer) => offerState(offer, now) === "paused").length;
   const creating = current === "new";
 
   return (
@@ -92,7 +94,8 @@ export function OffersOverview({
             Offers
           </Heading>
           <p className="hidden text-[13px] leading-[18px] text-ink-muted tabular-nums lg:block">
-            {byStatus.active.length} active · {byStatus.upcoming.length} upcoming
+            {byStatus.active.length - paused} active · {byStatus.upcoming.length} upcoming
+            {paused > 0 && ` · ${paused} paused`}
           </p>
         </div>
         {!creating && (

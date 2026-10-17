@@ -3,20 +3,22 @@
 // wide one (a container query, so the list beside the offer form fits too).
 // No hooks, so server pages use it.
 import Link from "next/link";
+import { Megaphone } from "lucide-react";
 
 import type { Offer } from "@/db/schema";
-import { OFFER_STATUS_LABEL, offerCovers, offerDates, offerNote, offerStatus, type OfferStatus } from "@/lib/offers/model";
+import { OFFER_STATUS_LABEL, offerCovers, offerDates, offerNote, offerState, type OfferState } from "@/lib/offers/model";
 import { categoryName } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
-const STATUS_TONE: Record<OfferStatus, { dot: string; text: string }> = {
+const STATUS_TONE: Record<OfferState, { dot: string; text: string }> = {
   active: { dot: "bg-brand-yellow ring-1 ring-brand-yellow-hover", text: "text-foreground" },
   upcoming: { dot: "bg-ink-muted", text: "text-foreground" },
+  paused: { dot: "bg-transparent ring-1 ring-ink-muted", text: "text-ink-muted" },
   expired: { dot: "bg-ink-subtle", text: "text-ink-muted" },
 };
 
-/** A small dot and an uppercase word: "ACTIVE", "UPCOMING", "EXPIRED". The word carries the meaning. */
-export function OfferStatusLabel({ status, className }: { status: OfferStatus; className?: string }) {
+/** A small dot and an uppercase word: "ACTIVE", "UPCOMING", "PAUSED", "EXPIRED". The word carries the meaning. */
+export function OfferStatusLabel({ status, className }: { status: OfferState; className?: string }) {
   const tone = STATUS_TONE[status];
   return (
     <span
@@ -42,6 +44,16 @@ export function OfferPercentTag({ percentOff, expired }: { percentOff: number; e
       )}
     >
       {percentOff}% OFF
+    </span>
+  );
+}
+
+/** "On site": the offer shows in the offer bar and on /offers while it runs. */
+function OnSiteMark() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 text-xs leading-4 font-semibold text-ink-muted">
+      <Megaphone className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
+      On site
     </span>
   );
 }
@@ -76,8 +88,10 @@ export function OfferColumns() {
  * offer; `current` marks the one open beside the list.
  */
 export function OfferRow({ offer, now, current }: { offer: Offer; now: Date; current?: boolean }) {
-  const status = offerStatus(offer, now);
+  const status = offerState(offer, now);
   const expired = status === "expired";
+  // Shown in the offer bar and on /offers: announced, and not paused or over.
+  const onSite = offer.announce && (status === "active" || status === "upcoming");
   const dates = offerDates(offer, now);
   const covers = offerCovers(offer, categoryName);
   // Expired rows follow the board: the dates already say when it ended.
@@ -97,7 +111,10 @@ export function OfferRow({ offer, now, current }: { offer: Offer; now: Date; cur
         {/* Narrow: three lines, as on the phone board. Inset on desktop, where the list beside the form marks the open offer. */}
         <span className="flex min-h-18 flex-col justify-center gap-1 py-3 lg:px-3 @2xl:hidden">
           <span className="flex items-start justify-between gap-3">
-            <span className={cn(name, "text-[15px] leading-[22px]")}>{offer.name}</span>
+            <span className={cn(name, "flex flex-wrap items-center gap-x-2 text-[15px] leading-[22px]")}>
+              {offer.name}
+              {onSite && <OnSiteMark />}
+            </span>
             <span className="pt-px">
               <OfferPercentTag percentOff={offer.percentOff} expired={expired} />
             </span>
@@ -121,7 +138,10 @@ export function OfferRow({ offer, now, current }: { offer: Offer; now: Date; cur
 
         {/* Wide: one table row. */}
         <span className={cn("hidden min-h-14 items-center py-2 text-sm leading-5 @2xl:grid", COLUMNS)}>
-          <span className={name}>{offer.name}</span>
+          <span className={cn(name, "flex flex-col gap-0.5")}>
+            {offer.name}
+            {onSite && <OnSiteMark />}
+          </span>
           <span>
             <OfferPercentTag percentOff={offer.percentOff} expired={expired} />
           </span>

@@ -4,19 +4,25 @@ import { startTransition, useActionState, useEffect, useRef, useState, type Form
 import Link from "next/link";
 import { Check, ChevronLeft, LoaderCircle, Search } from "lucide-react";
 
+import { OfferBar } from "@/components/storefront/offer-bar";
+
 import type { OfferScope } from "@/db/schema";
 import { saveOffer } from "@/lib/offers/admin-actions";
 import { OFFER_NAME_MAX, SCOPE_OPTIONS, SUGGESTED_OFFER_NAMES, type OfferField } from "@/lib/offers/editor";
 import {
+  coversShort,
   endOfDayInIndia,
+  HEADLINE_MAX,
   isDay,
   MAX_PERCENT_OFF,
   offerCovers,
   offerDates,
+  offerHeadline,
   startOfDayInIndia,
+  type OfferState,
   type OfferStatus,
 } from "@/lib/offers/model";
-import { CATEGORY_SLUGS, categoryName } from "@/lib/products/model";
+import { CATEGORY_SLUGS, categoryName, type StoreAnnouncement } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
 import { OfferLifecycle, type OfferToast } from "./offer-actions";
@@ -40,12 +46,20 @@ export interface OfferFormOffer {
   categories: string[];
   productIds: string[];
   code: string | null;
+  /** Shown in the offer bar and on /offers (a coupon with its code). */
+  announce: boolean;
+  headline: string | null;
   status: OfferStatus;
+  /** The status, or "paused" for a held offer that hasn't ended. */
+  state: OfferState;
   /** "Ends in 2 days", "Starts 30 Dec", "Ended 15 Aug". */
   note: string;
   /** Milliseconds; changes whenever the offer is saved or ended. */
   updatedAt: number;
 }
+
+/** What Run again copies from an offer into a new one: everything but its dates and code. */
+export type OfferTemplate = Pick<OfferFormOffer, "name" | "percentOff" | "scope" | "categories" | "productIds" | "announce" | "headline">;
 
 /** A product in the Specific products checklist. */
 export interface OfferProductOption {
@@ -69,6 +83,8 @@ interface Values {
   categories: string[];
   productIds: string[];
   code: string;
+  announce: boolean;
+  headline: string;
 }
 
 /** The error each value answers to, so changing it hides that error. */
@@ -81,6 +97,8 @@ const FIELD_OF: Record<keyof Values, OfferField> = {
   categories: "scope",
   productIds: "scope",
   code: "code",
+  announce: "headline",
+  headline: "headline",
 };
 
 /** `chosen` in the order `order` lists them, so ticking one off and on again is not a change. */
@@ -89,9 +107,31 @@ function inOrder(order: readonly string[], chosen: readonly string[]): string[] 
   return order.filter((value) => picked.has(value));
 }
 
-function valuesFor(offer: OfferFormOffer | null, today: string, productIds: string[]): Values {
+function valuesFor(offer: OfferFormOffer | null, today: string, productIds: string[], template?: OfferTemplate | null): Values {
   if (!offer) {
-    return { name: "", percentOff: "", startDate: today, endDate: "", scope: "store", categories: [], productIds: [], code: "" };
+    const empty: Values = {
+      name: "",
+      percentOff: "",
+      startDate: today,
+      endDate: "",
+      scope: "store",
+      categories: [],
+      productIds: [],
+      code: "",
+      announce: true,
+      headline: "",
+    };
+    if (!template) return empty;
+    return {
+      ...empty,
+      name: template.name,
+      percentOff: String(template.percentOff),
+      scope: template.scope,
+      categories: inOrder(CATEGORY_SLUGS, template.categories),
+      productIds: inOrder(productIds, template.productIds),
+      announce: template.announce,
+      headline: template.headline ?? "",
+    };
   }
   return {
     name: offer.name,
@@ -102,6 +142,37 @@ function valuesFor(offer: OfferFormOffer | null, today: string, productIds: stri
     categories: inOrder(CATEGORY_SLUGS, offer.categories),
     productIds: inOrder(productIds, offer.productIds),
     code: offer.code ?? "",
+    announce: offer.announce,
+    headline: offer.headline ?? "",
+  };
+}
+
+/** The offer as the store would announce it, for the preview: until its end date, or three days from today. */
+function previewOf(values: Values, today: string): StoreAnnouncement {
+  const percentOff = Number(values.percentOff) || 0;
+  const terms = {
+    name: values.name.trim() || "Your offer",
+    percentOff,
+    scope: values.scope,
+    categories: values.categories,
+    productIds: values.productIds,
+    headline: values.headline,
+  };
+  const endsAt = isDay(values.endDate)
+    ? endOfDayInIndia(values.endDate)
+    : new Date(endOfDayInIndia(today).getTime() + 2 * 86_400_000);
+  return {
+    id: "preview",
+    name: terms.name,
+    headline: offerHeadline(terms, categoryName),
+    ownHeadline: values.headline.trim() || null,
+    covers: coversShort(terms, categoryName),
+    percentOff,
+    endsAt: endsAt.toISOString(),
+    code: values.code || null,
+    scope: values.scope,
+    categories: values.categories,
+    productIds: values.productIds,
   };
 }
 
@@ -438,6 +509,88 @@ function ScopeField({
   );
 }
 
+/**
+ * On the site: whether the offer shows in the yellow offer bar and on the
+ * Offers page while it runs, its headline there, and a preview of the bar.
+ * For a coupon, showing it means showing its code to everyone.
+ */
+function OnSiteField({
+  values,
+  today,
+  onAnnounce,
+  onHeadline,
+  error,
+}: {
+  values: Values;
+  today: string;
+  onAnnounce: (announce: boolean) => void;
+  onHeadline: (headline: string) => void;
+  error?: string;
+}) {
+  const preview = previewOf(values, today);
+  const fallback = offerHeadline({ ...preview, headline: null }, categoryName);
+  return (
+    <fieldset className="flex min-w-0 flex-col gap-3">
+      <legend className={cn(FIELD_LABEL, "pb-1.5")}>On the site</legend>
+      <label className="flex cursor-pointer items-start gap-3 rounded-sm px-3 py-2 transition-colors hover:bg-surface-sunken">
+        <span className="relative mt-0.5 flex size-5 shrink-0">
+          <input
+            type="checkbox"
+            name="announce"
+            checked={values.announce}
+            onChange={(event) => onAnnounce(event.target.checked)}
+            aria-describedby="offer-announce-help"
+            className="size-5 cursor-pointer appearance-none rounded-[4px] border-[1.5px] border-ink-subtle bg-surface-raised checked:border-foreground checked:bg-foreground"
+          />
+          {values.announce && (
+            <Check
+              className="pointer-events-none absolute top-[3px] left-[3px] size-3.5 text-surface-raised"
+              strokeWidth={3}
+              aria-hidden="true"
+            />
+          )}
+        </span>
+        <span className="flex min-w-0 flex-col">
+          <span className="text-[15px] leading-[22px] font-semibold">
+            {values.code ? `Show this offer and its code ${values.code} publicly` : "Show in the offer bar and on the Offers page"}
+          </span>
+          <span id="offer-announce-help" className="text-[13px] leading-[18px] text-ink-muted">
+            {values.code
+              ? "Off: only customers you give the code to can use it."
+              : "Off: prices still drop, without the bar or the Offers page."}
+          </span>
+        </span>
+      </label>
+      {values.announce && (
+        <>
+          <TextField
+            id="offer-headline"
+            name="headline"
+            label="Headline"
+            optional
+            autoComplete="off"
+            maxLength={HEADLINE_MAX}
+            placeholder={fallback}
+            value={values.headline}
+            onValueChange={onHeadline}
+            help={`Shown in the offer bar. Left empty, it reads "${fallback}".`}
+            error={error}
+          />
+          <div className="flex flex-col gap-1.5">
+            <span className={FIELD_LABEL} id="offer-preview-label">
+              Preview
+            </span>
+            <div aria-labelledby="offer-preview-label" className="overflow-hidden rounded-sm border border-border">
+              <OfferBar announcements={[preview]} preview />
+            </div>
+          </div>
+        </>
+      )}
+      {!values.announce && <input type="hidden" name="headline" value={values.headline} />}
+    </fieldset>
+  );
+}
+
 function SaveLabel({ saving, label }: { saving: boolean; label: string }) {
   if (!saving) return label;
   return (
@@ -458,12 +611,15 @@ function SaveLabel({ saving, label }: { saving: boolean; label: string }) {
  */
 export function OfferForm({
   offer = null,
+  template = null,
   products,
   today,
   backHref,
 }: {
   /** The saved offer, or null on Create offer. */
   offer?: OfferFormOffer | null;
+  /** On Create offer, an offer to start from (Run again). */
+  template?: OfferTemplate | null;
   products: OfferProductOption[];
   /** Today in India, "2026-10-23": a new offer starts today. */
   today: string;
@@ -475,7 +631,7 @@ export function OfferForm({
 
   // The saved offer the admin's edits start from, and the values last sent to save.
   const [base, setBase] = useState(offer);
-  const [values, setValues] = useState(() => valuesFor(offer, today, productIds));
+  const [values, setValues] = useState(() => valuesFor(offer, today, productIds, template));
   const [sent, setSent] = useState<Values | null>(null);
   // Fields changed since the last save attempt: their old errors are hidden.
   const [edited, setEdited] = useState<ReadonlySet<OfferField>>(() => new Set());
@@ -484,7 +640,7 @@ export function OfferForm({
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   const same = (a: Values, b: Values | null) => JSON.stringify(a) === JSON.stringify(b);
-  const dirty = !same(values, valuesFor(base, today, productIds));
+  const dirty = !same(values, valuesFor(base, today, productIds, template));
 
   // A newer saved offer (after a save, or End offer now) replaces the form's
   // values unless the admin has typed since; the server tidies what was sent.
@@ -507,9 +663,22 @@ export function OfferForm({
     field?.focus({ preventScroll: true });
   }, [state]);
 
+  // Until the admin ticks or unticks On the site, it follows the code: a
+  // coupon starts private, so adding a code never shows it by accident.
+  const announceChosen = useRef(false);
+
   function set<K extends keyof Values>(key: K, value: Values[K]) {
     setValues((current) => ({ ...current, [key]: value }));
     setEdited((current) => (current.has(FIELD_OF[key]) ? current : new Set(current).add(FIELD_OF[key])));
+  }
+
+  function setCode(code: string) {
+    setValues((current) => ({
+      ...current,
+      code,
+      announce: announceChosen.current || Boolean(current.code) === Boolean(code) ? current.announce : !code,
+    }));
+    setEdited((current) => (current.has("code") ? current : new Set(current).add("code")));
   }
 
   // React resets a form after its action runs, which would undo the admin's
@@ -549,7 +718,7 @@ export function OfferForm({
         </h1>
         {offer && (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <OfferStatusLabel status={offer.status} />
+            <OfferStatusLabel status={offer.state} />
             <span className="text-[13px] leading-[18px] text-ink-muted">{offer.note}</span>
           </p>
         )}
@@ -623,9 +792,20 @@ export function OfferForm({
           spellCheck={false}
           maxLength={20}
           value={values.code}
-          onValueChange={(value) => set("code", value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+          onValueChange={(value) => setCode(value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
           help="Leave empty to apply the offer automatically."
           error={errorFor("code")}
+        />
+
+        <OnSiteField
+          values={values}
+          today={today}
+          onAnnounce={(announce) => {
+            announceChosen.current = true;
+            set("announce", announce);
+          }}
+          onHeadline={(headline) => set("headline", headline)}
+          error={errorFor("headline")}
         />
       </form>
 
@@ -635,6 +815,8 @@ export function OfferForm({
             offerId={offer.id}
             name={offer.name}
             active={offer.status === "active"}
+            paused={offer.state === "paused"}
+            ended={offer.status === "expired"}
             dirty={dirty}
             onEnding={() => {
               setValues(valuesFor(base, today, productIds));

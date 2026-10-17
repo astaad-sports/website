@@ -102,7 +102,7 @@ function CouponStatus({
         );
       });
     },
-    { dependencies: [celebrate, applied] }
+    { dependencies: [celebrate, applied], revertOnUpdate: true }
   );
   return (
     <div className="flex items-center justify-between gap-3">

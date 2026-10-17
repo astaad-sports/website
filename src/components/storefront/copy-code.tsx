@@ -44,7 +44,7 @@ export function CopyCode({
         gsap.fromTo(icon.current, { scale: 0.4, rotate: -30 }, { scale: 1, rotate: 0, duration: 0.4, ease: "back.out(2.4)" });
       });
     },
-    { dependencies: [copied] }
+    { dependencies: [copied], revertOnUpdate: true }
   );
 
   async function copy() {

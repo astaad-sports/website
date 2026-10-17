@@ -20,7 +20,7 @@ import { listProductsWithImages } from "@/db/products";
 import { listReviewsForAdmin } from "@/db/reviews";
 import { signOut } from "@/lib/auth/actions";
 import { requireAdmin } from "@/lib/auth/session";
-import { offerStatus } from "@/lib/offers/model";
+import { offerState } from "@/lib/offers/model";
 
 export const metadata: Metadata = { title: "More" };
 
@@ -58,8 +58,8 @@ export default async function AdminMorePage() {
   ]);
 
   const now = new Date();
-  const offersRunning = offers.filter((offer) => offerStatus(offer, now) === "active").length;
-  const offersToCome = offers.filter((offer) => offerStatus(offer, now) === "upcoming").length;
+  const offersRunning = offers.filter((offer) => offerState(offer, now) === "active").length;
+  const offersToCome = offers.filter((offer) => offerState(offer, now) === "upcoming").length;
   const low = products.filter((product) => matchesStockFilter(product, "low")).length;
   const out = products.filter((product) => matchesStockFilter(product, "out")).length;
   const newReviews = reviews.filter((review) => review.status === "new").length;

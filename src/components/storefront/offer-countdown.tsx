@@ -42,7 +42,7 @@ function FlipDigit({ value }: { value: string }) {
         gsap.fromTo(cell.current, { yPercent: -55, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.35, ease: "power3.out" });
       });
     },
-    { dependencies: [value] }
+    { dependencies: [value], revertOnUpdate: true }
   );
 
   return (

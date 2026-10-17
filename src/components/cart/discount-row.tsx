@@ -32,7 +32,7 @@ export function DiscountRow({ paise }: { paise: number }) {
         );
       });
     },
-    { dependencies: [paise] }
+    { dependencies: [paise], revertOnUpdate: true }
   );
 
   if (paise <= 0) return null;

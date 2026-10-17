@@ -55,7 +55,8 @@ export function OnSaleRow({ items, offer }: { items: KitTile[]; offer?: StoreAnn
             </li>
           ))}
         </ul>
-        <ul className="no-scrollbar -mx-8 hidden snap-x snap-mandatory gap-6 overflow-x-auto px-8 md:flex xl:mx-0 xl:grid xl:grid-cols-4 xl:overflow-visible xl:px-0">
+        {/* Wide screens show one row of four; the row scrolls through them all on tablets. */}
+        <ul className="no-scrollbar -mx-8 hidden snap-x snap-mandatory gap-6 overflow-x-auto px-8 md:flex xl:mx-0 xl:grid xl:grid-cols-4 xl:overflow-visible xl:px-0 xl:[&>li:nth-child(n+5)]:hidden">
           {items.map((item) => (
             <li key={item.slug} data-reveal className="relative w-[320px] shrink-0 snap-start xl:w-auto">
               <KitCard {...item} />

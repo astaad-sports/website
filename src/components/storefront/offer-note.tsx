@@ -47,6 +47,7 @@ export function OfferNote({
         name={offer.name}
         endsAt={offer.endsAt}
         label={offerLabel(offer)}
+        compact={truncate}
         className={cn("min-w-0", truncate && "truncate")}
       />
     </span>

@@ -9,7 +9,7 @@ import { getOffer } from "@/db/offers";
 import type { Offer } from "@/db/schema";
 import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser, requireAdmin } from "@/lib/auth/session";
-import { dayInIndia, offerNote, offerStatus } from "@/lib/offers/model";
+import { dayInIndia, offerNote, offerState, offerStatus } from "@/lib/offers/model";
 
 /** One database read for the title and the page; a malformed id is simply not found. */
 const loadOffer = cache(async (id: string) => (z.uuid().safeParse(id).success ? getOffer(id) : undefined));
@@ -32,14 +32,17 @@ function toFormOffer(offer: Offer, now: Date): OfferFormOffer {
     categories: offer.categories,
     productIds: offer.productIds,
     code: offer.code,
+    announce: offer.announce,
+    headline: offer.headline,
     status: offerStatus(offer, now),
+    state: offerState(offer, now),
     note: offerNote(offer, now),
     updatedAt: offer.updatedAt.getTime(),
   };
 }
 
 /**
- * Edit an offer, end it early or delete it. On desktop the list stays beside
+ * Edit an offer, pause it, end it early, run it again or delete it. On desktop the list stays beside
  * the form, open on the offer's own tab unless `?tab=` picks another.
  */
 export default async function EditOfferPage({ params, searchParams }: PageProps<"/admin/offers/[id]">) {

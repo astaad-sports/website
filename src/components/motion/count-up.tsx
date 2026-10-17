@@ -42,7 +42,7 @@ export function CountUp({
         });
       });
     },
-    { dependencies: [value] }
+    { dependencies: [value], revertOnUpdate: true }
   );
 
   return <span className={className}>{format(shown)}</span>;
