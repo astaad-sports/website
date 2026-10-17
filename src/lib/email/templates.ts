@@ -661,10 +661,10 @@ export function trackingUpdatedEmail(input: { order: EmailOrder; store: EmailSto
 }
 
 /**
- * To the customer once the order is delivered, with where to go if something
- * is not right, and an invitation to review it (/reviews/write). It points
- * to the returns page rather than restating its periods and rules, so the
- * two cannot drift apart.
+ * To the customer once the order is marked delivered: when it arrived and
+ * what was in it, what to do if something isn't right, a request for a
+ * review, and a sign-off from the store. It points to /returns rather than
+ * quoting its periods, which the owner has not confirmed yet.
  */
 export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStore }): RenderedEmail {
   const { order, store } = input;
@@ -673,27 +673,36 @@ export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStor
   const contactUrl = link(store, "/contact");
   const reviewUrl = link(store, "/reviews/write");
   const date = order.deliveredAt ? formatOrderDate(order.deliveredAt) : null;
-  const intro = `${date ? `It arrived on ${date}.` : "It has arrived."} We hope you enjoy your new gear.`;
-  const reviewAsk = "Once you have played with it, tell other players what you think. A few lines, and a photo if you have one, help them choose.";
+  const intro = `Your order ${number} was ${date ? `delivered on ${date}` : "delivered"}. Thank you for choosing ${store.name}. We hope your new gear serves you well.`;
+  const issues =
+    "If anything arrived damaged, faulty or different from what you ordered, please contact us as soon as possible and we will put it right.";
+  const returns = "Our returns and refunds policy explains what can be returned and how.";
+  const reviewAsk =
+    "Once you have had a chance to use your gear, we would value a short review. Your feedback helps other cricketers choose with confidence and helps us keep improving.";
+  const closing = "Thank you again for your order.";
+  const signOff = `The ${store.name} team`;
   return finish({
     subject: `Your order ${number} has been delivered`,
-    preheader: `Order ${number} ${date ? `arrived on ${date}` : "has arrived"}. We hope you enjoy your new gear.`,
+    preheader: `${date ? `Delivered on ${date}.` : "Delivered."} Thank you for shopping with ${store.name}.`,
     test: order.isTest,
     store,
     body: [
       eyebrow(`Order ${number}`),
       heading("Your order has been delivered"),
-      paragraph(prose(intro)),
-      paragraph(
-        html`If anything arrived damaged or isn't right, ${textLink(contactUrl, "tell us")} straight away. ${textLink(returnsUrl, "Returns and refunds")} explains what can come back and how.`,
-        { gap: 20 }
-      ),
+      paragraph(prose(intro), { gap: 20 }),
       button(orderUrl(store, order), "View your order", { gap: 28 }),
-      sectionHeading("In this parcel"),
+      sectionHeading("Delivered items"),
       shortItemsHtml(order.items),
-      sectionHeading("How is it playing?"),
+      sectionHeading("If something isn’t right"),
+      paragraph(
+        html`If anything arrived damaged, faulty or different from what you ordered, please ${textLink(contactUrl, "contact us")} as soon as possible and we will put it right.`
+      ),
+      paragraph(html`Our ${textLink(returnsUrl, "returns and refunds policy")} explains what can be returned and how.`, { gap: 24 }),
+      sectionHeading("Share your experience"),
       paragraph(reviewAsk),
-      button(reviewUrl, "Write a review", { variant: "secondary", gap: 24 }),
+      button(reviewUrl, "Write a review", { variant: "secondary", gap: 28 }),
+      paragraph(closing, { gap: 4 }),
+      paragraph(html`<strong>${signOff}</strong>`, { gap: 8 }),
     ],
     footer: customerFooter(order, store),
     text: [
@@ -701,14 +710,19 @@ export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStor
       "",
       intro,
       "",
-      "If anything arrived damaged or isn't right, tell us straight away. Returns and refunds explains what can come back and how.",
-      `Contact us: ${contactUrl}`,
-      `Returns and refunds: ${returnsUrl}`,
-      "",
       `View your order: ${orderUrl(store, order)}`,
       "",
-      ...section("In this parcel", shortItemsText(order.items)),
-      ...section("How is it playing?", [reviewAsk, `Write a review: ${reviewUrl}`]),
+      ...section("Delivered items", shortItemsText(order.items)),
+      ...section("If something isn’t right", [
+        issues,
+        `Contact us: ${contactUrl}`,
+        "",
+        returns,
+        `Returns and refunds: ${returnsUrl}`,
+      ]),
+      ...section("Share your experience", [reviewAsk, `Write a review: ${reviewUrl}`]),
+      closing,
+      signOff,
     ],
   });
 }

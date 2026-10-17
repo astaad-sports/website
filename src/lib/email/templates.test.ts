@@ -388,25 +388,28 @@ describe("shipping emails", () => {
     expect(email.html).toContain("View your order");
   });
 
-  test("delivered: the date, returns and contact, without restating the returns policy", () => {
+  test("delivered: the date, what to do if something is wrong, without restating the returns policy", () => {
     const email = orderDeliveredEmail({ order: delivered, store });
-    expect(email.text).toContain(`It arrived on ${formatOrderDate(delivered.deliveredAt!)}.`);
     expect(email.text).toContain(
-      "If anything arrived damaged or isn't right, tell us straight away. Returns and refunds explains what can come back and how."
+      `Your order AST-10001 was delivered on ${formatOrderDate(delivered.deliveredAt!)}. Thank you for choosing Astaad Sports.`
+    );
+    expect(email.text).toContain(
+      "If anything arrived damaged, faulty or different from what you ordered, please contact us as soon as possible and we will put it right."
     );
     expect(email.html).toContain('href="https://astaadsports.com/returns"');
     expect(email.html).toContain('href="https://astaadsports.com/contact"');
     expect(email.text).toContain("Returns and refunds: https://astaadsports.com/returns");
-    // The returns page is still a draft: the email points to it rather than copying its periods.
+    // The returns terms are not confirmed yet: the email points to the page rather than copying its periods.
     expect(email.text).not.toMatch(/\d+ (days|hours)/);
   });
 
-  test("delivered: asks for a review, after what was in the parcel", () => {
+  test("delivered: asks for a review after the items, then signs off from the store", () => {
     const email = orderDeliveredEmail({ order: delivered, store });
     expect(email.html).toContain('href="https://astaadsports.com/reviews/write"');
-    expect(email.text).toContain("HOW IS IT PLAYING?");
+    expect(email.text).toContain("SHARE YOUR EXPERIENCE");
     expect(email.text).toContain("Write a review: https://astaadsports.com/reviews/write");
-    expect(email.text.indexOf("IN THIS PARCEL")).toBeLessThan(email.text.indexOf("HOW IS IT PLAYING?"));
+    expect(email.text.indexOf("DELIVERED ITEMS")).toBeLessThan(email.text.indexOf("SHARE YOUR EXPERIENCE"));
+    expect(email.text).toContain("Thank you again for your order.\nThe Astaad Sports team\n\n--");
   });
 });
 
