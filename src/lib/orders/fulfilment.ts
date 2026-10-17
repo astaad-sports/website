@@ -65,6 +65,18 @@ export function canCancel(status: OrderStatus): boolean {
   return (CANCELLABLE_STEPS as readonly string[]).includes(status);
 }
 
+/**
+ * Shipped this many days ago and still not marked delivered means it is
+ * worth checking on: the admin home lists it, and the daily delivery check
+ * emails it to the admins.
+ */
+export const STALE_SHIPMENT_DAYS = 7;
+
+/** Whole days from `date` to `now`: 0 within the first 24 hours, and without a date. */
+export function daysSince(date: Date | null, now: Date): number {
+  return date ? Math.floor((now.getTime() - date.getTime()) / 86_400_000) : 0;
+}
+
 /** Moving to Shipped or Delivered needs a tracking ID, so the customer can follow the parcel. */
 export function needsTracking(target: FulfilmentStatus): boolean {
   return stepIndex(target) >= stepIndex("shipped");

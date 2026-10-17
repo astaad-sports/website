@@ -1,12 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
-
+import { refuseUnlessCron } from "@/lib/cron";
 import { notifyUnpaidOrders } from "@/lib/email/notify";
-
-function sameSecret(expected: string, received: string): boolean {
-  const a = Buffer.from(expected, "utf8");
-  const b = Buffer.from(received, "utf8");
-  return a.length === b.length && timingSafeEqual(a, b);
-}
 
 /**
  * The daily look for checkouts that stopped at payment, called by Vercel
@@ -16,11 +9,8 @@ function sameSecret(expected: string, received: string): boolean {
  * else calling this address is turned away.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return new Response("CRON_SECRET is not configured", { status: 503 });
-  if (!sameSecret(`Bearer ${secret}`, request.headers.get("authorization") ?? "")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const refused = refuseUnlessCron(request);
+  if (refused) return refused;
 
   const result = await notifyUnpaidOrders();
   return Response.json({

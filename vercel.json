@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/unpaid-orders",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/stale-shipments",
+      "schedule": "30 3 * * *"
     }
   ]
 }

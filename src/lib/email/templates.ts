@@ -1,13 +1,22 @@
 // The store's emails: the customer's confirmation, packed, shipping,
 // corrected tracking, delivery, cancellation and refund emails, and the
-// owner's alerts for a new order, an unpaid order and a new review. Each is a
+// owner's alerts for a new order, an unpaid order and a new review, and the
+// daily check on orders that shipped a while ago. Each is a
 // one-line subject plus HTML and plain text carrying the same information.
 // Lines, totals and dates follow the customer's order page
 // (src/components/orders/order-view.tsx), so an email never disagrees
 // with it. Pure: src/lib/email/notify.ts loads the order and sends them.
 import type { Order, OrderItem, OrderItemOffer } from "@/db/schema";
-import { formatMobile, formatOrderDate, formatOrderNumber, formatPaise, mobileHref, whatsappHref } from "@/lib/format";
-import { stockShortfallNotice } from "@/lib/orders/fulfilment";
+import {
+  formatMobile,
+  formatOrderDate,
+  formatOrderNumber,
+  formatPaise,
+  formatShortDate,
+  mobileHref,
+  whatsappHref,
+} from "@/lib/format";
+import { daysSince, STALE_SHIPMENT_DAYS, stockShortfallNotice } from "@/lib/orders/fulfilment";
 import { orderPath } from "@/lib/orders/path";
 import { CARRIERS, carrierName, isCarrierId } from "@/lib/shipping";
 
@@ -916,6 +925,105 @@ export function newReviewAlertEmail(input: { review: EmailReview; store: EmailSt
           )
         : []),
       ...(lines.length > 0 ? section("What they wrote", lines) : []),
+    ],
+  });
+}
+
+/** An order that shipped a while ago, as the delivery check lists it. */
+export type EmailStaleShipment = Pick<Order, "number" | "shipName" | "shipCity" | "carrier" | "trackingNumber" | "shippedAt">;
+
+/**
+ * To the store's admins each morning while orders shipped more than
+ * STALE_SHIPMENT_DAYS ago are still marked Shipped (listStaleShipments,
+ * oldest first): each one with its customer, courier and tracking ID, how
+ * long ago it shipped, and links to the order and the courier's tracking
+ * page. Marking one delivered is what sends the customer's delivery email
+ * and review ask, so the email says so.
+ */
+export function staleShipmentsEmail(input: {
+  orders: EmailStaleShipment[];
+  store: EmailStore;
+  now?: Date;
+}): RenderedEmail {
+  const { orders, store, now = new Date() } = input;
+  const one = orders.length === 1;
+  const first = orders[0];
+  const ago = (order: EmailStaleShipment) => {
+    const days = daysSince(order.shippedAt, now);
+    return `${days} ${days === 1 ? "day" : "days"} ago`;
+  };
+  const listUrl = link(store, "/admin/orders?status=shipped");
+  const summary = one
+    ? `Order ${formatOrderNumber(first.number)} shipped ${ago(first)} and is still marked Shipped.`
+    : `These ${orders.length} orders shipped more than ${STALE_SHIPMENT_DAYS} days ago and are still marked Shipped.`;
+  const advice = `If ${one ? "it has" : "one has"} arrived, open the order and mark it delivered: that sends the customer their delivery email and asks them for a review. If not, check the parcel on the courier’s site.`;
+  const why = `You get this because your address is in ADMIN_EMAILS. It comes each morning while an order is still marked Shipped ${STALE_SHIPMENT_DAYS} days after it shipped.`;
+
+  const rows = orders.map((order) => {
+    const number = formatOrderNumber(order.number);
+    const carrier = isCarrierId(order.carrier) ? CARRIERS[order.carrier] : null;
+    const shipped = order.shippedAt ? `Shipped ${formatShortDate(order.shippedAt, now)} · ${ago(order)}` : "Shipped";
+    return {
+      number,
+      orderUrl: link(store, `/admin/orders/${order.number}`),
+      who: `${order.shipName}, ${order.shipCity}`,
+      parcel: `${carrierName(order.carrier)} · ${order.trackingNumber ?? "no tracking ID"}`,
+      shipped,
+      trackUrl: carrier?.trackingUrl ?? null,
+    };
+  });
+
+  return finish({
+    subject: one
+      ? `Has order ${rows[0].number} arrived? Shipped ${ago(first)}`
+      : `Have ${orders.length} orders arrived? Shipped over ${STALE_SHIPMENT_DAYS} days ago`,
+    preheader: one ? `${rows[0].who} · still marked Shipped` : rows.map((row) => row.number).join(", "),
+    store,
+    body: [
+      eyebrow("Delivery check"),
+      heading(one ? prose(`Has ${rows[0].number} arrived?`) : `Have these ${orders.length} orders arrived?`),
+      paragraph(prose(summary)),
+      paragraph(advice, { gap: 20 }),
+      button(one ? rows[0].orderUrl : listUrl, one ? "Open order" : "Open shipped orders", { gap: 28 }),
+      sectionHeading(one ? "Order" : "Orders"),
+      block(
+        html`<table ${TABLE}>${rows.map(
+          (row, index) => html`<tr><td style="padding:${index === 0 ? 0 : 16}px 0 ${index === rows.length - 1 ? 0 : 16}px 0;${index === rows.length - 1 ? "" : `border-bottom:1px solid ${C.border};`}${TEXT}">
+<div style="font-weight:bold;">${textLink(row.orderUrl, row.number)}</div>
+<div>${row.who}</div>
+<div style="word-break:break-all;overflow-wrap:anywhere;">${row.parcel}</div>
+<div style="${MUTED}">${row.shipped}</div>
+${row.trackUrl && html`<div>${textLink(row.trackUrl, "Track on the courier’s site")}</div>`}
+</td></tr>`
+        )}</table>`,
+        { gap: 24 }
+      ),
+    ],
+    footer: {
+      html: html`<div style="font-weight:bold;color:${C.ink};">${store.name}</div><p style="margin:8px 0 0 0;${SMALL}${MUTED}">${why}</p>`,
+      text: ["--", store.name, why],
+    },
+    text: [
+      one ? `Has ${rows[0].number} arrived?` : `Have these ${orders.length} orders arrived?`,
+      "",
+      summary,
+      "",
+      advice,
+      "",
+      one ? `Open order: ${rows[0].orderUrl}` : `Open shipped orders: ${listUrl}`,
+      "",
+      ...section(
+        one ? "Order" : "Orders",
+        rows.flatMap((row) => [
+          row.number,
+          row.who,
+          row.parcel,
+          row.shipped,
+          `Open order: ${row.orderUrl}`,
+          ...(row.trackUrl ? [`Track: ${row.trackUrl}`] : []),
+          "",
+        ])
+      ),
     ],
   });
 }

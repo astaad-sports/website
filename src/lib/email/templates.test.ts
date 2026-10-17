@@ -13,6 +13,7 @@ import {
   orderPackedEmail,
   orderRefundedEmail,
   orderShippedEmail,
+  staleShipmentsEmail,
   trackingUpdatedEmail,
   unpaidOrderAlertEmail,
   type EmailOrder,
@@ -131,6 +132,7 @@ function all() {
     trackingUpdated: trackingUpdatedEmail({ order: { ...shipped, carrier: "delhivery", trackingNumber: "DL77001234" }, store }),
     delivered: orderDeliveredEmail({ order: delivered, store }),
     cancelled: orderCancelledEmail({ order: cancelled, store }),
+    staleShipments: staleShipmentsEmail({ orders: [shipped], store, now: new Date("2026-10-04T05:00:00Z") }),
   };
 }
 
@@ -145,6 +147,7 @@ describe("every email", () => {
       "New tracking details for order AST-10001",
       "Your order AST-10001 has been delivered",
       "Your order AST-10001 has been cancelled",
+      "Has order AST-10001 arrived? Shipped 8 days ago",
     ]);
     for (const subject of subjects) expect(subject).not.toMatch(/[\r\n]/);
   });
@@ -473,6 +476,51 @@ describe("unpaid order alert", () => {
     expect(email.html).not.toContain("<b>Ravi</b>");
     expect(email.html).toContain("Pune &amp; Co");
     expect(email.text).not.toContain("mailto:");
+  });
+});
+
+describe("delivery check", () => {
+  // 8 days and 20 hours after `shipped` went out.
+  const now = new Date("2026-10-04T05:00:00Z");
+  const later: EmailOrder = {
+    ...shipped,
+    number: 10004,
+    shipName: "Smriti Mandhana",
+    shipCity: "Sangli",
+    carrier: "delhivery",
+    trackingNumber: "DL77001234",
+    shippedAt: new Date("2026-09-26T10:00:00Z"),
+  };
+
+  test("one order: how long ago it shipped, the parcel, and what marking it delivered does", () => {
+    const email = staleShipmentsEmail({ orders: [shipped], store, now });
+    expect(email.subject).toBe("Has order AST-10001 arrived? Shipped 8 days ago");
+    expect(email.text).toContain("Order AST-10001 shipped 8 days ago and is still marked Shipped.");
+    expect(email.text).toContain("mark it delivered: that sends the customer their delivery email and asks them for a review.");
+    expect(email.text).toContain("Open order: https://astaadsports.com/admin/orders/10001");
+    expect(email.text).toContain(
+      "ORDER\n\nAST-10001\nVirat Kohli, Mumbai\nTrackon Couriers · 5009123456\nShipped 25 Sep · 8 days ago"
+    );
+    expect(email.text).toContain("Track: https://www.trackon.in/courier-tracking");
+    expect(email.text).toContain("You get this because your address is in ADMIN_EMAILS.");
+    expect(email.text).not.toContain("because you placed order");
+  });
+
+  test("several orders: oldest first as given, with a link to the shipped list", () => {
+    const email = staleShipmentsEmail({ orders: [shipped, later], store, now });
+    expect(email.subject).toBe("Have 2 orders arrived? Shipped over 7 days ago");
+    expect(email.text).toContain("These 2 orders shipped more than 7 days ago and are still marked Shipped.");
+    expect(email.text).toContain("Open shipped orders: https://astaadsports.com/admin/orders?status=shipped");
+    expect(email.text.indexOf("AST-10001\n")).toBeLessThan(email.text.indexOf("AST-10004\n"));
+    expect(email.text).toContain("Delhivery · DL77001234\nShipped 26 Sep · 7 days ago");
+    expect(email.html).toContain('href="https://astaadsports.com/admin/orders/10004"');
+    expect(email.html).toContain('href="https://www.delhivery.com/tracking"');
+  });
+
+  test("a customer's name can't add markup", () => {
+    const email = staleShipmentsEmail({ orders: [{ ...shipped, shipName: "<b>Ravi</b>" }], store, now });
+    expect(email.html).toContain("&lt;b&gt;Ravi&lt;/b&gt;");
+    expect(email.html).not.toContain("<b>Ravi</b>");
   });
 });
 

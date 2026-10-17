@@ -10,10 +10,11 @@ import {
   markOrderEmailSent,
   unsureTrackingSince,
 } from "@/db/emails";
-import { getOrderForEmail, listUnpaidCheckouts, type AdminOrder } from "@/db/orders";
+import { getOrderForEmail, listStaleShipments, listUnpaidCheckouts, type AdminOrder } from "@/db/orders";
 import { lowStockAmong } from "@/db/products";
 import type { OrderEmail, OrderEmailKind, Review } from "@/db/schema";
 import { formatOrderNumber } from "@/lib/format";
+import { STALE_SHIPMENT_DAYS } from "@/lib/orders/fulfilment";
 import { getFreshSettings } from "@/lib/settings/store";
 import { siteUrl } from "@/lib/site";
 
@@ -37,6 +38,7 @@ import {
   orderPackedEmail,
   orderRefundedEmail,
   orderShippedEmail,
+  staleShipmentsEmail,
   trackingUpdatedEmail,
   unpaidOrderAlertEmail,
   type EmailStore,
@@ -439,6 +441,63 @@ export async function notifyNewReview(review: Review, productName: string | null
     });
   } catch (error) {
     console.error(`New review alert not sent for review ${review.id}: ${logReason(error)}`);
+  }
+}
+
+/** What the daily delivery check did. */
+export interface StaleShipmentsResult {
+  /** How many orders it found shipped more than STALE_SHIPMENT_DAYS ago and not delivered. */
+  orders: number;
+  sent: boolean;
+  /** Resend's reason, when the email failed. */
+  error?: string;
+  /** An error of ours (the database, say) stopped it. */
+  stopped?: true;
+}
+
+const indiaDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+
+/**
+ * The daily delivery check (the cron route in src/app/api/cron/stale-shipments):
+ * one email to everyone in ADMIN_EMAILS listing the real orders shipped more
+ * than STALE_SHIPMENT_DAYS ago and still marked Shipped, the same ones the
+ * admin home lists. Nothing goes when there are none. Not an order email, so
+ * nothing is recorded and a failure is only logged; tomorrow's run tries
+ * again. The idempotency key names the day and the orders, so a second run
+ * that day sends nothing new.
+ */
+export async function notifyStaleShipments(now: Date = new Date()): Promise<StaleShipmentsResult> {
+  if (!resendConfigured()) return { orders: 0, sent: false };
+  const to = emailConfig().adminRecipients;
+  if (to.length === 0) return { orders: 0, sent: false };
+
+  let found: Awaited<ReturnType<typeof listStaleShipments>>;
+  let store: EmailStore;
+  let replyTo: string | null;
+  try {
+    [found, { store, replyTo }] = await Promise.all([listStaleShipments(STALE_SHIPMENT_DAYS), loadStore()]);
+  } catch (error) {
+    console.error(`Could not look for orders shipped long ago: ${logReason(error)}`);
+    return { orders: 0, sent: false, stopped: true };
+  }
+  if (found.length === 0) return { orders: 0, sent: false };
+
+  const { subject, html, text } = staleShipmentsEmail({ orders: found, store, now });
+  try {
+    await sendEmail({
+      to,
+      subject,
+      html,
+      text,
+      replyTo,
+      tags: [{ name: "kind", value: "stale_shipments" }],
+      idempotencyKey: `stale-shipments-${indiaDay.format(now)}-${found.map((order) => order.number).join("-")}`,
+    });
+    return { orders: found.length, sent: true };
+  } catch (error) {
+    const reason = logReason(error);
+    console.error(`Delivery check not sent for ${found.length} ${found.length === 1 ? "order" : "orders"}: ${reason}`);
+    return { orders: found.length, sent: false, error: reason };
   }
 }
 

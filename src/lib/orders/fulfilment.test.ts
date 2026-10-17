@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { ORDER_STATUS_LABEL } from "./status";
 import {
   ADMIN_STATUS_LABEL,
+  daysSince,
   FULFILMENT_STEPS,
   filterStatuses,
   isFulfilmentStatus,
@@ -95,5 +96,19 @@ describe("the orders list", () => {
     expect(normaliseSearch(undefined)).toBeNull();
     expect(normaliseSearch("x".repeat(200))).toHaveLength(80);
     expect(likePattern("50%_off\\")).toBe("%50\\%\\_off\\\\%");
+  });
+});
+
+describe("daysSince", () => {
+  const now = new Date("2026-10-10T12:00:00Z");
+
+  test("counts whole days, so a shipment is a week old only after seven full days", () => {
+    expect(daysSince(new Date("2026-10-03T12:00:00Z"), now)).toBe(7);
+    expect(daysSince(new Date("2026-10-03T12:00:01Z"), now)).toBe(6);
+    expect(daysSince(new Date("2026-10-10T01:00:00Z"), now)).toBe(0);
+  });
+
+  test("is 0 without a date", () => {
+    expect(daysSince(null, now)).toBe(0);
   });
 });

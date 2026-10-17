@@ -26,15 +26,13 @@ import type { Order } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { emailsToSendAgain, ORDER_EMAIL_LABEL } from "@/lib/email/kinds";
 import { formatOrderNumber } from "@/lib/format";
+import { daysSince, STALE_SHIPMENT_DAYS } from "@/lib/orders/fulfilment";
 import { daysLeft, offerNote } from "@/lib/offers/model";
 import { shortfallName } from "@/lib/products/variants";
 import { cn } from "@/lib/utils";
 
 // The layout's title template only reaches child segments, so this page spells out its own.
 export const metadata: Metadata = { title: { absolute: "Dashboard · Astaad admin" } };
-
-/** Shipped this many days ago without a delivery means it is worth checking on. */
-const STALE_SHIPMENT_DAYS = 7;
 
 /** Home names at most this many products; the rest are one row pointing to Inventory. */
 const STOCK_ROWS = 3;
@@ -55,10 +53,6 @@ const todayInIndia = new Intl.DateTimeFormat("en-IN", {
 function greeting(now: Date): string {
   const hour = Number(hourInIndia.format(now));
   return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-}
-
-function daysSince(date: Date | null, now: Date): number {
-  return date ? Math.floor((now.getTime() - date.getTime()) / 86_400_000) : 0;
 }
 
 interface AttentionItem {
