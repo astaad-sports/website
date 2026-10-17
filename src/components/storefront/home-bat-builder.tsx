@@ -31,6 +31,7 @@ import { ChoiceButtons, FreeChip, OptionGroup, useBatConfig, YesNo } from "./bat
 import { BladeEngraving } from "./blade-engraving";
 import { OfferNote } from "./offer-note";
 import { SectionHeading } from "./section-heading";
+import { StruckPrice } from "./struck-price";
 
 /** "Seven choices. No extra cost for engraving or knocking.", counting only what this bat offers. */
 function choicesNote({ toes, engraving, matchReady, scuffSheet }: StoreBat["customization"]): string {
@@ -70,11 +71,11 @@ function BuildTeaser({ bat }: { bat: StoreBat }) {
           <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
             <span className="text-xl leading-[26px] font-bold">{formatPrice(bat.price)}</span>
             {bat.mrp > bat.price && (
-              <span className="text-xs leading-4 text-ink-subtle line-through">
+              <StruckPrice className="text-xs leading-4">
                 {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
                 {bat.mrp > bat.regularPrice && "MRP "}
                 {formatPrice(bat.mrp)}
-              </span>
+              </StruckPrice>
             )}
           </span>
           {bat.offer && <OfferNote offer={bat.offer} tone="dark" truncate className="mt-1" />}
@@ -158,11 +159,11 @@ export function HomeBatBuilder({ bat }: { bat: StoreBat }) {
               <div className="flex flex-col items-end gap-0.5 text-right">
                 <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
                 {bat.mrp > bat.price && (
-                  <span className="text-xs leading-4 text-ink-subtle line-through">
+                  <StruckPrice className="text-xs leading-4">
                     {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
                     {bat.mrp > bat.regularPrice && "MRP "}
                     {formatPrice(bat.mrp)}
-                  </span>
+                  </StruckPrice>
                 )}
                 {bat.offer && <OfferNote offer={bat.offer} tone="dark" className="mt-1" />}
               </div>

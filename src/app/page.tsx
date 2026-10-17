@@ -13,8 +13,9 @@ import { FinalCta } from "@/components/storefront/final-cta";
 import { HomeBatBuilder } from "@/components/storefront/home-bat-builder";
 import { HomeHero } from "@/components/storefront/hero";
 import { InstagramFeed } from "@/components/storefront/instagram-feed";
-import { bestsellerTiles } from "@/components/storefront/kit-tiles";
+import { batTile, bestsellerTiles, gearTile } from "@/components/storefront/kit-tiles";
 import { MobileTabBar } from "@/components/storefront/mobile-tab-bar";
+import { OnSaleRow } from "@/components/storefront/on-sale-row";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SizeGuideSection } from "@/components/storefront/size-guide-section";
@@ -23,7 +24,7 @@ import { WatchReel } from "@/components/storefront/watch-reel";
 import { CUSTOMER_CLIP } from "@/lib/customer-photos";
 import { INSTAGRAM_URL } from "@/lib/instagram/model";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
-import { batCounts, batsInSubcategory, builderBat, categoryStats } from "@/lib/products/model";
+import { batCounts, batsInSubcategory, builderBat, categoryStats, onSale } from "@/lib/products/model";
 import { summariseReviews } from "@/lib/reviews/model";
 import { getPublishedReviews } from "@/lib/reviews/store";
 import { pageMetadata } from "@/lib/seo/metadata";
@@ -42,6 +43,9 @@ export const metadata: Metadata = pageMetadata({
 /** The home row shows the latest this many; /reviews has them all. */
 const HOME_REVIEWS = 30;
 
+/** "On sale now" shows the biggest savings, this many; /offers has them all. */
+const HOME_ON_SALE = 8;
+
 export default async function Home() {
   const [catalogue, reviews, settings] = await Promise.all([
     getStoreCatalogue(),
@@ -51,6 +55,11 @@ export default async function Home() {
   const englishWillow = batsInSubcategory(catalogue, "english-willow");
   const builder = builderBat(catalogue);
   const bestsellers = bestsellerTiles(catalogue);
+  const sale = onSale(catalogue)
+    .slice(0, HOME_ON_SALE)
+    .map((product) => ("categorySlug" in product ? gearTile(product) : batTile(product)));
+  // The row speaks for an offer that lowers prices by itself; a coupon's products aren't cheaper yet.
+  const saleOffer = catalogue.announcements.find((offer) => !offer.code);
 
   return (
     <>
@@ -62,6 +71,7 @@ export default async function Home() {
       <main className="flex-1 max-md:[&_[id]]:scroll-mt-14">
         <HomeHero />
         <CategoryTiles stats={categoryStats(catalogue)} />
+        {sale.length > 0 && <OnSaleRow items={sale} offer={saleOffer} />}
         <BatCollection models={batCounts(catalogue)} />
         {englishWillow.length > 0 && <EnglishWillow bats={englishWillow} />}
         <Engineered />

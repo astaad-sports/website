@@ -13,6 +13,7 @@ import {
   type Truck,
 } from "lucide-react";
 
+import { CountUp } from "@/components/motion/count-up";
 import { type GearCategorySlug, type StoreCategory } from "@/lib/catalogue";
 import { formatPrice } from "@/lib/format";
 import { gearLine, listInWords, type StoreGear } from "@/lib/products/model";
@@ -26,7 +27,9 @@ import { GearOptions } from "./gear-options";
 import { OfferNote } from "./offer-note";
 import { ProductPromises } from "./product-promises";
 import { ProductRatingLink } from "./product-reviews";
+import { SaleChip } from "./sale-chip";
 import { StockStatus } from "./stock-status";
+import { StruckPrice } from "./struck-price";
 import { WishlistButton } from "./wishlist-button";
 
 interface Highlight {
@@ -143,25 +146,26 @@ export function GearHero({
         </div>
         <div className="flex flex-col gap-1 border-y border-border py-4">
           <div className="flex flex-wrap items-center gap-3.5">
-            <span className="text-[40px] leading-[44px] font-bold tracking-[-0.02em]">
-              {formatPrice(product.price)}
-            </span>
+            <CountUp value={product.price} className="text-[40px] leading-[44px] font-bold tracking-[-0.02em]" />
             {product.mrp && (
-              <span className="text-lg leading-6 text-ink-subtle line-through">
+              <StruckPrice play="load" className="text-lg leading-6">
                 {formatPrice(product.mrp)}
-              </span>
+              </StruckPrice>
             )}
             {offerMrp && (
-              <span className="h-[26px] rounded-xs bg-brand-yellow px-2.5 text-xs leading-[26px] font-bold tracking-[0.06em] text-on-yellow">
-                {product.off}% OFF
-              </span>
+              <SaleChip percent={product.off} size="md" play="load" />
             )}
           </div>
           {product.offer && <OfferNote offer={product.offer} />}
           <span className="text-[13px] leading-[18px] text-ink-muted">
-            {offerMrp
-              ? `You save ${formatPrice(offerMrp - product.price)} · inclusive of all taxes`
-              : "Inclusive of all taxes"}
+            {offerMrp ? (
+              <>
+                You save <CountUp value={offerMrp - product.price} className="font-semibold text-foreground" /> · inclusive of
+                all taxes
+              </>
+            ) : (
+              "Inclusive of all taxes"
+            )}
           </span>
         </div>
         <ProductPromises delivery={delivery} />

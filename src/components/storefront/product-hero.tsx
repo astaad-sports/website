@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Leaf, Scale, Target, Zap } from "lucide-react";
 
 import { BuyButtons } from "@/components/cart/buy-buttons";
+import { CountUp } from "@/components/motion/count-up";
 import { Button } from "@/components/ui/button";
 import { batCartItem } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
@@ -15,7 +16,9 @@ import { OfferNote } from "./offer-note";
 import { ProductGallery } from "./product-gallery";
 import { ProductPromises } from "./product-promises";
 import { ProductRatingLink } from "./product-reviews";
+import { SaleChip } from "./sale-chip";
 import { StockStatus } from "./stock-status";
+import { StruckPrice } from "./struck-price";
 import { WishlistButton } from "./wishlist-button";
 
 /**
@@ -95,25 +98,26 @@ export function ProductHero({
         </div>
         <div className="flex flex-col gap-1 border-y border-border py-4">
           <div className="flex flex-wrap items-center gap-3.5">
-            <span className="text-[40px] leading-[44px] font-bold tracking-[-0.02em]">
-              {formatPrice(shown.price)}
-            </span>
+            <CountUp value={shown.price} className="text-[40px] leading-[44px] font-bold tracking-[-0.02em]" />
             {discounted && (
               <>
-                <span className="text-lg leading-6 text-ink-subtle line-through">
+                <StruckPrice play="load" className="text-lg leading-6">
                   {formatPrice(shown.mrp)}
-                </span>
-                <span className="h-[26px] rounded-xs bg-brand-yellow px-2.5 text-xs leading-[26px] font-bold tracking-[0.06em] text-on-yellow">
-                  {shown.off}% OFF
-                </span>
+                </StruckPrice>
+                <SaleChip percent={shown.off} size="md" play="load" />
               </>
             )}
           </div>
           {bat.offer && <OfferNote offer={bat.offer} />}
           <span className="text-[13px] leading-[18px] text-ink-muted">
-            {discounted
-              ? `You save ${formatPrice(shown.mrp - shown.price)} · inclusive of all taxes`
-              : "Inclusive of all taxes"}
+            {discounted ? (
+              <>
+                You save <CountUp value={shown.mrp - shown.price} className="font-semibold text-foreground" /> · inclusive of
+                all taxes
+              </>
+            ) : (
+              "Inclusive of all taxes"
+            )}
           </span>
           {others.length > 0 && (
             <span className="text-[13px] leading-[18px] text-ink-muted">

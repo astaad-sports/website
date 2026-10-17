@@ -16,6 +16,8 @@ import { CardCover } from "./card-cover";
 import { CardRating } from "./card-rating";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
+import { SaleChip } from "./sale-chip";
+import { StruckPrice } from "./struck-price";
 import { WishlistButton } from "./wishlist-button";
 
 /**
@@ -39,9 +41,7 @@ export function BatCard({ bat }: { bat: StoreBat }) {
         <span className="pointer-events-none absolute top-2.5 left-2.5 z-10 flex max-w-[140px] flex-wrap gap-1">
           {bat.soldOut && <OutOfStockChip onDark={bat.dark} />}
           {discounted && (
-            <span className="h-[22px] rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold tracking-[0.04em] text-on-yellow">
-              {bat.off}% OFF
-            </span>
+            <SaleChip percent={bat.off} size="xs" />
           )}
           {bat.badges?.map((badge) => (
             <span
@@ -77,11 +77,11 @@ export function BatCard({ bat }: { bat: StoreBat }) {
       <p className="mt-1.5 flex items-baseline gap-2">
         <span className="text-[17px] leading-[22px] font-bold">{formatPrice(bat.price)}</span>
         {discounted && (
-          <span className="text-[13px] leading-[18px] text-ink-subtle line-through">
+          <StruckPrice className="text-[13px] leading-[18px]">
             {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
             {bat.mrp > bat.regularPrice && "MRP "}
             {formatPrice(bat.mrp)}
-          </span>
+          </StruckPrice>
         )}
       </p>
       {bat.offer && <OfferNote offer={bat.offer} truncate className="mt-1" />}
@@ -133,9 +133,7 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
         <span className="absolute top-4 left-4 flex gap-1.5">
           {bat.soldOut && <OutOfStockChip onDark={bat.dark} />}
           {discounted && (
-            <span className="h-6 rounded-xs bg-brand-yellow px-2.5 text-xs leading-6 font-bold tracking-[0.04em] text-on-yellow">
-              {bat.off}% OFF
-            </span>
+            <SaleChip percent={bat.off} />
           )}
           {bat.badges?.map((badge) => (
             <span
@@ -176,11 +174,11 @@ export function BatPlate({ bat }: { bat: StoreBat }) {
           <span className="flex items-baseline gap-3">
             <span className="text-2xl leading-[30px] font-bold">{formatPrice(bat.price)}</span>
             {discounted && (
-              <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
+              <StruckPrice className="text-[15px] leading-[22px]">
                 {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
                 {bat.mrp > bat.regularPrice && "MRP "}
                 {formatPrice(bat.mrp)}
-              </span>
+              </StruckPrice>
             )}
           </span>
           <CardRating rating={bat.rating} />

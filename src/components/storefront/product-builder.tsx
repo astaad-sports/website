@@ -6,6 +6,7 @@ import { ArrowRight, Lock, Pin, RotateCcw, Truck } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 
 import { BuyButtons } from "@/components/cart/buy-buttons";
+import { CountUp } from "@/components/motion/count-up";
 import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { batCartItem, cleanEngravingInput, type CartItem } from "@/lib/cart";
@@ -40,8 +41,10 @@ import { BladeEngraving, EngravingSwatch } from "./blade-engraving";
 import { deliveryShort } from "./delivery";
 import { Eyebrow } from "./eyebrow";
 import { OfferNote } from "./offer-note";
+import { SaleChip } from "./sale-chip";
 import { SectionHeading } from "./section-heading";
 import { SizeGuideDialog } from "./size-guide-dialog";
+import { StruckPrice } from "./struck-price";
 
 /** The row under the summary's Add to cart, with delivery as Settings have it. */
 function trustRow(deliveryFeePaise: number) {
@@ -201,13 +204,11 @@ function StandardBuy({ bat, size, item, soldOut }: { bat: StoreBat; size: StoreV
     <div className="flex flex-col gap-3 border-t border-border pt-5">
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-baseline gap-2.5">
-          <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">{formatPrice(size.price)}</span>
+          <CountUp value={size.price} className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]" />
           {size.mrp > size.price && (
             <>
-              <span className="text-sm leading-5 text-ink-subtle line-through">{formatPrice(size.mrp)}</span>
-              <span className="h-[22px] self-center rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold text-on-yellow">
-                {size.off}% OFF
-              </span>
+              <StruckPrice className="text-sm leading-5">{formatPrice(size.mrp)}</StruckPrice>
+              <SaleChip percent={size.off} size="xs" className="self-center" />
             </>
           )}
         </div>
@@ -484,17 +485,13 @@ export function ProductBuilder({
             <div className="flex flex-col gap-0.5">
               <div className="flex flex-wrap items-baseline gap-2.5">
                 {/* The price of the size chosen above. */}
-                <span className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]">
-                  {formatPrice(size.price)}
-                </span>
+                <CountUp value={size.price} className="text-[32px] leading-[38px] font-bold tracking-[-0.02em]" />
                 {size.mrp > size.price && (
                   <>
-                    <span className="text-sm leading-5 text-ink-subtle line-through">
+                    <StruckPrice className="text-sm leading-5">
                       {formatPrice(size.mrp)}
-                    </span>
-                    <span className="h-[22px] rounded-xs bg-brand-yellow px-2 text-[11px] leading-[22px] font-bold text-on-yellow">
-                      {size.off}% OFF
-                    </span>
+                    </StruckPrice>
+                    <SaleChip percent={size.off} size="xs" />
                   </>
                 )}
               </div>

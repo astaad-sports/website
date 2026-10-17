@@ -24,7 +24,7 @@ import {
   type GearOffered,
   type GearProduct,
 } from "@/lib/catalogue";
-import { bestOffer, offerHeadline, offerPrice, offerRuns, type OfferTerms } from "@/lib/offers/model";
+import { bestOffer, coversShort, offerApplies, offerHeadline, offerPrice, offerRuns, type OfferTerms } from "@/lib/offers/model";
 import type { ProductRating } from "@/lib/reviews/model";
 
 import {
@@ -343,8 +343,12 @@ export interface StoreGear extends GearProduct, OfferPricing, StoreOffered {
 export interface StoreAnnouncement {
   id: string;
   name: string;
-  /** The admin's headline, or "Diwali Sale · 20% off bats". */
+  /** The offer bar's words: the admin's headline, or "Diwali Sale · 20% off bats". */
   headline: string;
+  /** The admin's own headline, or null when they left it to the default. */
+  ownHeadline: string | null;
+  /** What it covers, to follow "20% off": "everything", "bats and helmets". */
+  covers: string;
   percentOff: number;
   /** ISO time of the offer's end. */
   endsAt: string;
@@ -553,6 +557,8 @@ export function toStoreCatalogue(rows: ProductWithImages[], context: CatalogueCo
         id: offer.id,
         name: offer.name,
         headline: offerHeadline(offer, categoryName),
+        ownHeadline: offer.headline?.trim() || null,
+        covers: coversShort(offer, categoryName),
         percentOff: offer.percentOff,
         endsAt: offer.endsAt.toISOString(),
         code: offer.code,
@@ -641,6 +647,25 @@ export function seedProductRows(): ProductWithImages[] {
 // move to the products table.
 
 /** A bat the public can see, or undefined when it is hidden or unknown. */
+/** The bats and gear an announced offer covers, in catalogue order. */
+export function announcedProducts(
+  catalogue: StoreCatalogue,
+  offer: Pick<StoreAnnouncement, "scope" | "categories" | "productIds">
+): { bats: StoreBat[]; gear: StoreGear[] } {
+  return {
+    bats: catalogue.bats.filter((bat) => offerApplies(offer, { id: bat.id, category: "bats" })),
+    gear: catalogue.gear.filter((product) => offerApplies(offer, { id: product.id, category: product.categorySlug })),
+  };
+}
+
+/** Products with an offer taking money off now, the biggest saving first. */
+export function onSale(catalogue: StoreCatalogue): (StoreBat | StoreGear)[] {
+  const products: (StoreBat | StoreGear)[] = [...catalogue.bats, ...catalogue.gear];
+  return products
+    .filter((product) => product.offer !== null)
+    .sort((a, b) => b.offer!.percentOff - a.offer!.percentOff);
+}
+
 export function findStoreBat(catalogue: StoreCatalogue, slug: string): StoreBat | undefined {
   return catalogue.bats.find((bat) => bat.slug === slug);
 }

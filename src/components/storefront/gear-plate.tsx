@@ -12,6 +12,8 @@ import { CardCover } from "./card-cover";
 import { CardRating } from "./card-rating";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
+import { SaleChip } from "./sale-chip";
+import { StruckPrice } from "./struck-price";
 import { WishlistButton } from "./wishlist-button";
 
 /**
@@ -31,9 +33,7 @@ export function GearPlate({ product }: { product: StoreGear }) {
           <span className="absolute top-4 left-4 flex gap-1.5">
             {product.soldOut && <OutOfStockChip />}
             {off > 0 && (
-              <span className="h-6 rounded-xs bg-brand-yellow px-2.5 text-xs leading-6 font-bold tracking-[0.04em] text-on-yellow">
-                {off}% OFF
-              </span>
+              <SaleChip percent={off} />
             )}
             {product.badge && (
               <Badge className="h-6 rounded-xs px-2.5 text-xs leading-6 tracking-[0.04em]">{product.badge}</Badge>
@@ -61,11 +61,11 @@ export function GearPlate({ product }: { product: StoreGear }) {
           <span className="flex items-baseline gap-3">
             <span className="text-2xl leading-[30px] font-bold">{formatPrice(product.price)}</span>
             {product.mrp && (
-              <span className="text-[15px] leading-[22px] text-ink-subtle line-through">
+              <StruckPrice className="text-[15px] leading-[22px]">
                 {/* "MRP" only for a real one: with none, an offer strikes out the regular price. */}
                 {product.mrp > product.regularPrice && "MRP "}
                 {formatPrice(product.mrp)}
-              </span>
+              </StruckPrice>
             )}
           </span>
           <CardRating rating={product.rating} />

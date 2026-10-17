@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
 
-import { formatPaise } from "@/lib/format";
+import { CountUp } from "@/components/motion/count-up";
 import { cn } from "@/lib/utils";
+
+import { DiscountRow } from "./discount-row";
 
 /**
  * Subtotal, discount, delivery and total, with the call to action and the
  * secure-payment line. The subtotal is shown at regular prices, so the rows
- * add up to the total with the discount taken off.
+ * add up to the total with the discount taken off. When a coupon changes the
+ * discount, the Discount row slides in and the amounts roll to their new values.
  */
 export function OrderSummary({
   count,
@@ -45,21 +48,22 @@ export function OrderSummary({
           <dt className="text-ink-muted">
             Subtotal ({count} {count === 1 ? "item" : "items"})
           </dt>
-          <dd className="font-semibold tabular-nums">{formatPaise(subtotalPaise + discountPaise)}</dd>
+          <dd className="font-semibold tabular-nums">
+            <CountUp value={subtotalPaise + discountPaise} unit="paise" />
+          </dd>
         </div>
-        {discountPaise > 0 && (
-          <div className="flex justify-between gap-4">
-            <dt className="text-ink-muted">Discount</dt>
-            <dd className="font-semibold tabular-nums">&minus;{formatPaise(discountPaise)}</dd>
-          </div>
-        )}
+        <DiscountRow paise={discountPaise} />
         <div className="flex justify-between gap-4">
           <dt className="text-ink-muted">Delivery</dt>
-          <dd className="font-semibold tabular-nums">{shippingPaise ? formatPaise(shippingPaise) : "Free"}</dd>
+          <dd className="font-semibold tabular-nums">
+            {shippingPaise ? <CountUp value={shippingPaise} unit="paise" /> : "Free"}
+          </dd>
         </div>
         <div className="flex items-baseline justify-between gap-4 border-t border-border pt-4">
           <dt className="type-heading-sm">Total</dt>
-          <dd className="type-price-lg tabular-nums">{formatPaise(totalPaise)}</dd>
+          <dd className="type-price-lg tabular-nums">
+            <CountUp value={totalPaise} unit="paise" />
+          </dd>
         </div>
       </dl>
       {children}

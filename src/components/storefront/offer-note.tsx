@@ -4,6 +4,8 @@ import { formatShortDate } from "@/lib/format";
 import type { StoreOffer } from "@/lib/products/model";
 import { cn } from "@/lib/utils";
 
+import { OfferNoteText } from "./offer-note-text";
+
 /**
  * "Diwali Sale · ends 25 Oct": the offer's last day, in India. No year: a
  * running offer ends soon, and a year that depends on today's date could read
@@ -15,7 +17,8 @@ function offerLabel(offer: StoreOffer): string {
 }
 
 /**
- * The running offer behind a price, shown beside or under it. On the dark
+ * The running offer behind a price, shown beside or under it, counting down
+ * over its last two days. On the dark
  * stage it is yellow, as discounts are; on white it stays ink, since yellow
  * text fails contrast there. `truncate` keeps a fixed-height tile's layout
  * when a long offer name would otherwise wrap.
@@ -40,7 +43,12 @@ export function OfferNote({
       )}
     >
       <Tag className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
-      <span className={cn("min-w-0", truncate && "truncate")}>{offerLabel(offer)}</span>
+      <OfferNoteText
+        name={offer.name}
+        endsAt={offer.endsAt}
+        label={offerLabel(offer)}
+        className={cn("min-w-0", truncate && "truncate")}
+      />
     </span>
   );
 }

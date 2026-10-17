@@ -228,7 +228,7 @@ export function couponProblem(
 export const HEADLINE_MAX = 60;
 
 /** "everything", "bats", "bats and helmets", "selected products". */
-function coversShort(
+export function coversShort(
   offer: Pick<Offer, "scope" | "categories" | "productIds">,
   categoryName: (slug: string) => string
 ): string {

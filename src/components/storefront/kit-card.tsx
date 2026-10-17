@@ -11,6 +11,7 @@ import { CardRating } from "./card-rating";
 import type { KitTile } from "./kit-tiles";
 import { OfferNote } from "./offer-note";
 import { OutOfStockChip } from "./out-of-stock-chip";
+import { StruckPrice } from "./struck-price";
 
 export type KitCardProps = KitTile & {
   /** Category line above the name (product page). */
@@ -73,7 +74,7 @@ export function KitMiniCard({
       <div className="mt-1.5 flex items-center justify-between gap-2">
         <span className="flex min-w-0 flex-col">
           <span className="text-base leading-[22px] font-bold">{formatPrice(price)}</span>
-          {mrp && <span className="text-xs leading-4 text-ink-subtle line-through">{formatPrice(mrp)}</span>}
+          {mrp && <StruckPrice className="text-xs leading-4">{formatPrice(mrp)}</StruckPrice>}
         </span>
         <AddToCartButton
           item={cartItem}
@@ -158,9 +159,9 @@ export function KitCard({
             <span className="text-base leading-[22px] font-bold">
               {formatPrice(price)}
               {mrp && (
-                <span className="ml-1.5 text-[13px] font-normal text-ink-subtle line-through">
+                <StruckPrice className="ml-1.5 text-[13px] font-normal">
                   {formatPrice(mrp)}
-                </span>
+                </StruckPrice>
               )}
             </span>
             <CardRating rating={rating} />

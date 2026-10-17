@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useId, useRef, useState, useTransition, type FormEvent, type Ref } from "react";
 
+import { BadgeCheck } from "lucide-react";
+
+import { gsap, useGSAP, withMotion } from "@/components/motion/gsap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,7 +67,8 @@ export function useCouponRecheck(onRemoved: (message: string) => void, onOpen = 
  * The coupon the customer entered: "DIWALI20 applied · Diwali Sale", or why
  * it takes nothing off this cart, with Remove. `applied` and `covered` are
  * PricedCart's coupon.applied and coupon.covered. `noun` is what is being
- * priced: the cart, or the order when "Buy now" skipped the cart.
+ * priced: the cart, or the order when "Buy now" skipped the cart. `celebrate`
+ * pops the tick, for a code the customer has just applied.
  */
 function CouponStatus({
   coupon,
@@ -73,6 +77,7 @@ function CouponStatus({
   noun,
   onRemove,
   removeRef,
+  celebrate = false,
 }: {
   coupon: AppliedCoupon;
   applied: boolean;
@@ -81,14 +86,35 @@ function CouponStatus({
   noun: "cart" | "order";
   onRemove: () => void;
   removeRef?: Ref<HTMLButtonElement>;
+  celebrate?: boolean;
 }) {
   const id = useId();
+  const tick = useRef<HTMLSpanElement>(null);
+
+  useGSAP(
+    () => {
+      if (!celebrate || !applied) return;
+      return withMotion(() => {
+        gsap.fromTo(
+          tick.current,
+          { scale: 0, rotate: -45 },
+          { scale: 1, rotate: 0, duration: 0.55, ease: "back.out(2.6)", delay: 0.1 }
+        );
+      });
+    },
+    { dependencies: [celebrate, applied] }
+  );
   return (
     <div className="flex items-center justify-between gap-3">
       <p id={id} role="status" className="flex min-w-0 flex-col gap-0.5 type-body-sm">
         {applied ? (
-          <span>
-            <span className="font-semibold">{coupon.code} applied</span> · {coupon.name}
+          <span className="flex items-center gap-1.5">
+            <span ref={tick} className="inline-flex shrink-0 text-success">
+              <BadgeCheck className="size-4" strokeWidth={2} aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="font-semibold">{coupon.code} applied</span> · {coupon.name}
+            </span>
           </span>
         ) : (
           <>
@@ -134,6 +160,7 @@ export function CouponBox({ source = "cart" }: { source?: "cart" | "buy-now" }) 
   const inputRef = useRef<HTMLInputElement>(null);
   const removeRef = useRef<HTMLButtonElement>(null);
   const focusNext = useRef<"input" | "remove" | null>(null);
+  const [justApplied, setJustApplied] = useState(false);
 
   // Runs once the field or Remove has rendered in place of the other.
   useEffect(() => {
@@ -164,12 +191,14 @@ export function CouponBox({ source = "cart" }: { source?: "cart" | "buy-now" }) 
       }
       focusNext.current = "remove";
       setCode("");
+      setJustApplied(true);
       setCoupon(result.coupon);
     });
   }
 
   function remove() {
     focusNext.current = "input";
+    setJustApplied(false);
     setCoupon(null);
   }
 
@@ -185,6 +214,7 @@ export function CouponBox({ source = "cart" }: { source?: "cart" | "buy-now" }) 
           noun={source === "buy-now" ? "order" : "cart"}
           onRemove={remove}
           removeRef={removeRef}
+          celebrate={justApplied}
         />
       ) : (
         <form onSubmit={apply} noValidate aria-busy={pending} className="flex flex-col gap-2">
