@@ -26,6 +26,7 @@ export function BrandStory() {
               the screen (less the 32px of side padding) instead of clipping */}
           <h2
             id="story-title"
+            data-motion-split
             className="type-display text-[length:min(56px,(100vw_-_32px)/6.65)] leading-[0.88] tracking-[-0.03em] md:text-[88px]"
           >
             More than
@@ -48,13 +49,17 @@ export function BrandStory() {
             aria-hidden="true"
             className="absolute inset-0 hidden translate-x-6 translate-y-6 border border-brand-yellow/50 md:block"
           />
-          <Image
-            src={PHOTO.src}
-            alt="Astaad bats standing among willow clefts in the workshop"
-            fill
-            sizes="(min-width: 1024px) 600px, 100vw"
-            className="object-cover object-[50%_45%]"
-          />
+          {/* Clipped on its own, so the photo can settle from a zoom without hiding the offset frame. */}
+          <span className="absolute inset-0 overflow-hidden">
+            <Image
+              src={PHOTO.src}
+              alt="Astaad bats standing among willow clefts in the workshop"
+              fill
+              sizes="(min-width: 1024px) 600px, 100vw"
+              data-motion-zoom
+              className="object-cover object-[50%_45%]"
+            />
+          </span>
           <span
             aria-hidden="true"
             className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,14,14,0)_50%,rgba(14,14,14,0.7)_100%)]"

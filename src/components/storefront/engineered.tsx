@@ -37,6 +37,7 @@ function CalloutBox({ callout, className, style }: { callout: Callout; className
   return (
     <div
       style={style}
+      data-motion-box
       className={cn("flex flex-col gap-0.5 rounded-xs bg-surface-dark-raised px-4 py-3", className)}
     >
       <span className="text-[11px] leading-[14px] font-medium tracking-[0.2em] text-on-dark-subtle uppercase">
@@ -109,6 +110,7 @@ export function Engineered() {
               the screen (less the 32px of side padding) instead of clipping */}
           <h2
             id="eng-title"
+            data-motion-split
             className="type-display text-[length:min(48px,(100vw_-_32px)/7)] leading-[0.9] tracking-[-0.02em] md:text-[72px]"
           >
             Engineered
@@ -132,9 +134,10 @@ export function Engineered() {
         </div>
 
         {/* Desktop: the annotated bat at the design's exact coordinates. */}
-        <div className="relative hidden h-[560px] w-[720px] shrink-0 xl:block">
+        <div data-motion-callouts className="relative hidden h-[560px] w-[720px] shrink-0 xl:block">
           <div
             aria-hidden="true"
+            data-motion-glow
             className="absolute top-10 left-40 size-[400px] rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.24)_0%,rgba(254,197,2,0)_66%)]"
           />
           <div
@@ -147,17 +150,20 @@ export function Engineered() {
             width={BAT.width}
             height={BAT.height}
             sizes="80px"
+            data-motion-float
             className="absolute top-[26px] left-[260px] h-[508px] w-[200px] object-contain drop-shadow-[0_40px_48px_rgba(0,0,0,0.75)]"
           />
           {CALLOUTS.map((callout) => (
-            <div key={callout.label}>
+            <div key={callout.label} data-motion-callout={callout.side}>
               <span
                 aria-hidden="true"
+                data-motion-line
                 className="absolute h-px bg-border-on-dark"
                 style={{ left: callout.line.left, top: callout.line.top, width: callout.line.width }}
               />
               <span
                 aria-hidden="true"
+                data-motion-dot
                 className="absolute size-[9px] rounded-full bg-brand-yellow"
                 style={{ left: callout.dot.left, top: callout.dot.top }}
               />
@@ -179,6 +185,7 @@ export function Engineered() {
           <PointedBat />
           <ul
             aria-label="What you can choose"
+            data-motion-stagger
             className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4"
           >
             {CALLOUTS.map((callout) => (
@@ -203,6 +210,7 @@ export function Engineered() {
           <div className="relative flex items-center justify-center">
             <div
               aria-hidden="true"
+              data-motion-glow
               className="absolute size-[320px] rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.24)_0%,rgba(254,197,2,0)_66%)]"
             />
             <Image
@@ -211,10 +219,11 @@ export function Engineered() {
               width={BAT.width}
               height={BAT.height}
               sizes="64px"
+              data-motion-float
               className="relative h-[406px] w-[160px] object-contain drop-shadow-[0_40px_48px_rgba(0,0,0,0.75)]"
             />
           </div>
-          <div className="grid w-full gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <div data-motion-stagger className="grid w-full gap-3 sm:grid-cols-2 md:grid-cols-3">
             {CALLOUTS.map((callout) => (
               <CalloutBox key={callout.label} callout={callout} />
             ))}

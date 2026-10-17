@@ -47,7 +47,7 @@ export function SizeGuideSection() {
 function SizeTiles() {
   return (
     <div className="flex flex-col gap-3 md:hidden">
-      <ul className="grid grid-cols-4 gap-2">
+      <ul data-motion-stagger className="grid grid-cols-4 gap-2">
         {BAT_SIZES.map((size) => {
           const name = size.label.split(" / ")[1] ?? size.label;
           return (

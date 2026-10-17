@@ -20,6 +20,7 @@ export function HomeHero() {
   return (
     <section
       aria-label="Built for bigger innings"
+      data-motion-hero
       className="relative overflow-hidden bg-surface-dark text-on-dark"
     >
       <div
@@ -31,19 +32,22 @@ export function HomeHero() {
           fit under the headline, it is as tall as both rows. min-h rather than h, so a
           taller column grows the hero instead of clipping it. */}
       <div className="site-shell relative flex flex-col md:grid md:min-h-[640px] md:grid-cols-[minmax(0,1fr)_auto] md:grid-rows-[1fr_auto] md:gap-x-8 md:gap-y-8 md:py-12 lg:min-h-[760px] lg:gap-x-12 lg:py-14 xl:gap-x-16">
-        <div className="flex max-w-[720px] flex-col gap-4 pt-7 pb-7 md:col-start-1 md:row-start-1 md:gap-6 md:self-center md:py-0">
-          <Eyebrow bar className="text-on-dark-muted max-md:text-[11px] max-md:tracking-[0.2em] max-md:[&>span]:w-5">
+        <div
+          data-motion-hero-copy
+          className="flex max-w-[720px] flex-col gap-4 pt-7 pb-7 md:col-start-1 md:row-start-1 md:gap-6 md:self-center md:py-0"
+        >
+          <Eyebrow bar className="hero-rise text-on-dark-muted max-md:text-[11px] max-md:tracking-[0.2em] max-md:[&>span]:w-5">
             Astaad Sports · Cricket equipment
           </Eyebrow>
-          <h1 className="type-display text-[length:min(62px,(100vw_-_32px)/5.8)] leading-[0.9] tracking-[-0.02em] sm:text-[88px] sm:leading-[0.88] sm:tracking-[-0.03em] md:text-[64px] lg:text-[88px] xl:text-[112px] min-[1440px]:text-[124px]">
+          <h1 className="hero-rise [--hero-delay:0.08s] type-display text-[length:min(62px,(100vw_-_32px)/5.8)] leading-[0.9] tracking-[-0.02em] sm:text-[88px] sm:leading-[0.88] sm:tracking-[-0.03em] md:text-[64px] lg:text-[88px] xl:text-[112px] min-[1440px]:text-[124px]">
             Built for
             <br />
             <span className="text-brand-yellow">Bigger innings</span>
           </h1>
-          <p className="max-w-[300px] text-base leading-6 text-on-dark-muted md:mt-2 md:max-w-[520px] md:text-xl md:leading-[30px]">
+          <p className="hero-rise [--hero-delay:0.18s] max-w-[300px] text-base leading-6 text-on-dark-muted md:mt-2 md:max-w-[520px] md:text-xl md:leading-[30px]">
             Premium cricket equipment for players who never settle.
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2.5 md:mt-3 md:gap-4">
+          <div className="hero-rise [--hero-delay:0.28s] mt-1 flex flex-wrap items-center gap-2.5 md:mt-3 md:gap-4">
             <Button
               size="lg"
               render={<Link href="/shop/bats" />}
@@ -66,7 +70,7 @@ export function HomeHero() {
         </div>
 
         {/* On phones the promises give way to the poster and headline. */}
-        <ul className="hidden flex-col gap-2 text-xs leading-4 font-semibold tracking-[0.22em] text-on-dark-muted uppercase sm:flex-row sm:flex-wrap sm:items-center sm:gap-0 md:col-span-2 md:col-start-1 md:row-start-2 md:flex xl:col-span-1">
+        <ul className="hero-rise [--hero-delay:0.4s] hidden flex-col gap-2 text-xs leading-4 font-semibold tracking-[0.22em] text-on-dark-muted uppercase sm:flex-row sm:flex-wrap sm:items-center sm:gap-0 md:col-span-2 md:col-start-1 md:row-start-2 md:flex xl:col-span-1">
           {PROMISES.map((promise, index) => (
             <li
               key={promise}
@@ -82,9 +86,10 @@ export function HomeHero() {
             starts higher up. Up to 440px wide it runs edge to edge; from there it keeps
             that width. From md it is as wide as the headline and the two buttons beside it
             allow. */}
-        <div className="relative isolate -mx-4 flex justify-center max-md:order-first min-[441px]:max-md:mt-6 md:col-start-2 md:row-start-1 md:mx-0 md:self-center xl:row-span-2">
+        <div className="hero-poster relative isolate -mx-4 flex justify-center max-md:order-first min-[441px]:max-md:mt-6 md:col-start-2 md:row-start-1 md:mx-0 md:self-center xl:row-span-2">
           <div
             aria-hidden="true"
+            data-motion-glow
             className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[130%] w-[190%] -translate-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(234,88,12,0.34)_0%,rgba(154,52,18,0.18)_50%,rgba(14,14,14,0)_100%)]"
           />
           <div
@@ -92,6 +97,7 @@ export function HomeHero() {
             className="pointer-events-none absolute top-1/2 left-1/2 -z-10 hidden aspect-square w-[128%] -translate-1/2 rounded-full border border-brand-yellow/[0.38] lg:block"
           />
           <Image
+            data-motion-hero-poster
             src={POSTER.src}
             alt="Astaad Sports: players in their team colours with their Astaad bats, gloves and helmets."
             width={POSTER.width}

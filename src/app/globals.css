@@ -393,3 +393,32 @@
     --tab-bar-height: calc(64px + env(safe-area-inset-bottom));
   }
 }
+
+/*
+ * The home hero's entrance: its words and poster rise in as the page first
+ * paints. CSS rather than GSAP, so they never flash hidden while the script
+ * loads. `--hero-delay` staggers them. Visitors who ask for less motion see
+ * the hero as it is.
+ */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+
+/* No fade: the poster is the page's largest paint, so it shows from the first frame. */
+@keyframes hero-poster {
+  from {
+    transform: translateY(24px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-rise {
+    animation: hero-rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) var(--hero-delay, 0s) both;
+  }
+  .hero-poster {
+    animation: hero-poster 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+  }
+}

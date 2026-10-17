@@ -117,14 +117,14 @@ export function CategoryTiles({ stats }: { stats: Record<CategorySlug, CategoryS
           </p>
         }
       />
-      <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:hidden">
+      <ul data-motion-stagger className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:hidden">
         {STORE_CATEGORIES.map((category) => (
           <li key={category.slug} className="flex">
             <CategoryChip category={category} stats={stats[category.slug as CategorySlug]} />
           </li>
         ))}
       </ul>
-      <div className="hidden gap-6 md:grid md:grid-cols-3 xl:grid-cols-5">
+      <div data-motion-stagger className="hidden gap-6 md:grid md:grid-cols-3 xl:grid-cols-5">
         {STORE_CATEGORIES.map((category) => (
           <CategoryTile key={category.slug} category={category} stats={stats[category.slug as CategorySlug]} />
         ))}

@@ -36,7 +36,10 @@ export function FinalCta({
     >
       {backdrop && (
         <>
-          <Image src={backdrop} alt="" fill sizes="100vw" className="object-cover object-[50%_60%] opacity-30" />
+          {/* Taller than the section, so it can drift as the page scrolls without showing an edge. */}
+          <div data-motion-parallax="8" className="absolute inset-x-0 -inset-y-[12%]">
+            <Image src={backdrop} alt="" fill sizes="100vw" className="object-cover object-[50%_60%] opacity-30" />
+          </div>
           <div
             aria-hidden="true"
             className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,14,14,0.55)_0%,rgba(14,14,14,0.35)_50%,#0e0e0e_100%)]"
@@ -45,6 +48,7 @@ export function FinalCta({
       )}
       <div
         aria-hidden="true"
+        data-motion-glow
         className="pointer-events-none absolute top-[-180px] left-1/2 size-[600px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(254,197,2,0.22)_0%,rgba(254,197,2,0)_66%)]"
       />
       <div
@@ -54,6 +58,7 @@ export function FinalCta({
       <div className="site-shell relative flex min-h-[400px] flex-col items-center justify-center gap-6 py-12 text-center md:min-h-[480px] md:gap-7 md:py-16">
         <Crest size={crestSize} />
         <h2
+          data-motion-split
           className={cn(
             "type-display text-[44px] leading-[0.92] tracking-[-0.02em] md:text-[72px]",
             titleClassName

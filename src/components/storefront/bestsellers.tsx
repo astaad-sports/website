@@ -57,6 +57,7 @@ export function Bestsellers({ items }: { items: KitTile[] }) {
       />
       <ul
         aria-label="Bestsellers"
+        data-motion-stagger
         className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:hidden"
       >
         {items.map((item) => (
@@ -67,6 +68,7 @@ export function Bestsellers({ items }: { items: KitTile[] }) {
       </ul>
       <div
         ref={row}
+        data-motion-stagger
         className="no-scrollbar -mx-8 hidden snap-x snap-mandatory gap-6 overflow-x-auto px-8 md:flex xl:mx-0 xl:grid xl:grid-cols-4 xl:overflow-visible xl:px-0"
       >
         {items.map((item) => (

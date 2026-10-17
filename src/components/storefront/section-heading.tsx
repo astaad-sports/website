@@ -33,8 +33,10 @@ export function SectionHeading({
   compact,
   className,
 }: SectionHeadingProps) {
+  // The data-motion attributes are for HomeMotion; elsewhere they do nothing.
   return (
     <div
+      data-motion-heading
       className={cn(
         "flex flex-col md:flex-row md:items-end md:justify-between md:gap-6",
         compact ? "gap-3" : "gap-6",
@@ -47,6 +49,7 @@ export function SectionHeading({
         </Eyebrow>
         <h2
           id={id}
+          data-motion-split={face === "display" ? "" : undefined}
           className={cn(
             face === "display"
               ? "type-display text-[40px] leading-[0.95] tracking-[-0.02em] md:text-[56px]"

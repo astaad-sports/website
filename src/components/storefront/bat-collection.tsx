@@ -70,7 +70,7 @@ function modelsLabel(models: number): string {
 /** The phone's row of willow cards: English Willow first and widest, then each other range. */
 function CollectionRow({ models }: { models: Record<BatSubcategory, number> }) {
   return (
-    <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:hidden">
+    <ul data-motion-stagger className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:hidden">
       <li className="flex shrink-0 snap-start">
         <Link
           href="/#english-willow"
@@ -165,13 +165,13 @@ export function BatCollection({ models }: { models: Record<BatSubcategory, numbe
           }
         />
         <CollectionRow models={models} />
-        <div className="hidden gap-5 md:grid md:grid-cols-[2fr_1fr] md:grid-rows-2 xl:h-[400px]">
+        <div data-motion-stagger className="hidden gap-5 md:grid md:grid-cols-[2fr_1fr] md:grid-rows-2 xl:h-[400px]">
           {/* Every piece is pinned absolutely inside the fixed-height tile. */}
           <Link
             href="/#english-willow"
             className="group relative row-span-2 block min-h-[400px] overflow-hidden rounded-xs bg-surface-dark-sunken text-on-dark transition-transform duration-200 hover:-translate-y-1"
           >
-            <div className="absolute inset-y-0 right-0 w-[320px]">
+            <div data-motion-zoom className="absolute inset-y-0 right-0 w-[320px]">
               <Image src={GOAT_BATS.src} alt={GOAT_BATS_ALT} fill sizes="320px" className="object-cover object-[60%_30%]" />
             </div>
             <span

@@ -39,6 +39,7 @@ export function TrustStrip({
     <section className={sunken ? "bg-surface-sunken" : "bg-surface"}>
       <ul
         aria-label="Why Astaad"
+        data-motion-stagger
         className={cn(
           "site-shell grid gap-6 py-10 sm:grid-cols-2 xl:grid-cols-4 xl:items-center xl:gap-0 xl:py-0",
           sunken ? "xl:h-[200px]" : "grid-cols-2 max-md:gap-2.5 max-md:py-6 xl:h-[220px]"

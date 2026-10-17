@@ -70,7 +70,7 @@ function PostTile({ post }: { post: InstagramPost }) {
 /** Blank tiles while the posts load. */
 function PostsPlaceholder() {
   return (
-    <ul aria-hidden="true" className={GRID}>
+    <ul aria-hidden="true" data-motion-stagger className={GRID}>
       {Array.from({ length: FEED_SIZE }, (_, index) => (
         <li key={index} className={cn(TILE, tileVisibility(index))} />
       ))}
@@ -97,7 +97,7 @@ async function InstagramPosts() {
     );
   }
   return (
-    <ul aria-label={`Latest posts from @${INSTAGRAM_HANDLE}`} className={GRID}>
+    <ul aria-label={`Latest posts from @${INSTAGRAM_HANDLE}`} data-motion-stagger className={GRID}>
       {posts.map((post, index) => (
         <li key={post.id} className={tileVisibility(index)}>
           <PostTile post={post} />

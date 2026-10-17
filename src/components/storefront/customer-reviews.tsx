@@ -143,6 +143,7 @@ export function CustomerReviews({
         <ul
           ref={row}
           aria-label="Reviews and photos from our players"
+          data-motion-stagger
           className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 md:-mx-8 md:scroll-px-8 md:gap-4 md:px-8"
         >
           <ClipCard clip={clip} />

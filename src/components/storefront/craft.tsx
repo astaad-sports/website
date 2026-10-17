@@ -74,6 +74,7 @@ export function Craft() {
         <ol
           tabIndex={0}
           aria-label="How a bat is made"
+          data-motion-stagger
           className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 md:gap-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-yellow md:-mx-8 md:scroll-px-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0"
         >
           {STEPS.map((step, index) => (
@@ -84,6 +85,7 @@ export function Craft() {
                   alt={step.alt}
                   fill
                   sizes="(min-width: 1024px) 14vw, (min-width: 768px) 220px, 160px"
+                  data-motion-zoom
                   className="object-cover"
                 />
               </span>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { HomeMotion } from "@/components/motion/home-motion";
 import { JsonLd } from "@/components/seo/json-ld";
 import { BatCollection } from "@/components/storefront/bat-collection";
 import { Bestsellers } from "@/components/storefront/bestsellers";
@@ -69,29 +70,31 @@ export default async function Home() {
       <SiteHeader sticky />
       {/* Below md the header stays on screen, so a jump to a section stops just under it. */}
       <main className="flex-1 max-md:[&_[id]]:scroll-mt-14">
-        <HomeHero />
-        <CategoryTiles stats={categoryStats(catalogue)} />
-        {sale.length > 0 && <OnSaleRow items={sale} offer={saleOffer} />}
-        <BatCollection models={batCounts(catalogue)} />
-        {englishWillow.length > 0 && <EnglishWillow bats={englishWillow} />}
-        <Engineered />
-        {builder && <HomeBatBuilder bat={builder} />}
-        <SizeGuideSection />
-        {bestsellers.length > 0 && <Bestsellers items={bestsellers} />}
-        <CustomerReviews reviews={reviews.slice(0, HOME_REVIEWS)} summary={summariseReviews(reviews)} clip={CUSTOMER_CLIP} />
-        <WatchReel />
-        <InstagramFeed />
-        <BrandStory />
-        <Craft />
-        <TrustStrip items={HOME_TRUST} />
-        <FinalCta
-          label="Shop Astaad"
-          title="Ready for your"
-          highlight="bigger innings?"
-          primary={{ label: "Shop Astaad", href: "/shop" }}
-          secondary={{ label: "Build your bat", href: "/#build" }}
-          backdrop={siteImage("home/bats-on-the-rock").src}
-        />
+        <HomeMotion>
+          <HomeHero />
+          <CategoryTiles stats={categoryStats(catalogue)} />
+          {sale.length > 0 && <OnSaleRow items={sale} offer={saleOffer} />}
+          <BatCollection models={batCounts(catalogue)} />
+          {englishWillow.length > 0 && <EnglishWillow bats={englishWillow} />}
+          <Engineered />
+          {builder && <HomeBatBuilder bat={builder} />}
+          <SizeGuideSection />
+          {bestsellers.length > 0 && <Bestsellers items={bestsellers} />}
+          <CustomerReviews reviews={reviews.slice(0, HOME_REVIEWS)} summary={summariseReviews(reviews)} clip={CUSTOMER_CLIP} />
+          <WatchReel />
+          <InstagramFeed />
+          <BrandStory />
+          <Craft />
+          <TrustStrip items={HOME_TRUST} />
+          <FinalCta
+            label="Shop Astaad"
+            title="Ready for your"
+            highlight="bigger innings?"
+            primary={{ label: "Shop Astaad", href: "/shop" }}
+            secondary={{ label: "Build your bat", href: "/#build" }}
+            backdrop={siteImage("home/bats-on-the-rock").src}
+          />
+        </HomeMotion>
       </main>
       <SiteFooter />
       <MobileTabBar />
