@@ -265,7 +265,17 @@ describe("order confirmation", () => {
     expect(email.text).toContain("Virat Kohli\nFlat 4B, Sea View Apartments\nWorli\nMumbai, Maharashtra 400018\n+91 98765 43210");
     expect(email.html).toContain('href="https://astaadsports.com/account/orders/10001"');
     expect(email.text).toContain("View your order: https://astaadsports.com/account/orders/10001");
-    expect(email.text).toContain("We will pack your order and email you");
+    expect(email.text).toContain("We will carefully pack your order and email you the courier name and tracking ID");
+  });
+
+  test("thanks the customer, says what was paid, how to reach the store, and signs off", () => {
+    expect(email.text).toStartWith("Thank you for your order\n\nWe have received your payment of ₹ 34,397 for order AST-10001");
+    expect(email.text).toContain(
+      "QUESTIONS ABOUT YOUR ORDER?\n\nIf you have any questions, please contact us and quote your order number, AST-10001. We are happy to help.\nContact us: https://astaadsports.com/contact"
+    );
+    expect(email.text).toContain("Thank you for choosing Astaad Sports.\nThe Astaad Sports team\n\n--");
+    // The order button comes before the details, as in the delivery email.
+    expect(email.text.indexOf("View your order:")).toBeLessThan(email.text.indexOf("ORDER SUMMARY"));
   });
 
   test("a guest's order links to its own page, not to an account", () => {
@@ -278,12 +288,12 @@ describe("order confirmation", () => {
 
   test("sent again once the order is packed, it says so", () => {
     const packed = orderConfirmationEmail({ order: { ...order, status: "packed" }, store });
-    const next = "Your order is packed. We will email you the courier and tracking ID as soon as it ships.";
+    const next = "Your order has been packed. We will email you the courier name and tracking ID as soon as it ships.";
     expect(packed.text).toContain(next);
     expect(packed.html).toContain(next);
     expect(packed.html).toContain("₹ 34,397 paid. Your order is packed, and we will email you again when it ships.");
-    expect(packed.text).not.toContain("We will pack your order");
-    expect(email.html).toContain("₹ 34,397 paid. We will email you again when it ships.");
+    expect(packed.text).not.toContain("We will carefully pack your order");
+    expect(email.html).toContain("Thank you for your order. ₹ 34,397 paid. We will email you again when it ships.");
   });
 
   test("order numbers, amounts and dates never break across lines", () => {

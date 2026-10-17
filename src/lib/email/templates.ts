@@ -308,6 +308,15 @@ ${reach.length > 0 && html`<div>${reach.map((part, index) => html`${index > 0 &&
   };
 }
 
+/** The close of a customer email: a line of thanks, then the store's team. */
+function signOff(store: EmailStore, thanks: string): { html: SafeHtml[]; text: string[] } {
+  const team = `The ${store.name} team`;
+  return {
+    html: [paragraph(thanks, { gap: 4 }), paragraph(html`<strong>${team}</strong>`, { gap: 8 })],
+    text: [thanks, team],
+  };
+}
+
 function section(title: string, lines: string[]): string[] {
   return [title.toUpperCase(), "", ...lines, ""];
 }
@@ -348,51 +357,67 @@ function finish(input: {
 const TEST_ORDER_NOTE = "Test order from a test account. No money was taken and no stock was used, so don’t ship it.";
 
 /**
- * To the customer once the payment lands: thanks, the order number and
- * date, every line, the totals, the delivery address and what happens next.
- * It only goes before the order ships, so "what happens next" allows for an
- * order that is already packed (a confirmation sent again late).
+ * To the customer once the payment lands: thanks, the amount, the order
+ * number and date, every line, the totals, the delivery address, what happens
+ * next, how to reach the store, and a sign-off. It only goes before the order
+ * ships, so "what happens next" allows for an order that is already packed
+ * (a confirmation sent again late).
  */
 export function orderConfirmationEmail(input: { order: EmailOrder; store: EmailStore }): RenderedEmail {
   const { order, store } = input;
   const number = formatOrderNumber(order.number);
-  const paid = `${formatPaise(order.totalPaise)} paid.`;
-  const intro = `We have received your payment for order ${number}, placed on ${formatOrderDate(order.createdAt)}. Here is what you ordered.`;
+  const total = formatPaise(order.totalPaise);
+  const intro = `We have received your payment of ${total} for order ${number}, placed on ${formatOrderDate(order.createdAt)}. Your order is confirmed, and a summary is below.`;
   const packed = order.status === "packed";
   const next = packed
-    ? "Your order is packed. We will email you the courier and tracking ID as soon as it ships."
-    : "We will pack your order and email you the courier and tracking ID as soon as it ships.";
+    ? "Your order has been packed. We will email you the courier name and tracking ID as soon as it ships."
+    : "We will carefully pack your order and email you the courier name and tracking ID as soon as it ships.";
+  const progress = "You can check its status at any time from your order page.";
+  const help = `If you have any questions, please contact us and quote your order number, ${number}. We are happy to help.`;
+  const contactUrl = link(store, "/contact");
+  const close = signOff(store, `Thank you for choosing ${store.name}.`);
   return finish({
     subject: `Your order ${number} is confirmed`,
     preheader: packed
-      ? `${paid} Your order is packed, and we will email you again when it ships.`
-      : `${paid} We will email you again when it ships.`,
+      ? `Thank you for your order. ${total} paid. Your order is packed, and we will email you again when it ships.`
+      : `Thank you for your order. ${total} paid. We will email you again when it ships.`,
     test: order.isTest,
     store,
     body: [
       eyebrow(`Order ${number}`),
-      heading("Thank you. Your order is confirmed."),
-      paragraph(prose(intro), { gap: 28 }),
-      sectionHeading("Items"),
+      heading("Thank you for your order"),
+      paragraph(prose(intro), { gap: 20 }),
+      button(orderUrl(store, order), "View your order", { gap: 28 }),
+      sectionHeading("Order summary"),
       itemsHtml(order.items),
       sectionHeading("Payment"),
       paymentHtml(order),
       sectionHeading("Delivery address"),
       addressHtml(order),
       sectionHeading("What happens next"),
-      paragraph(prose(next), { gap: 20 }),
-      button(orderUrl(store, order), "View your order", { gap: 24 }),
+      paragraph(prose(next)),
+      paragraph(progress, { gap: 24 }),
+      sectionHeading("Questions about your order?"),
+      paragraph(
+        html`If you have any questions, please ${textLink(contactUrl, "contact us")} and quote your order number, ${prose(number)}. We are happy to help.`,
+        { gap: 28 }
+      ),
+      ...close.html,
     ],
     footer: customerFooter(order, store),
     text: [
-      "Thank you. Your order is confirmed.",
+      "Thank you for your order",
       "",
       intro,
       "",
-      ...section("Items", itemsText(order.items)),
+      `View your order: ${orderUrl(store, order)}`,
+      "",
+      ...section("Order summary", itemsText(order.items)),
       ...section("Payment", paymentText(order)),
       ...section("Delivery address", addressText(order)),
-      ...section("What happens next", [next, "", `View your order: ${orderUrl(store, order)}`]),
+      ...section("What happens next", [next, progress]),
+      ...section("Questions about your order?", [help, `Contact us: ${contactUrl}`]),
+      ...close.text,
     ],
   });
 }
@@ -679,8 +704,7 @@ export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStor
   const returns = "Our returns and refunds policy explains what can be returned and how.";
   const reviewAsk =
     "Once you have had a chance to use your gear, we would value a short review. Your feedback helps other cricketers choose with confidence and helps us keep improving.";
-  const closing = "Thank you again for your order.";
-  const signOff = `The ${store.name} team`;
+  const close = signOff(store, "Thank you again for your order.");
   return finish({
     subject: `Your order ${number} has been delivered`,
     preheader: `${date ? `Delivered on ${date}.` : "Delivered."} Thank you for shopping with ${store.name}.`,
@@ -701,8 +725,7 @@ export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStor
       sectionHeading("Share your experience"),
       paragraph(reviewAsk),
       button(reviewUrl, "Write a review", { variant: "secondary", gap: 28 }),
-      paragraph(closing, { gap: 4 }),
-      paragraph(html`<strong>${signOff}</strong>`, { gap: 8 }),
+      ...close.html,
     ],
     footer: customerFooter(order, store),
     text: [
@@ -721,8 +744,7 @@ export function orderDeliveredEmail(input: { order: EmailOrder; store: EmailStor
         `Returns and refunds: ${returnsUrl}`,
       ]),
       ...section("Share your experience", [reviewAsk, `Write a review: ${reviewUrl}`]),
-      closing,
-      signOff,
+      ...close.text,
     ],
   });
 }
