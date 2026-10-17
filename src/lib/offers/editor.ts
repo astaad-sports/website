@@ -3,7 +3,7 @@
 import type { OfferScope } from "@/db/schema";
 import { isCategorySlug, type CategorySlug } from "@/lib/products/model";
 
-import { CODE_PATTERN, endOfDayInIndia, isDay, MAX_PERCENT_OFF, normaliseCode, startOfDayInIndia } from "./model";
+import { CODE_PATTERN, endOfDayInIndia, HEADLINE_MAX, isDay, MAX_PERCENT_OFF, normaliseCode, startOfDayInIndia } from "./model";
 
 export const OFFER_NAME_MAX = 40;
 
@@ -16,7 +16,7 @@ export const SCOPE_OPTIONS: { value: OfferScope; label: string; help: string }[]
   { value: "products", label: "Specific products", help: "Pick products one by one" },
 ];
 
-export type OfferField = "name" | "percentOff" | "dates" | "scope" | "code";
+export type OfferField = "name" | "percentOff" | "dates" | "scope" | "code" | "headline";
 
 export type OfferFieldErrors = Partial<Record<OfferField, string>>;
 
@@ -29,6 +29,9 @@ export interface OfferValues {
   categories: CategorySlug[];
   productIds: string[];
   code: string | null;
+  /** Shown in the offer bar and on /offers; for a coupon, with its code. */
+  announce: boolean;
+  headline: string | null;
 }
 
 export type ParsedOfferForm = { ok: true; values: OfferValues } | { ok: false; fieldErrors: OfferFieldErrors };
@@ -41,7 +44,8 @@ function text(form: FormData, name: string): string {
 /**
  * Check the offer form. Fields: name, percentOff, startDate and endDate
  * (YYYY-MM-DD, India days), scope, categories and productIds (repeated),
- * code. `now` decides whether a new offer's dates have already passed.
+ * code, announce ("on" when ticked) and headline. `now` decides whether a new
+ * offer's dates have already passed.
  */
 export function parseOfferForm(form: FormData, { isNew, now = new Date() }: { isNew: boolean; now?: Date }): ParsedOfferForm {
   const errors: OfferFieldErrors = {};
@@ -73,6 +77,9 @@ export function parseOfferForm(form: FormData, { isNew, now = new Date() }: { is
   const code = normaliseCode(text(form, "code"));
   if (code && !CODE_PATTERN.test(code)) errors.code = "Use 3 to 20 letters and numbers, like DIWALI20";
 
+  const headline = text(form, "headline");
+  if (headline.length > HEADLINE_MAX) errors.headline = `Keep the headline under ${HEADLINE_MAX} characters`;
+
   if (Object.keys(errors).length) return { ok: false, fieldErrors: errors };
   return {
     ok: true,
@@ -85,6 +92,8 @@ export function parseOfferForm(form: FormData, { isNew, now = new Date() }: { is
       categories,
       productIds,
       code: code || null,
+      announce: form.get("announce") === "on",
+      headline: headline || null,
     },
   };
 }

@@ -24,14 +24,28 @@ export async function getOffer(id: string): Promise<Offer | undefined> {
 }
 
 /**
- * Offers without a code that have not ended, for pricing the store. Upcoming
- * ones are included so a cached catalogue can be rebuilt as they start.
+ * Offers without a code that have not ended and aren't paused, for pricing
+ * the store. Upcoming ones are included so a cached catalogue can be rebuilt
+ * as they start.
  */
 export async function listAutomaticOffers(now: Date = new Date()): Promise<Offer[]> {
   return getDb()
     .select()
     .from(offers)
-    .where(and(isNull(offers.code), gte(offers.endsAt, now)));
+    .where(and(isNull(offers.code), eq(offers.paused, false), gte(offers.endsAt, now)));
+}
+
+/**
+ * Offers to show in the offer bar and on /offers: announced, not paused and
+ * not ended. Upcoming ones are included, as for prices; the store shows each
+ * from its first day.
+ */
+export async function listAnnouncedOffers(now: Date = new Date()): Promise<Offer[]> {
+  return getDb()
+    .select()
+    .from(offers)
+    .where(and(eq(offers.announce, true), eq(offers.paused, false), gte(offers.endsAt, now)))
+    .orderBy(desc(offers.percentOff), asc(offers.endsAt));
 }
 
 /** The offer behind a coupon code (upper case), whatever its dates. */
@@ -40,12 +54,12 @@ export async function findOfferByCode(code: string): Promise<Offer | undefined> 
   return offer;
 }
 
-/** Offers running now, for Home. */
+/** Offers running now (not paused), for Home. */
 export async function listActiveOffers(now: Date = new Date()): Promise<Offer[]> {
   return getDb()
     .select()
     .from(offers)
-    .where(and(lte(offers.startsAt, now), gte(offers.endsAt, now)))
+    .where(and(eq(offers.paused, false), lte(offers.startsAt, now), gte(offers.endsAt, now)))
     .orderBy(asc(offers.endsAt));
 }
 
@@ -93,6 +107,12 @@ export async function endOfferNow(id: string, now: Date = new Date()): Promise<O
     .set({ endsAt: sql`greatest(${offers.startsAt} + interval '1 millisecond', least(${offers.endsAt}, ${now}))` })
     .where(eq(offers.id, id))
     .returning();
+  return offer;
+}
+
+/** Hold an offer, or let it run again. Its dates stay as they are. */
+export async function setOfferPaused(id: string, paused: boolean): Promise<Offer | undefined> {
+  const [offer] = await getDb().update(offers).set({ paused }).where(eq(offers.id, id)).returning();
   return offer;
 }
 

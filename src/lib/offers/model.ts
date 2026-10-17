@@ -4,11 +4,16 @@
 import type { Offer, OfferScope } from "@/db/schema";
 import { formatShortDate } from "@/lib/format";
 
+/** Where an offer's dates put it. A paused offer keeps its status by date. */
 export type OfferStatus = "upcoming" | "active" | "expired";
 
-export const OFFER_STATUS_LABEL: Record<OfferStatus, string> = {
+/** What the admin sees: the status, or "paused" for a held offer that hasn't ended. */
+export type OfferState = OfferStatus | "paused";
+
+export const OFFER_STATUS_LABEL: Record<OfferState, string> = {
   active: "Active",
   upcoming: "Upcoming",
+  paused: "Paused",
   expired: "Expired",
 };
 
@@ -51,10 +56,25 @@ function daysBetween(from: Date, to: Date): number {
 // ---------------------------------------------------------------------------
 // Status and wording
 
+/**
+ * By dates alone. A paused offer can be "active" here; `offerRuns` and
+ * `bestOffer` are what decide whether it takes anything off.
+ */
 export function offerStatus(offer: Pick<Offer, "startsAt" | "endsAt">, now: Date = new Date()): OfferStatus {
   if (now < offer.startsAt) return "upcoming";
   if (now > offer.endsAt) return "expired";
   return "active";
+}
+
+/** The status, or "paused" for a held offer that hasn't ended. */
+export function offerState(offer: Pick<Offer, "startsAt" | "endsAt" | "paused">, now: Date = new Date()): OfferState {
+  const status = offerStatus(offer, now);
+  return offer.paused && status !== "expired" ? "paused" : status;
+}
+
+/** Whether an offer takes money off right now: within its dates and not paused. */
+export function offerRuns(offer: Pick<Offer, "startsAt" | "endsAt"> & { paused?: boolean }, now: Date = new Date()): boolean {
+  return !offer.paused && offerStatus(offer, now) === "active";
 }
 
 /** "12 Oct", or "12 Oct 2027" outside the current year (India dates). */
@@ -127,14 +147,12 @@ export function offerPrice(rupees: number, percentOff: number): number {
  * The offer that takes the most off this product right now, among `offers`
  * (callers pass the ones that need no code). Offers never add up.
  */
-export function bestOffer<T extends Pick<Offer, "scope" | "categories" | "productIds" | "percentOff" | "startsAt" | "endsAt">>(
-  offers: T[],
-  product: OfferTarget,
-  now: Date = new Date()
-): T | null {
+export function bestOffer<
+  T extends Pick<Offer, "scope" | "categories" | "productIds" | "percentOff" | "startsAt" | "endsAt"> & { paused?: boolean },
+>(offers: T[], product: OfferTarget, now: Date = new Date()): T | null {
   let best: T | null = null;
   for (const offer of offers) {
-    if (offerStatus(offer, now) !== "active" || !offerApplies(offer, product)) continue;
+    if (!offerRuns(offer, now) || !offerApplies(offer, product)) continue;
     if (!best || offer.percentOff > best.percentOff) best = offer;
   }
   return best;
@@ -192,10 +210,77 @@ export function normaliseCode(value: string): string {
 export const CODE_PATTERN = /^[A-Z0-9]{3,20}$/;
 
 /** Why a code can't be used, in the customer's words, or null when it can. */
-export function couponProblem(offer: Pick<Offer, "startsAt" | "endsAt"> | undefined, now: Date = new Date()): string | null {
+export function couponProblem(
+  offer: (Pick<Offer, "startsAt" | "endsAt"> & { paused?: boolean }) | undefined,
+  now: Date = new Date()
+): string | null {
   if (!offer) return "This code isn't valid.";
   const status = offerStatus(offer, now);
-  if (status === "upcoming") return `This code works from ${shortDay(offer.startsAt, now)}.`;
   if (status === "expired") return "This code has expired.";
+  if (offer.paused) return "This code isn't running right now.";
+  if (status === "upcoming") return `This code works from ${shortDay(offer.startsAt, now)}.`;
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// On the site
+
+export const HEADLINE_MAX = 60;
+
+/** "everything", "bats", "bats and helmets", "selected products". */
+function coversShort(
+  offer: Pick<Offer, "scope" | "categories" | "productIds">,
+  categoryName: (slug: string) => string
+): string {
+  if (offer.scope === "store") return "everything";
+  if (offer.scope === "products") return offer.productIds.length === 1 ? "one product" : "selected products";
+  const names = offer.categories.map((slug) => categoryName(slug).toLowerCase());
+  if (names.length <= 1) return names[0] ?? "selected products";
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+/**
+ * The offer bar's words: the admin's headline, or "Diwali Sale · 20% off
+ * everything". A coupon's code is shown beside it, not in it.
+ */
+export function offerHeadline(
+  offer: Pick<Offer, "name" | "percentOff" | "scope" | "categories" | "productIds"> & { headline?: string | null },
+  categoryName: (slug: string) => string
+): string {
+  const headline = offer.headline?.trim();
+  if (headline) return headline;
+  return `${offer.name} · ${offer.percentOff}% off ${coversShort(offer, categoryName)}`;
+}
+
+/** Time left, split for a countdown. Never negative. */
+export interface CountdownParts {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  /** The whole time left, in milliseconds. */
+  total: number;
+}
+
+export function countdownParts(ms: number): CountdownParts {
+  const total = Math.max(0, ms);
+  const seconds = Math.floor(total / 1000);
+  return {
+    days: Math.floor(seconds / 86_400),
+    hours: Math.floor((seconds % 86_400) / 3_600),
+    minutes: Math.floor((seconds % 3_600) / 60),
+    seconds: seconds % 60,
+    total,
+  };
+}
+
+/** Under this much time left, a countdown shows seconds ("14:06:32"). */
+export const COUNTDOWN_CLOSE_MS = 2 * DAY_MS;
+
+const pad = (value: number) => String(value).padStart(2, "0");
+
+/** "2d 14h 06m" with two days or more left, then "14:06:32". */
+export function countdownText(parts: CountdownParts): string {
+  if (parts.total >= COUNTDOWN_CLOSE_MS) return `${parts.days}d ${parts.hours}h ${pad(parts.minutes)}m`;
+  return `${pad(parts.days * 24 + parts.hours)}:${pad(parts.minutes)}:${pad(parts.seconds)}`;
 }

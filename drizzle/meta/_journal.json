@@ -176,6 +176,13 @@
       "when": 1792234319227,
       "tag": "0024_cart_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792235725427,
+      "tag": "0025_offer_announce_pause",
+      "breakpoints": true
     }
   ]
 }

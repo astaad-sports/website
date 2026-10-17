@@ -24,7 +24,7 @@ import {
   type GearOffered,
   type GearProduct,
 } from "@/lib/catalogue";
-import { bestOffer, offerPrice, type OfferTerms } from "@/lib/offers/model";
+import { bestOffer, offerHeadline, offerPrice, offerRuns, type OfferTerms } from "@/lib/offers/model";
 import type { ProductRating } from "@/lib/reviews/model";
 
 import {
@@ -335,16 +335,43 @@ export interface StoreGear extends GearProduct, OfferPricing, StoreOffered {
 }
 
 /** Every product the public can see (hidden ones are left out), in category order. */
+/**
+ * An offer the store shows off while it runs: in the offer bar, on /offers
+ * and beside the home page's sale row. A coupon's code is public once it is
+ * announced.
+ */
+export interface StoreAnnouncement {
+  id: string;
+  name: string;
+  /** The admin's headline, or "Diwali Sale · 20% off bats". */
+  headline: string;
+  percentOff: number;
+  /** ISO time of the offer's end. */
+  endsAt: string;
+  /** Null for an offer that applies by itself. */
+  code: string | null;
+  scope: Offer["scope"];
+  categories: string[];
+  productIds: string[];
+}
+
 export interface StoreCatalogue {
   bats: StoreBat[];
   gear: StoreGear[];
   /** Charged per order; 0 while delivery is free (see Settings). */
   deliveryFeePaise: number;
+  /** Announced offers running now, the biggest first. */
+  announcements: StoreAnnouncement[];
 }
+
+/** An offer row as the catalogue reads it. */
+export type AnnouncedOffer = OfferTerms & Pick<Offer, "id" | "code" | "headline" | "paused">;
 
 /** What else shapes the catalogue: offers that need no code, delivery, and the time now. */
 export interface CatalogueContext {
   offers?: (OfferTerms & Pick<Offer, "endsAt">)[];
+  /** Offers to announce (see listAnnouncedOffers); the ones running at `now` are shown. */
+  announced?: AnnouncedOffer[];
   deliveryFeePaise?: number;
   now?: Date;
   /** Each reviewed product's rating, by product id (see ratingsByProduct). */
@@ -520,6 +547,19 @@ export function toStoreCatalogue(rows: ProductWithImages[], context: CatalogueCo
     bats: visible.filter((row) => row.kind === "bat").map((row) => toStoreBat(row, context)),
     gear: visible.filter((row) => row.kind === "gear" && row.category !== "bats").map((row) => toStoreGear(row, context)),
     deliveryFeePaise: context.deliveryFeePaise ?? 0,
+    announcements: (context.announced ?? [])
+      .filter((offer) => offerRuns(offer, context.now))
+      .map((offer) => ({
+        id: offer.id,
+        name: offer.name,
+        headline: offerHeadline(offer, categoryName),
+        percentOff: offer.percentOff,
+        endsAt: offer.endsAt.toISOString(),
+        code: offer.code,
+        scope: offer.scope,
+        categories: offer.categories,
+        productIds: offer.productIds,
+      })),
   };
 }
 

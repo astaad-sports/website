@@ -2,7 +2,7 @@ import "server-only";
 
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
-import { listAutomaticOffers } from "@/db/offers";
+import { listAnnouncedOffers, listAutomaticOffers } from "@/db/offers";
 import { listProductsForCatalogue } from "@/db/products";
 import type { Offer } from "@/db/schema";
 import { readSettings } from "@/db/settings";
@@ -27,11 +27,23 @@ export const CATALOGUE_REVALIDATE = 300;
  * times and are turned back into dates when priced (the product rows' own
  * timestamps come back as strings too; pricing doesn't read them).
  */
+type CachedOffer = Omit<Offer, "startsAt" | "endsAt"> & { startsAt: string; endsAt: string };
+
 interface CatalogueInputs {
   rows: ProductWithImages[];
-  offers: (Omit<Offer, "startsAt" | "endsAt"> & { startsAt: string; endsAt: string })[];
+  offers: CachedOffer[];
+  /** Offers to show in the offer bar and on /offers (coupons among them). */
+  announced: CachedOffer[];
   deliveryFeePaise: number;
 }
+
+const toCached = (offer: Offer): CachedOffer => ({
+  ...offer,
+  startsAt: offer.startsAt.toISOString(),
+  endsAt: offer.endsAt.toISOString(),
+});
+
+const fromCached = (offer: CachedOffer) => ({ ...offer, startsAt: new Date(offer.startsAt), endsAt: new Date(offer.endsAt) });
 
 /**
  * The products, the offers that need no code and have not ended (upcoming
@@ -39,15 +51,18 @@ interface CatalogueInputs {
  * catalogue while no database is configured (local development).
  */
 async function loadInputs(): Promise<CatalogueInputs> {
-  if (!process.env.DATABASE_URL) return { rows: seedProductRows(), offers: [], deliveryFeePaise: 0 };
-  const [rows, offers, settings] = await Promise.all([
+  if (!process.env.DATABASE_URL) return { rows: seedProductRows(), offers: [], announced: [], deliveryFeePaise: 0 };
+  const now = new Date();
+  const [rows, offers, announced, settings] = await Promise.all([
     listProductsForCatalogue(),
-    listAutomaticOffers(new Date()),
+    listAutomaticOffers(now),
+    listAnnouncedOffers(now),
     readSettings(),
   ]);
   return {
     rows,
-    offers: offers.map((offer) => ({ ...offer, startsAt: offer.startsAt.toISOString(), endsAt: offer.endsAt.toISOString() })),
+    offers: offers.map(toCached),
+    announced: announced.map(toCached),
     deliveryFeePaise: deliveryFeePaise(settings ?? DEFAULT_SETTINGS),
   };
 }
@@ -59,13 +74,18 @@ async function loadInputs(): Promise<CatalogueInputs> {
  * rating on it, for the cards.
  */
 function buildCatalogue(inputs: CatalogueInputs, now: Date, ratings?: Record<string, ProductRating>): StoreCatalogue {
-  const offers = inputs.offers.map((offer) => ({ ...offer, startsAt: new Date(offer.startsAt), endsAt: new Date(offer.endsAt) }));
-  return toStoreCatalogue(inputs.rows, { offers, deliveryFeePaise: inputs.deliveryFeePaise, now, ratings });
+  return toStoreCatalogue(inputs.rows, {
+    offers: inputs.offers.map(fromCached),
+    announced: inputs.announced.map(fromCached),
+    deliveryFeePaise: inputs.deliveryFeePaise,
+    now,
+    ratings,
+  });
 }
 
 // The key names what the rows hold: rows cached before products had sizes
 // and prices by size must not be read by code that expects them.
-const getCatalogueInputs = unstable_cache(loadInputs, ["store-catalogue-inputs", "size-prices"], {
+const getCatalogueInputs = unstable_cache(loadInputs, ["store-catalogue-inputs", "size-prices", "announced"], {
   tags: [PRODUCTS_TAG],
   revalidate: CATALOGUE_REVALIDATE,
 });

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { codeInUse, createOffer, deleteOffer, endOfferNow, getOffer, updateOffer } from "@/db/offers";
+import { codeInUse, createOffer, deleteOffer, endOfferNow, getOffer, setOfferPaused, updateOffer } from "@/db/offers";
 import { listProductsWithImages } from "@/db/products";
 import { isAdmin } from "@/lib/auth/admin";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -88,6 +88,27 @@ export async function endOffer(_previous: OfferActionState, form: FormData): Pro
   await endOfferNow(offer.id);
   productsChanged();
   return { saved: "Offer ended", at: Date.now() };
+}
+
+/**
+ * Hold an offer that hasn't ended, or let it run again. Its dates stay, so a
+ * paused sale picks up where it was. Posts `offerId` and `paused` ("true" or "false").
+ */
+export async function pauseOffer(_previous: OfferActionState, form: FormData): Promise<OfferActionState> {
+  if (!(await signedInAdmin())) return NOT_ADMIN;
+  const parsed = idSchema.extend({ paused: z.enum(["true", "false"]) }).safeParse({
+    offerId: form.get("offerId"),
+    paused: form.get("paused"),
+  });
+  if (!parsed.success) return failed(SOMETHING_WRONG);
+  const offer = await getOffer(parsed.data.offerId);
+  if (!offer) return failed("This offer no longer exists.");
+  if (offerStatus(offer) === "expired") return failed("This offer has already ended.");
+
+  const paused = parsed.data.paused === "true";
+  await setOfferPaused(offer.id, paused);
+  productsChanged();
+  return { saved: paused ? "Offer paused" : "Offer resumed", at: Date.now() };
 }
 
 /** Delete an offer and go back to the list. Orders keep the offer name they were placed with. Posts `offerId`. */

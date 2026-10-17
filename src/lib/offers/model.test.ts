@@ -6,13 +6,17 @@ import { seedProductRows, toStoreCatalogue } from "../products/model";
 import { parseOfferForm } from "./editor";
 import {
   bestOffer,
+  countdownParts,
+  countdownText,
   couponProblem,
   dayInIndia,
   endOfDayInIndia,
   offerCovers,
   offerDates,
+  offerHeadline,
   offerNote,
   offerPrice,
+  offerState,
   offerStatus,
   startOfDayInIndia,
   toAppliedCoupon,
@@ -31,6 +35,9 @@ function offer(overrides: Partial<Parameters<typeof toAppliedCoupon>[0]> = {}) {
     categories: [] as string[],
     productIds: [] as string[],
     code: null as string | null,
+    paused: false,
+    announce: true,
+    headline: null as string | null,
     createdAt: NOW,
     updatedAt: NOW,
     ...overrides,
@@ -200,5 +207,55 @@ describe("the offer form", () => {
     const old = { ...valid, startDate: "2026-08-13", endDate: "2026-08-15" };
     expect(parseOfferForm(form(old), { isNew: true, now: NOW }).ok).toBe(false);
     expect(parseOfferForm(form(old), { isNew: false, now: NOW }).ok).toBe(true);
+  });
+});
+
+describe("paused offers", () => {
+  test("a paused offer keeps its dates but takes nothing off", () => {
+    const held = offer({ paused: true });
+    expect(offerStatus(held, NOW)).toBe("active");
+    expect(offerState(held, NOW)).toBe("paused");
+    expect(offerState(held, new Date("2026-10-26T00:00:00+05:30"))).toBe("expired");
+    expect(bestOffer([held], { id: "x", category: "bats" }, NOW)).toBeNull();
+    const catalogue = toStoreCatalogue(seedProductRows(), { offers: [held], now: NOW });
+    expect(catalogue.gear.every((entry) => entry.offer === null)).toBe(true);
+  });
+
+  test("a paused coupon is refused", () => {
+    expect(couponProblem(offer({ code: "HELD", paused: true }), NOW)).toBe("This code isn't running right now.");
+    expect(couponProblem(offer({ code: "OLD", paused: true, endsAt: endOfDayInIndia("2026-10-20") }), NOW)).toBe(
+      "This code has expired."
+    );
+  });
+});
+
+describe("announcing offers", () => {
+  const name = (slug: string) => ({ bats: "Bats", helmets: "Helmets", "batting-pads": "Batting Pads" })[slug] ?? slug;
+
+  test("the headline is the admin's words, or built from the offer", () => {
+    expect(offerHeadline(offer(), name)).toBe("Diwali Sale · 20% off everything");
+    expect(offerHeadline(offer({ scope: "categories", categories: ["bats"] }), name)).toBe("Diwali Sale · 20% off bats");
+    expect(offerHeadline(offer({ scope: "categories", categories: ["bats", "helmets", "batting-pads"] }), name)).toBe(
+      "Diwali Sale · 20% off bats, helmets and batting pads"
+    );
+    expect(offerHeadline(offer({ scope: "products", productIds: ["a", "b"] }), name)).toBe("Diwali Sale · 20% off selected products");
+    expect(offerHeadline(offer({ headline: "  Festive prices on every bat  " }), name)).toBe("Festive prices on every bat");
+  });
+
+  test("the catalogue announces only offers running now and not paused", () => {
+    const running = offer({ id: "a", code: "DIWALI20" });
+    const later = offer({ id: "b", startsAt: startOfDayInIndia("2026-11-01"), endsAt: endOfDayInIndia("2026-11-05") });
+    const held = offer({ id: "c", paused: true });
+    const catalogue = toStoreCatalogue(seedProductRows(), { announced: [running, later, held], now: NOW });
+    expect(catalogue.announcements.map((entry) => entry.id)).toEqual(["a"]);
+    expect(catalogue.announcements[0]).toMatchObject({ code: "DIWALI20", headline: "Diwali Sale · 20% off everything" });
+  });
+
+  test("the countdown shows days until the last two, then seconds", () => {
+    const hour = 3_600_000;
+    expect(countdownText(countdownParts(3 * 24 * hour + 5 * hour + 6 * 60_000))).toBe("3d 5h 06m");
+    expect(countdownText(countdownParts(47 * hour + 59 * 60_000 + 59_000))).toBe("47:59:59");
+    expect(countdownText(countdownParts(65_000))).toBe("00:01:05");
+    expect(countdownParts(-5).total).toBe(0);
   });
 });

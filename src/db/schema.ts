@@ -478,6 +478,15 @@ export const offers = pgTable(
     productIds: jsonb("product_ids").$type<string[]>().notNull().default([]),
     /** Upper case. Unique, so one code never means two offers. */
     code: text("code").unique(),
+    /** Held: it takes nothing off and isn't shown, but keeps its dates. */
+    paused: boolean("paused").notNull().default(false),
+    /**
+     * Shown in the offer bar and on /offers while it runs. For a coupon this
+     * also means showing its code to everyone.
+     */
+    announce: boolean("announce").notNull().default(true),
+    /** The offer bar's words, when the default ("Diwali Sale · 20% off bats") won't do. */
+    headline: text("headline"),
     ...timestamps,
   },
   (table) => [
