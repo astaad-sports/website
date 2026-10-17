@@ -3,6 +3,13 @@ import "server-only";
 import { after } from "next/server";
 
 import {
+  claimCartReminder,
+  claimCheckoutReminder,
+  listCartsToRemind,
+  listCheckoutsToRemind,
+  releaseReminder,
+} from "@/db/carts";
+import {
   claimOrderEmail,
   getOrderEmail,
   lastEmailedTracking,
@@ -13,8 +20,11 @@ import {
 import { getOrderForEmail, listStaleShipments, listUnpaidCheckouts, type AdminOrder } from "@/db/orders";
 import { lowStockAmong } from "@/db/products";
 import type { OrderEmail, OrderEmailKind, Review } from "@/db/schema";
+import { isTestAccount } from "@/lib/auth/test-account";
+import { linesFromCart, linesFromOrder, type ReminderLine } from "@/lib/cart-reminders/model";
 import { formatOrderNumber } from "@/lib/format";
 import { STALE_SHIPMENT_DAYS } from "@/lib/orders/fulfilment";
+import { getFreshStoreCatalogue } from "@/lib/products/catalogue";
 import { getFreshSettings } from "@/lib/settings/store";
 import { siteUrl } from "@/lib/site";
 
@@ -30,6 +40,7 @@ import {
 } from "./kinds";
 import { resendConfigured, sendEmail } from "./resend";
 import {
+  cartReminderEmail,
   newOrderAlertEmail,
   newReviewAlertEmail,
   orderCancelledEmail,
@@ -499,6 +510,100 @@ export async function notifyStaleShipments(now: Date = new Date()): Promise<Stal
     console.error(`Delivery check not sent for ${found.length} ${found.length === 1 ? "order" : "orders"}: ${reason}`);
     return { orders: found.length, sent: false, error: reason };
   }
+}
+
+/** What the daily cart reminders did. */
+export interface CartRemindersResult {
+  /** Saved carts and guests' unpaid checkouts found due a reminder. */
+  carts: number;
+  checkouts: number;
+  sent: number;
+  failed: number;
+  /** An error of ours (the database, say) stopped it part way. */
+  stopped?: true;
+}
+
+/**
+ * The daily cart reminders (the cron route in src/app/api/cron/cart-reminders):
+ * one email to each signed-in customer whose saved cart has sat unbought for
+ * a day, and to each guest whose checkout stopped at payment a day ago (see
+ * listCartsToRemind and listCheckoutsToRemind for who is left out). Only
+ * lines still for sale are shown, and a cart with none gets nothing. Each
+ * reminder is claimed before it goes, so it goes once; one Resend clearly
+ * refused is let go, for the next day's run to try again.
+ */
+export async function notifyCartReminders(): Promise<CartRemindersResult> {
+  const total: CartRemindersResult = { carts: 0, checkouts: 0, sent: 0, failed: 0 };
+  if (!resendConfigured()) return total;
+  try {
+    const [carts, checkouts, catalogue, { store, replyTo }] = await Promise.all([
+      listCartsToRemind(),
+      listCheckoutsToRemind(),
+      getFreshStoreCatalogue(),
+      loadStore(),
+    ]);
+    total.carts = carts.length;
+    total.checkouts = checkouts.length;
+
+    async function remind(input: {
+      email: string;
+      userId: string | null;
+      lines: ReminderLine[];
+      checkout: { placedAt: Date } | null;
+      claim: () => Promise<string | null>;
+    }) {
+      if (input.lines.length === 0) return;
+      const id = await input.claim();
+      if (!id) return;
+      const { subject, html, text } = cartReminderEmail({
+        lines: input.lines,
+        store,
+        checkout: input.checkout,
+        unsubscribeUrl: `${store.siteUrl.replace(/\/+$/, "")}/unsubscribe/${id}`,
+        test: isTestAccount({ email: input.email }),
+      });
+      try {
+        await sendEmail({
+          to: [input.email],
+          subject,
+          html,
+          text,
+          replyTo,
+          tags: [{ name: "kind", value: "cart_reminder" }],
+          idempotencyKey: `cart-reminder-${id}`,
+        });
+        total.sent += 1;
+      } catch (error) {
+        total.failed += 1;
+        console.error(`Cart reminder ${id} not sent: ${logReason(error)}`);
+        // Turned down, so it didn't go: tomorrow's run may try again. Otherwise it may have gone.
+        if (sendFailure(error) === "rejected") await releaseReminder(id, input.userId);
+      }
+    }
+
+    for (const cart of carts) {
+      await remind({
+        email: cart.email,
+        userId: cart.userId,
+        lines: linesFromCart(cart.items, catalogue),
+        checkout: null,
+        claim: () => claimCartReminder(cart),
+      });
+    }
+    for (const checkout of checkouts) {
+      await remind({
+        email: checkout.email,
+        userId: null,
+        lines: linesFromOrder(checkout.items, catalogue),
+        checkout: { placedAt: checkout.createdAt },
+        claim: () => claimCheckoutReminder(checkout),
+      });
+    }
+  } catch (error) {
+    console.error(`Cart reminders stopped: ${logReason(error)}`);
+    return { ...total, stopped: true };
+  }
+  return total;
 }
 
 /** The notifier that sends each kind of email again, given the email that failed. */

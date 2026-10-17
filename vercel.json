@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/stale-shipments",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/cart-reminders",
+      "schedule": "30 4 * * *"
     }
   ]
 }

@@ -5,6 +5,7 @@ import type { OrderItem } from "@/db/schema";
 import { formatOrderDate } from "@/lib/format";
 
 import {
+  cartReminderEmail,
   newOrderAlertEmail,
   newReviewAlertEmail,
   orderCancelledEmail,
@@ -534,6 +535,45 @@ describe("delivery check", () => {
     const email = staleShipmentsEmail({ orders: [{ ...shipped, shipName: "<b>Ravi</b>" }], store, now });
     expect(email.html).toContain("&lt;b&gt;Ravi&lt;/b&gt;");
     expect(email.html).not.toContain("<b>Ravi</b>");
+  });
+});
+
+describe("cart reminder", () => {
+  const lines = [
+    { name: "Astaad EW Pro 100", href: "/bats/ew-pro-100", details: "SH / Full Size · Knocked in", quantity: 1, linePaise: 2_899_900 },
+    { name: "Astaad Elite Batting Gloves", href: "/shop/batting-gloves/elite-batting-gloves", details: null, quantity: 2, linePaise: 999_800 },
+  ];
+  const unsubscribeUrl = "https://astaadsports.com/unsubscribe/5d0c2a1e-0000-4000-8000-00000000000a";
+
+  test("a saved cart: what was left at today's prices, the cart, and help", () => {
+    const email = cartReminderEmail({ lines, store, checkout: null, unsubscribeUrl });
+    expect(email.subject).toBe("Still thinking it over? Your cart is saved");
+    expect(email.text).toContain("You left these items in your cart at Astaad Sports. We have saved them for you");
+    expect(email.text).toContain("Return to your cart: https://astaadsports.com/cart");
+    expect(email.text).toContain("Astaad Elite Batting Gloves · Qty 2 · ₹ 9,998");
+    expect(email.text).toContain("Subtotal: ₹ 38,997\nPrices as of today.");
+    expect(email.html).toContain('href="https://astaadsports.com/bats/ew-pro-100"');
+    expect(email.text).toContain("Thank you for considering Astaad Sports.\nThe Astaad Sports team");
+    expect(email.text).not.toContain("because you placed order");
+  });
+
+  test("a guest's checkout: says no payment was taken, and the prices they saw", () => {
+    const email = cartReminderEmail({ lines: lines.slice(0, 1), store, checkout: { placedAt: order.createdAt }, unsubscribeUrl });
+    expect(email.text).toContain(`Your checkout on ${formatOrderDate(order.createdAt)} didn’t finish, so no payment was taken.`);
+    expect(email.text).toContain("Prices as at your checkout.");
+    expect(email.text).not.toContain("We have saved");
+  });
+
+  test("says it comes once, with a link to stop these", () => {
+    const email = cartReminderEmail({ lines, store, checkout: null, unsubscribeUrl });
+    expect(email.text).toContain("You received this because you added items to your cart at Astaad Sports. We send this reminder only once.");
+    expect(email.text).toContain(`Unsubscribe from cart reminders: ${unsubscribeUrl}`);
+    expect(email.html).toContain(`href="${unsubscribeUrl}"`);
+    expect(email.html).toContain('href="mailto:help@astaadsports.com"');
+  });
+
+  test("a test account's reminder says so", () => {
+    expect(cartReminderEmail({ lines, store, checkout: null, unsubscribeUrl, test: true }).subject).toStartWith("[Test] ");
   });
 });
 

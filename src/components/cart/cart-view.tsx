@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, ShoppingCart } from "lucide-react";
 
@@ -11,7 +12,7 @@ import { formatPaise } from "@/lib/format";
 import { CouponBox } from "./coupon-box";
 import { lineOfferText } from "./line-offer";
 import { OrderSummary } from "./order-summary";
-import { useCart } from "./use-cart";
+import { syncAccountCart, useCart } from "./use-cart";
 
 function CartPlaceholder() {
   return (
@@ -51,6 +52,10 @@ export function EmptyCart() {
  */
 export function CartView() {
   const { priced, setQuantity, remove } = useCart();
+  const loaded = priced !== null;
+  useEffect(() => {
+    if (loaded) syncAccountCart();
+  }, [loaded]);
 
   if (!priced) return <CartPlaceholder />;
   if (priced.lines.length === 0) return <EmptyCart />;

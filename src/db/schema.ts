@@ -636,3 +636,49 @@ export const reviewCustomers = pgTable(
 );
 
 export type ReviewCustomer = typeof reviewCustomers.$inferSelect;
+
+/**
+ * A signed-in customer's cart, copied from their browser whenever it changes
+ * (saveCart in src/lib/cart-reminders/actions.ts), so the cart reminder knows
+ * what they left and the cart comes back on another device. One per customer;
+ * emptying the cart, which paying does, deletes it.
+ */
+export const savedCarts = pgTable("saved_carts", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  items: jsonb("items").$type<CartItem[]>().notNull(),
+  /** When the items last changed: the reminder waits a day from here. */
+  changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  /** When this cart's one reminder went. Only an emptied cart (the row deleted) can get another. */
+  remindedAt: timestamp("reminded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SavedCart = typeof savedCarts.$inferSelect;
+
+/**
+ * Each cart reminder sent: to a signed-in customer about their saved cart
+ * (`userId`), or to a guest whose checkout stopped at payment (`orderId`,
+ * once per order). Its id is the unsubscribe link's, so the link names no
+ * email address.
+ */
+export const cartReminders = pgTable(
+  "cart_reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    orderId: uuid("order_id").references(() => orders.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("cart_reminders_order_id_idx").on(table.orderId)]
+);
+
+export type CartReminder = typeof cartReminders.$inferSelect;
+
+/** Addresses that asked for no more cart reminders, in lower case. */
+export const emailOptOuts = pgTable("email_opt_outs", {
+  email: text("email").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

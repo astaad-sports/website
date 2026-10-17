@@ -1,7 +1,8 @@
 // The store's emails: the customer's confirmation, packed, shipping,
 // corrected tracking, delivery, cancellation and refund emails, and the
-// owner's alerts for a new order, an unpaid order and a new review, and the
-// daily check on orders that shipped a while ago. Each is a
+// owner's alerts for a new order, an unpaid order and a new review, the
+// daily check on orders that shipped a while ago, and the one reminder about
+// a cart left unbought. Each is a
 // one-line subject plus HTML and plain text carrying the same information.
 // Lines, totals and dates follow the customer's order page
 // (src/components/orders/order-view.tsx), so an email never disagrees
@@ -17,6 +18,7 @@ import {
   whatsappHref,
 } from "@/lib/format";
 import { daysSince, STALE_SHIPMENT_DAYS, stockShortfallNotice } from "@/lib/orders/fulfilment";
+import type { ReminderLine } from "@/lib/cart-reminders/model";
 import { orderPath } from "@/lib/orders/path";
 import { CARRIERS, carrierName, isCarrierId } from "@/lib/shipping";
 
@@ -282,7 +284,15 @@ function trackingActionsText(order: EmailOrder, store: EmailStore): string[] {
 
 /** The small print on the customer's emails: the store's details, a way to reach it, and why this email came. */
 function customerFooter(order: EmailOrder, store: EmailStore): { html: SafeHtml; text: string[] } {
-  const why = `We sent this email because you placed order ${formatOrderNumber(order.number)} with ${store.name}.`;
+  return storeFooter(store, `We sent this email because you placed order ${formatOrderNumber(order.number)} with ${store.name}.`);
+}
+
+/** The store's name, address, phone and email and Contact us, then why the email came (and, after it, `extra`). */
+function storeFooter(
+  store: EmailStore,
+  why: string,
+  extra?: { html: SafeHtml; text: string[] }
+): { html: SafeHtml; text: string[] } {
   const contactUrl = link(store, "/contact");
   const reach = [
     store.supportPhone &&
@@ -295,7 +305,7 @@ function customerFooter(order: EmailOrder, store: EmailStore): { html: SafeHtml;
 ${store.address && html`<div>${store.address}</div>`}
 ${reach.length > 0 && html`<div>${reach.map((part, index) => html`${index > 0 && " · "}${part}`)}</div>`}
 <p style="margin:8px 0 0 0;${SMALL}${MUTED}">${textLink(contactUrl, "Contact us", { muted: true })}</p>
-<p style="margin:16px 0 0 0;${SMALL}${MUTED}">${prose(why)}</p>`,
+<p style="margin:16px 0 0 0;${SMALL}${MUTED}">${prose(why)}</p>${extra?.html}`,
     text: [
       "--",
       store.name,
@@ -304,6 +314,7 @@ ${reach.length > 0 && html`<div>${reach.map((part, index) => html`${index > 0 &&
       `Contact us: ${contactUrl}`,
       "",
       why,
+      ...(extra?.text ?? []),
     ],
   };
 }
@@ -1060,6 +1071,98 @@ ${row.trackUrl && html`<div>${textLink(row.trackUrl, "Track on the courier’s s
           "",
         ])
       ),
+    ],
+  });
+}
+
+/**
+ * The one reminder about a cart left unbought, a day later: to a signed-in
+ * customer about the cart saved on their account (`checkout` null, today's
+ * prices), or to a guest whose checkout stopped at payment (`checkout`, the
+ * prices they saw). Each line links to its product, the button to the cart,
+ * and the small print says it comes once and how to stop these.
+ */
+export function cartReminderEmail(input: {
+  lines: ReminderLine[];
+  store: EmailStore;
+  /** The guest's unpaid checkout; null for a saved cart. */
+  checkout: { placedAt: Date } | null;
+  /** The page that stops cart reminders to this address. */
+  unsubscribeUrl: string;
+  test?: boolean;
+}): RenderedEmail {
+  const { lines, store, checkout, unsubscribeUrl } = input;
+  const count = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const items = `${count} ${count === 1 ? "item" : "items"}`;
+  const subtotal = formatPaise(lines.reduce((sum, line) => sum + line.linePaise, 0));
+  const cartUrl = link(store, "/cart");
+  const contactUrl = link(store, "/contact");
+  const intro = checkout
+    ? `Your checkout on ${formatOrderDate(checkout.placedAt)} didn’t finish, so no payment was taken. Here is what you chose, in case you would like to complete your order.`
+    : `You left ${count === 1 ? "this item" : "these items"} in your cart at ${store.name}. We have saved ${count === 1 ? "it" : "them"} for you, so you can pick up where you left off.`;
+  const priceNote = checkout
+    ? "Prices as at your checkout. Delivery and any coupon are worked out when you order."
+    : "Prices as of today. Delivery and any coupon are worked out when you order.";
+  const help = "If you have a question about sizes, weights or engraving, please contact us. We are happy to help.";
+  const close = signOff(store, `Thank you for considering ${store.name}.`);
+  const why = `You received this because you added items to your cart at ${store.name}. We send this reminder only once.`;
+  const footer = storeFooter(store, why, {
+    html: html`<p style="margin:8px 0 0 0;${SMALL}${MUTED}">${textLink(unsubscribeUrl, "Unsubscribe from cart reminders", { muted: true })}</p>`,
+    text: [`Unsubscribe from cart reminders: ${unsubscribeUrl}`],
+  });
+
+  return finish({
+    subject: "Still thinking it over? Your cart is saved",
+    preheader: `You left ${items} in your cart at ${store.name}.`,
+    test: input.test,
+    store,
+    body: [
+      eyebrow("Your cart"),
+      heading("Still thinking it over?"),
+      paragraph(prose(intro), { gap: 20 }),
+      button(cartUrl, "Return to your cart", { gap: 28 }),
+      sectionHeading("In your cart"),
+      block(
+        html`<table ${TABLE}>${lines.map(
+          (line, index) => html`<tr>
+<td valign="top" style="padding:${index === 0 ? 0 : 12}px 0 0 0;${TEXT}"><a href="${link(store, line.href)}" target="_blank" style="color:${C.ink};font-weight:bold;text-decoration:none;">${line.name}</a>${line.details && html`<div style="${SMALL}${MUTED}">${line.details}</div>`}</td>
+<td valign="top" align="right" style="padding:${index === 0 ? 0 : 12}px 0 0 16px;${TEXT}white-space:nowrap;">${formatPaise(line.linePaise)}<div style="${SMALL}${MUTED}">Qty ${line.quantity}</div></td>
+</tr>`
+        )}<tr>
+<td style="border-top:1px solid ${C.border};padding:12px 0 0 0;${TEXT}font-weight:bold;">Subtotal</td>
+<td align="right" style="border-top:1px solid ${C.border};padding:12px 0 0 16px;${TEXT}font-weight:bold;white-space:nowrap;">${subtotal}</td>
+</tr></table><p style="margin:8px 0 0 0;${SMALL}${MUTED}">${priceNote}</p>`,
+        { gap: 24 }
+      ),
+      sectionHeading("Need a hand choosing?"),
+      paragraph(
+        html`If you have a question about sizes, weights or engraving, please ${textLink(contactUrl, "contact us")}. We are happy to help.`,
+        { gap: 28 }
+      ),
+      ...close.html,
+    ],
+    footer,
+    text: [
+      "Still thinking it over?",
+      "",
+      intro,
+      "",
+      `Return to your cart: ${cartUrl}`,
+      "",
+      ...section(
+        "In your cart",
+        [
+          ...lines.flatMap((line) => [
+            `${line.name} · Qty ${line.quantity} · ${formatPaise(line.linePaise)}`,
+            ...(line.details ? [`  ${line.details}`] : []),
+            `  ${link(store, line.href)}`,
+          ]),
+          `Subtotal: ${subtotal}`,
+          priceNote,
+        ]
+      ),
+      ...section("Need a hand choosing?", [help, `Contact us: ${contactUrl}`]),
+      ...close.text,
     ],
   });
 }

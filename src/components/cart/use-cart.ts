@@ -12,12 +12,15 @@ import {
   withResolvedToe,
   type CartItem,
 } from "@/lib/cart";
+import { loadSavedCart, saveCart } from "@/lib/cart-reminders/actions";
 import type { AppliedCoupon } from "@/lib/offers/model";
 
 import { useCatalogue } from "./catalogue-provider";
 
 // The cart lives in this browser's localStorage. It holds choices only; the
-// server prices the order at checkout.
+// server prices the order at checkout. A signed-in customer's cart is also
+// copied to their account (saveCart), for the cart reminder and their other
+// devices; for a guest that copy does nothing.
 const STORAGE_KEY = "astaad-cart";
 /** The coupon the server accepted; checked again when the order is placed. */
 const COUPON_KEY = "astaad-coupon";
@@ -81,6 +84,48 @@ function readBuyNow(): CartItem | null {
   }
 }
 
+/** Cart changes wait this long, so a run of taps sends the account one copy. */
+const SAVE_DELAY_MS = 1500;
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let lastSaved: string | null = null;
+
+/** Copy the items to the customer's account, once they stop changing. */
+function saveLater(items: CartItem[]) {
+  const json = JSON.stringify(items);
+  clearTimeout(saveTimer);
+  if (json === lastSaved) return;
+  saveTimer = setTimeout(() => {
+    lastSaved = json;
+    saveCart(items).catch(() => {
+      lastSaved = null;
+    });
+  }, SAVE_DELAY_MS);
+}
+
+let syncedThisView = false;
+
+/**
+ * On the cart page, once per visit: a cart with items is copied to the
+ * customer's account, and an empty one takes the cart saved there (from
+ * another device, or the link in a cart reminder). Nothing for a guest.
+ */
+export function syncAccountCart() {
+  if (syncedThisView) return;
+  syncedThisView = true;
+  const { items } = getSnapshot();
+  if (items.length > 0) {
+    saveLater(items);
+    return;
+  }
+  loadSavedCart()
+    .then((saved) => {
+      if (saved.length === 0 || getSnapshot().items.length > 0) return;
+      lastSaved = JSON.stringify(saved);
+      write({ items: saved.reduce<CartItem[]>((merged, item) => addToItems(merged, item), []) });
+    })
+    .catch(() => {});
+}
+
 function setSnapshot(state: CartState) {
   snapshot = state;
 }
@@ -108,6 +153,7 @@ function write(next: Partial<CartState>) {
   } catch {
     // Private mode or a full quota: the cart still works for this page view.
   }
+  if (next.items) saveLater(next.items);
   emit();
 }
 

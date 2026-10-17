@@ -11,12 +11,14 @@ export const metadata: Metadata = pageMetadata({
   path: "/privacy",
 });
 
-const UPDATED = "7 October 2026";
+const UPDATED = "17 October 2026";
 
 /**
  * Privacy policy. Describes what the site actually does: Firebase sign-in,
  * orders in our database, Razorpay payments, order emails through Resend,
- * courier hand-off, one sign-in cookie and a cart in local storage,
+ * courier hand-off, one sign-in cookie and a cart in local storage (copied
+ * to a signed-in customer's account), one cart reminder by email (see
+ * src/lib/cart-reminders) with a link to stop them,
  * Google Analytics counting visits (see src/lib/analytics.ts) and Google
  * Customer Reviews asking about a survey once an order is paid (see
  * src/lib/customer-reviews.ts) and showing its badge in the footer, and the
@@ -55,6 +57,10 @@ export default async function PrivacyPage() {
             and the order’s delivery status.
           </li>
           <li>
+            <strong>Your cart:</strong> if you are signed in, a copy of what is in your cart, kept with your
+            account so it is there on your other devices and for the reminder described below.
+          </li>
+          <li>
             <strong>Payments:</strong> the payment and order references Razorpay gives us, and whether the
             payment succeeded. Your card, UPI and bank details go straight to Razorpay; we never see them.
           </li>
@@ -89,6 +95,11 @@ export default async function PrivacyPage() {
             </li>
             <li>show your orders and their tracking in your account;</li>
             <li>
+              send you one reminder by email if items are left in your cart for a day without an order: about
+              the cart on your account if you are signed in, or after a checkout whose payment didn’t finish.
+              Every reminder has a link to stop them;
+            </li>
+            <li>
               let Google ask you, once your order is confirmed, whether it may email you a short survey about
               your purchase;
             </li>
@@ -101,8 +112,8 @@ export default async function PrivacyPage() {
             <li>keep the invoices and records that GST and other laws require.</li>
           </ul>
           <p>
-            We do not sell your data or show you advertising. We will only send you marketing messages if you
-            ask us to.
+            We do not sell your data or show you advertising. Apart from that one cart reminder, we will only
+            send you marketing messages if you ask us to.
           </p>
         </>
       ),
@@ -120,8 +131,8 @@ export default async function PrivacyPage() {
               mobile number and delivery address there, and Razorpay passes them to us with your order.
             </li>
             <li>
-              <strong>Resend</strong> sends our order emails, and receives your name, email address, mobile number,
-              order details and delivery address.
+              <strong>Resend</strong> sends our order emails and cart reminders, and receives your name, email
+              address, mobile number, order details, delivery address and, for a reminder, what was in your cart.
             </li>
             <li>
               <strong>Couriers</strong> such as Trackon Couriers and Delhivery receive your name, mobile number
@@ -183,8 +194,8 @@ export default async function PrivacyPage() {
             </li>
           </ul>
           <p>
-            Your cart and any coupon you enter are saved in your browser’s local storage, on your device only,
-            until you check out. Google’s sign-in window, Google’s review badge and its survey question on your
+            Your cart and any coupon you enter are saved in your browser’s local storage, on your device, until
+            you check out. If you are signed in, a copy of the cart is also kept with your account. Google’s sign-in window, Google’s review badge and its survey question on your
             order confirmation, the Google map of our shop, and Razorpay’s payment window may set their own
             cookies under their own privacy policies, for example to prevent fraud. When the home page shows our
             Instagram posts through Instagram’s own embed, Instagram may set cookies too, under Meta’s privacy
@@ -202,6 +213,11 @@ export default async function PrivacyPage() {
           <li>
             Orders, invoices and payment records, for as long as tax and accounting laws require. For GST, that
             is six years from the due date of the annual return for the year of the order.
+          </li>
+          <li>Your saved cart, until you empty it or check out.</li>
+          <li>
+            A record of each cart reminder we sent, and your request to stop them, so we never send more than
+            we said.
           </li>
           <li>Messages, for as long as we need them to resolve your request.</li>
         </ul>
