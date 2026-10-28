@@ -6,6 +6,7 @@ import { ChangePassword } from "@/components/account/change-password";
 import { ProfileCard } from "@/components/account/profile-card";
 import { AccountQuickLinks } from "@/components/account/quick-links";
 import { ReviewsCard, type ReviewPrompt } from "@/components/account/reviews-card";
+import { WhatsAppCard } from "@/components/account/whatsapp-card";
 import { AddressBook } from "@/components/addresses/address-book";
 import { OrderProgress } from "@/components/orders/order-progress";
 import { Eyebrow } from "@/components/storefront/eyebrow";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { listAddresses } from "@/db/addresses";
 import { listOrdersForUser, type OrderWithItems } from "@/db/orders";
 import { listPurchases, listReviewsOfCustomer } from "@/db/review-customers";
+import { getContactForUser } from "@/db/whatsapp";
 import { signInMethods } from "@/lib/account/model";
 import { makeDefaultAddress, removeAddress, saveAddress } from "@/lib/addresses/actions";
 import { getSignInProviders } from "@/lib/account/sign-in";
@@ -27,6 +29,7 @@ import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
 import { getStoreCatalogue } from "@/lib/products/catalogue";
 import { productsToReview } from "@/lib/reviews/customers";
+import { whatsappConfig } from "@/lib/whatsapp/config";
 import { listInWords } from "@/lib/words";
 import { cn } from "@/lib/utils";
 
@@ -124,15 +127,18 @@ function SignInCard({ email, providers }: { email: string | null; providers: str
   );
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: PageProps<"/account">) {
   const user = await requireUser("/account");
-  const [orders, addresses, providers, reviews, purchases, catalogue] = await Promise.all([
+  const { businessNumber } = whatsappConfig();
+  const [orders, addresses, providers, reviews, purchases, catalogue, whatsapp, query] = await Promise.all([
     listOrdersForUser(user.id),
     listAddresses(user.id),
     getSignInProviders(user.firebaseUid),
     listReviewsOfCustomer(user.id),
     listPurchases(user.id),
     getStoreCatalogue(),
+    businessNumber ? getContactForUser(user.id) : undefined,
+    searchParams,
   ]);
   const firstName = user.name?.split(" ")[0];
   const [latest] = orders;
@@ -203,6 +209,14 @@ export default async function AccountPage() {
                   memberSince: memberSince.format(user.createdAt),
                 }}
               />
+              {businessNumber && (
+                <WhatsAppCard
+                  className={CARD}
+                  linked={whatsapp?.waId ?? null}
+                  businessNumber={businessNumber}
+                  justLinked={query.whatsapp === "linked"}
+                />
+              )}
               <SignInCard email={user.email} providers={providers} />
             </div>
           </div>

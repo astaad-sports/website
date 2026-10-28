@@ -6,6 +6,7 @@ import { CircleAlert, LoaderCircle, LogOut } from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 import type { EmailStatus } from "@/lib/email/config";
 import type { RazorpayStatus } from "@/lib/payments/razorpay";
+import type { WhatsAppStatus } from "@/lib/whatsapp/config";
 import { saveSettings } from "@/lib/settings/admin-actions";
 import { defaultCarrier, SETTINGS_LIMITS, type Settings, type SettingsField } from "@/lib/settings/model";
 import { CARRIERS, type CarrierId } from "@/lib/shipping";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { FieldHelp, SelectField, TextField } from "./product-editor-fields";
 import { safeAction } from "./safe-action";
 import { EmailSettings } from "./settings-email";
+import { WhatsAppSettings } from "./settings-whatsapp";
 import { SETTINGS_SECTIONS, SettingsNav, type SettingsSectionId } from "./settings-nav";
 import { RazorpaySettings } from "./settings-payment";
 import { BUTTON_PRIMARY, FIELD, FIELD_LABEL, PAGE, SECTION_LABEL } from "./styles";
@@ -160,6 +162,7 @@ export function SettingsForm({
   adminEmail,
   razorpay,
   email,
+  whatsapp,
 }: {
   /** As saved, or the defaults before the first save. */
   settings: Settings;
@@ -168,6 +171,8 @@ export function SettingsForm({
   razorpay: RazorpayStatus;
   /** Resend's status, for the Order emails block under the support details. */
   email: EmailStatus;
+  /** WhatsApp's status, for the block after it. */
+  whatsapp: WhatsAppStatus;
 }) {
   const [state, save, saving] = useActionState(saveOrReport, {});
   const saved = valuesFor(settings, adminName);
@@ -283,6 +288,7 @@ export function SettingsForm({
               />
             </div>
             <EmailSettings status={email} />
+            <WhatsAppSettings status={whatsapp} />
             <TextField
               id="field-storeAddress"
               name="storeAddress"

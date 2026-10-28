@@ -42,10 +42,12 @@ export async function createOrder(
     address: ShippingAddress;
     cart: PricedCart;
     test: boolean;
+    /** The customer asked for order updates on WhatsApp (see orders.whatsappUpdates). */
+    whatsappUpdates?: boolean;
   },
   db: Executor = getDb()
 ): Promise<Order> {
-  const { userId, email, address, cart, test } = input;
+  const { userId, email, address, cart, test, whatsappUpdates = false } = input;
   return db.transaction(async (tx) => {
     const [order] = await tx
       .insert(orders)
@@ -53,6 +55,7 @@ export async function createOrder(
         userId,
         email,
         isTest: test,
+        whatsappUpdates,
         subtotalPaise: cart.subtotalPaise,
         shippingPaise: cart.shippingPaise,
         totalPaise: cart.totalPaise,
@@ -269,6 +272,70 @@ export async function getOrderForTracking(number: number, phone: string): Promis
   if (!order) return undefined;
   const [withLines] = await withItems([order]);
   return withLines;
+}
+
+/**
+ * Who a WhatsApp number is, for the bot: its linked account's orders, and
+ * orders shipping to the number itself (WhatsApp has proved the writer holds
+ * it, as the tracking page's mobile does). Unpaid checkouts stay hidden.
+ */
+function whatsappOwner(owner: { userId: string | null; phone: string | null }): SQL | undefined {
+  return or(
+    owner.userId ? eq(orders.userId, owner.userId) : undefined,
+    owner.phone ? eq(orders.shipPhone, owner.phone) : undefined
+  );
+}
+
+/** A WhatsApp writer's recent orders, newest first (see whatsappOwner). */
+export async function listOrdersForWhatsApp(
+  owner: { userId: string | null; phone: string | null },
+  limit = 5
+): Promise<OrderWithItems[]> {
+  const mine = whatsappOwner(owner);
+  if (!mine) return [];
+  const rows = await getDb()
+    .select()
+    .from(orders)
+    .where(and(mine, ne(orders.status, "pending_payment")))
+    .orderBy(desc(orders.createdAt))
+    .limit(limit);
+  return withItems(rows);
+}
+
+/** One of a WhatsApp writer's orders by its number, or undefined if it is not theirs (see whatsappOwner). */
+export async function getOrderForWhatsApp(
+  number: number,
+  owner: { userId: string | null; phone: string | null }
+): Promise<OrderWithItems | undefined> {
+  const mine = whatsappOwner(owner);
+  if (!mine) return undefined;
+  const [order] = await getDb()
+    .select()
+    .from(orders)
+    .where(and(eq(orders.number, number), mine, ne(orders.status, "pending_payment")))
+    .limit(1);
+  if (!order) return undefined;
+  const [withLines] = await withItems([order]);
+  return withLines;
+}
+
+/** Any paid order by its number, with its lines: for an admin on WhatsApp. */
+export async function getOrderByNumber(number: number): Promise<OrderWithItems | undefined> {
+  const [order] = await getDb().select().from(orders).where(eq(orders.number, number)).limit(1);
+  if (!order) return undefined;
+  const [withLines] = await withItems([order]);
+  return withLines;
+}
+
+/** Real orders paid and not yet shipped, oldest first: what an admin has to ship. */
+export async function listOrdersToShip(limit = 10): Promise<OrderWithItems[]> {
+  const rows = await getDb()
+    .select()
+    .from(orders)
+    .where(and(inArray(orders.status, ["paid", "confirmed", "packed"]), eq(orders.isTest, false)))
+    .orderBy(asc(orders.createdAt))
+    .limit(limit);
+  return withItems(rows);
 }
 
 /** The address from the customer's latest order, to prefill checkout. */

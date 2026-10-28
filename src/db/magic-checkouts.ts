@@ -69,7 +69,15 @@ export async function createMagicOrder(
       if (existing) return existing;
     }
     const order = await createOrder(
-      { userId: checkout.userId, email: input.email, address: input.address, cart: input.cart, test: checkout.isTest },
+      {
+        userId: checkout.userId,
+        email: input.email,
+        address: input.address,
+        cart: input.cart,
+        test: checkout.isTest,
+        // The notice under Buy now says updates come on WhatsApp (see BuyButtons).
+        whatsappUpdates: true,
+      },
       tx
     );
     const [attached] = await tx

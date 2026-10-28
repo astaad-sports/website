@@ -166,6 +166,12 @@ export const orders = pgTable(
      * real orders in the admin.
      */
     isTest: boolean("is_test").notNull().default(false),
+    /**
+     * The customer asked for order updates on WhatsApp, to `shipPhone`: the
+     * tick box at checkout, or the notice under Buy now. Meta allows business
+     * messages only to people who asked for them (see src/lib/whatsapp).
+     */
+    whatsappUpdates: boolean("whatsapp_updates").notNull().default(false),
     ...timestamps,
   },
   (table) => [
@@ -716,3 +722,95 @@ export const emailOptOuts = pgTable("email_opt_outs", {
   email: text("email").primaryKey(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A WhatsApp number that has written to the store's WhatsApp, or that an
+ * account was linked to. `waId` is the number as WhatsApp gives it: country
+ * code and number, digits only ("919876543210"). See src/lib/whatsapp.
+ */
+export const whatsappContacts = pgTable("whatsapp_contacts", {
+  waId: text("wa_id").primaryKey(),
+  /** The name on their WhatsApp profile, as WhatsApp last gave it. */
+  profileName: text("profile_name"),
+  /** The account this number is linked to, from /account/whatsapp. One number per account. */
+  userId: uuid("user_id")
+    .unique()
+    .references(() => users.id, { onDelete: "set null" }),
+  linkedAt: timestamp("linked_at", { withTimezone: true }),
+  /** They replied STOP: no order updates go to this number until they reply START. */
+  optedOutAt: timestamp("opted_out_at", { withTimezone: true }),
+  /** Their latest message. For 24 hours after it the bot may write freely (Meta's customer service window). */
+  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+  /** WhatsApp's id for that message, so a webhook delivered twice is answered once. */
+  lastMessageId: text("last_message_id"),
+  /** When the bot last sent its menu unasked: a message it cannot read gets the menu at most every 12 hours. */
+  menuSentAt: timestamp("menu_sent_at", { withTimezone: true }),
+  ...timestamps,
+});
+
+export type WhatsAppContact = typeof whatsappContacts.$inferSelect;
+
+/**
+ * A link the bot sent to tie a WhatsApp number to an account: whoever opens
+ * it signed in, within 30 minutes, links that account. Only its SHA-256 is
+ * kept, so the table cannot be read back into working links.
+ */
+export const whatsappLinkTokens = pgTable(
+  "whatsapp_link_tokens",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    waId: text("wa_id")
+      .notNull()
+      .references(() => whatsappContacts.waId, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("whatsapp_link_tokens_wa_id_idx").on(table.waId)]
+);
+
+/**
+ * `sending` from the claim until Meta answers, then `sent`; Meta's webhook
+ * then reports `delivered` and `read`, or `failed` with its reason.
+ */
+export const whatsappMessageStatus = pgEnum("whatsapp_message_status", [
+  "sending",
+  "sent",
+  "delivered",
+  "read",
+  "failed",
+]);
+
+export type WhatsAppMessageStatus = (typeof whatsappMessageStatus.enumValues)[number];
+
+/**
+ * An order update sent on WhatsApp with an approved template. The unique
+ * (order, key) pair makes each go at most once: `key` is the kind and the
+ * number, e.g. "order_placed:919876543210".
+ */
+export const whatsappMessages = pgTable(
+  "whatsapp_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["order_placed", "order_shipped", "order_delivered", "new_order_alert"] }).notNull(),
+    key: text("key").notNull(),
+    /** The number it went to, as a waId. */
+    to: text("to").notNull(),
+    /** The template's name in WhatsApp Manager. */
+    template: text("template").notNull(),
+    status: whatsappMessageStatus("status").notNull().default("sending"),
+    /** WhatsApp's message id, which its status webhooks quote. */
+    wamid: text("wamid").unique(),
+    /** Why it failed: Meta's error, up to 500 characters. */
+    error: text("error"),
+    attempts: integer("attempts").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("whatsapp_messages_order_id_key_idx").on(table.orderId, table.key)]
+);
+
+export type WhatsAppMessage = typeof whatsappMessages.$inferSelect;
+export type WhatsAppMessageKind = WhatsAppMessage["kind"];

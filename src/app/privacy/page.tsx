@@ -16,6 +16,8 @@ const UPDATED = "28 October 2026";
 /**
  * Privacy policy. Describes what the site actually does: Firebase sign-in,
  * orders in our database, Razorpay payments, order emails through Resend,
+ * WhatsApp order updates and chat through Meta for those who ask (see
+ * src/lib/whatsapp),
  * courier hand-off, one sign-in cookie and a cart in local storage (copied
  * to a signed-in customer's account), one cart reminder by email (see
  * src/lib/cart-reminders) with a link to stop them,
@@ -100,6 +102,11 @@ export default async function PrivacyPage() {
             </li>
             <li>show your orders and their tracking in your account;</li>
             <li>
+              send you WhatsApp messages when your order is placed, ships and is delivered, if you ask for them
+              (the tick box at checkout, the notice under Buy now, or linking WhatsApp to your account), and
+              answer your messages to our WhatsApp. Reply STOP at any time to stop the updates;
+            </li>
+            <li>
               send you one reminder by email if items are left in your cart for a day without an order: about
               the cart on your account if you are signed in, or after a checkout whose payment didn’t finish.
               Every reminder has a link to stop them;
@@ -138,6 +145,10 @@ export default async function PrivacyPage() {
             <li>
               <strong>Resend</strong> sends our order emails and cart reminders, and receives your name, email
               address, mobile number, order details, delivery address and, for a reminder, what was in your cart.
+            </li>
+            <li>
+              <strong>Meta (WhatsApp)</strong> carries our WhatsApp messages, and receives your WhatsApp number,
+              your first name and your order number, amount, items, courier and tracking number.
             </li>
             <li>
               <strong>Couriers</strong> such as Trackon Couriers and Delhivery receive your name, mobile number

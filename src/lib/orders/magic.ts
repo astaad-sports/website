@@ -24,6 +24,7 @@ import {
 } from "@/lib/payments/magic";
 import { fetchRazorpayOrder } from "@/lib/payments/razorpay";
 import { getFreshStoreCatalogue, productsChanged } from "@/lib/products/catalogue";
+import { whatsAppOrderPaid } from "@/lib/whatsapp/notify";
 
 /**
  * What Razorpay sends the store's Magic Checkout addresses, read leniently:
@@ -143,6 +144,9 @@ export async function completeMagicCheckout(
   if (stockChanged) productsChanged();
   if (!order) return { status: "failed", reason: "The order was not found after it was made" };
   // After the response. The handler and the webhook both ask; each email still goes once.
-  if (order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
+  if (order.status !== "pending_payment") {
+    notifyLater(() => notifyOrderPaid(order.id));
+    notifyLater(() => whatsAppOrderPaid(order.id));
+  }
   return { status: "done", order };
 }

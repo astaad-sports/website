@@ -121,6 +121,8 @@ export const placeOrderSchema = z.object({
   couponCode: z.string().max(40).optional(),
   /** Keep the address on the account, unless it is there already. */
   saveAddress: z.boolean().optional(),
+  /** Send order updates on WhatsApp to the address's mobile (the tick box at checkout). */
+  whatsappUpdates: z.boolean().optional(),
 });
 
 export const paymentResponseSchema = z.object({

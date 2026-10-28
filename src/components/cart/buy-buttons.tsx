@@ -1,10 +1,17 @@
-import { CreditCard, Landmark, Lock, ShoppingCart, Zap } from "lucide-react";
+import { CreditCard, Landmark, Lock, MessageCircle, ShoppingCart, Zap } from "lucide-react";
 
 import type { CartItem } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
 import { AddToCartButton } from "./add-to-cart-button";
 import { BuyNowButton } from "./buy-now-button";
+
+/**
+ * The store's WhatsApp is set up. Buy now's orders then get WhatsApp updates
+ * (createMagicOrder), which the line under the buttons tells the customer,
+ * since Razorpay's window has no tick box for it.
+ */
+const WHATSAPP_UPDATES = Boolean(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim());
 
 /**
  * Both buttons: 48px tall, with padding tight enough for "Added to cart" to
@@ -41,7 +48,8 @@ function PayWays({ tone }: { tone: "light" | "dark" }) {
  * Add to cart and Buy now for one item: side by side and the same size,
  * or one above the other where the column is too narrow for two (the bat
  * builder's summary). Out of stock, they are one greyed "Out of stock" button.
- * A line under them says Buy now pays through Razorpay.
+ * A line under them says Buy now pays through Razorpay, and that order
+ * updates come on WhatsApp.
  */
 export function BuyButtons({
   item,
@@ -94,6 +102,17 @@ export function BuyButtons({
         >
           <Lock className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
           UPI, cards and net banking · Secured by Razorpay
+        </p>
+      )}
+      {!soldOut && WHATSAPP_UPDATES && (
+        <p
+          className={cn(
+            "mt-1 flex flex-wrap items-center justify-center gap-x-1.5 text-xs leading-4",
+            tone === "dark" ? "text-on-dark-subtle" : "text-ink-muted"
+          )}
+        >
+          <MessageCircle className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
+          Order updates on WhatsApp · reply STOP to opt out
         </p>
       )}
     </div>

@@ -18,6 +18,7 @@ import {
   razorpayKeyId,
   verifyPaymentSignature,
 } from "@/lib/payments/razorpay";
+import { whatsAppOrderPaid } from "@/lib/whatsapp/notify";
 
 export interface CheckoutPayment {
   keyId: string;
@@ -67,7 +68,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
       : { ok: false, error: "Your cart could not be read. Refresh the page and try again." };
   }
 
-  const { items, address, expectedTotalPaise, couponCode, saveAddress } = parsed.data;
+  const { items, address, expectedTotalPaise, couponCode, saveAddress, whatsappUpdates } = parsed.data;
   // The guest form always sends an email. Without one, the page was opened signed in and the session has ended.
   if (!user && parsed.data.email === undefined) return { ok: false, error: SIGNED_OUT };
   const email = user ? user.email : (parsed.data.email ?? null);
@@ -105,7 +106,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
     };
   }
 
-  const order = await createOrder({ userId: user?.id ?? null, email, address, cart, test });
+  const order = await createOrder({ userId: user?.id ?? null, email, address, cart, test, whatsappUpdates });
   if (saveAddress && user) await keepCheckoutAddress(user.id, address);
 
   let razorpayOrder;
@@ -170,7 +171,10 @@ export async function confirmPayment(input: unknown): Promise<ConfirmPaymentResu
   if (stockChanged) productsChanged();
   // Emails go after the response, whoever is signed in: the payment is real either way.
   // The webhook asks too; each email still goes once.
-  if (order && order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
+  if (order && order.status !== "pending_payment") {
+    notifyLater(() => notifyOrderPaid(order.id));
+    notifyLater(() => whatsAppOrderPaid(order.id));
+  }
   // Someone else's account never opens the order; its own account, or the guest who paid, does.
   if (!order || (order.userId && user && order.userId !== user.id)) {
     return { ok: false, error: "We could not find the order for this payment. Contact us with your payment ID." };

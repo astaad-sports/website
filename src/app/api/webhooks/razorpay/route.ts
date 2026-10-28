@@ -4,6 +4,7 @@ import { completeMagicCheckout } from "@/lib/orders/magic";
 import { productsChanged } from "@/lib/products/catalogue";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay";
 import { processedRefund } from "@/lib/payments/refund";
+import { whatsAppOrderPaid } from "@/lib/whatsapp/notify";
 
 interface RazorpayWebhook {
   event?: string;
@@ -49,7 +50,10 @@ export async function POST(request: Request) {
     const { order, stockChanged } = await markOrderPaid({ razorpayOrderId, razorpayPaymentId: payment.id });
     if (stockChanged) productsChanged();
     // After the response; if the checkout page already sent the emails, nothing goes twice.
-    if (order && order.status !== "pending_payment") notifyLater(() => notifyOrderPaid(order.id));
+    if (order && order.status !== "pending_payment") {
+      notifyLater(() => notifyOrderPaid(order.id));
+      notifyLater(() => whatsAppOrderPaid(order.id));
+    }
     if (!order) {
       // No order yet: a Magic Checkout becomes one now, even if Razorpay gave no address for it.
       // If Razorpay cannot be reached, it sends the event again later.

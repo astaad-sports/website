@@ -14,6 +14,7 @@ import { TrackingForm } from "@/components/admin/tracking-form";
 import { listOrderEmails } from "@/db/emails";
 import { getOrderForAdmin } from "@/db/orders";
 import { primaryImagesBySlug } from "@/db/products";
+import { listWhatsAppMessages } from "@/db/whatsapp";
 import type { OrderItemOffer } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { emailsToSendAgain, isAdminAlert, ORDER_EMAIL_LABEL, refundFromEmailKey } from "@/lib/email/kinds";
@@ -31,6 +32,8 @@ import { productImage } from "@/lib/orders/product-image";
 import { defaultCarrier } from "@/lib/settings/model";
 import { getStoreSettings } from "@/lib/settings/store";
 import { cn } from "@/lib/utils";
+import { formatWaId } from "@/lib/whatsapp/config";
+import { WHATSAPP_MESSAGE_LABEL } from "@/lib/whatsapp/templates";
 
 export async function generateMetadata({ params }: PageProps<"/admin/orders/[number]">): Promise<Metadata> {
   const number = parseOrderNumber((await params).number);
@@ -101,10 +104,11 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
   const order = await getOrderForAdmin(number);
   if (!order) notFound();
   // The product's current primary photo; the built-in cut-out for a product since removed.
-  const [photos, settings, emails] = await Promise.all([
+  const [photos, settings, emails, whatsapp] = await Promise.all([
     primaryImagesBySlug(order.items.map((item) => item.productSlug)),
     getStoreSettings(),
     listOrderEmails(order.id),
+    listWhatsAppMessages(order.id),
   ]);
 
   const status = order.status;
@@ -251,6 +255,17 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                   Emailed:{" "}
                   {emailed.map((row) => `${ORDER_EMAIL_LABEL[row.kind]} ${formatShortDate(row.updatedAt)}`).join(" · ")}
                 </p>
+              )}
+              {whatsapp.length > 0 && (
+                <ul className="flex flex-col gap-0.5 pt-1 text-[13px] leading-[18px] text-ink-muted">
+                  {whatsapp.map((row) => (
+                    <li key={row.id} className={cn(row.status === "failed" && "text-danger")}>
+                      WhatsApp {WHATSAPP_MESSAGE_LABEL[row.kind].toLowerCase()} to {formatWaId(row.to)}: {row.status}{" "}
+                      {formatShortDate(row.updatedAt)}
+                      {row.status === "failed" && row.error && ` · ${row.error}`}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </Section>

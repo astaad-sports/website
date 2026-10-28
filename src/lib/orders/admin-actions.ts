@@ -19,6 +19,7 @@ import { formatOrderNumber } from "@/lib/format";
 import { ADMIN_STATUS_LABEL, CANCELLABLE_STEPS, FULFILMENT_STEPS, stepIndex } from "@/lib/orders/fulfilment";
 import { productsChanged } from "@/lib/products/catalogue";
 import { shipOrderSchema } from "@/lib/shipping";
+import { whatsAppDelivered, whatsAppShipped } from "@/lib/whatsapp/notify";
 
 export interface AdminActionState {
   /** Shown beside the tracking ID field. */
@@ -81,6 +82,7 @@ export async function saveTracking(_previous: AdminActionState, form: FormData):
   if (!result.ok) return failure(result, trackingNumber);
 
   notifyLater(() => notifyShipment(orderId));
+  notifyLater(() => whatsAppShipped(orderId));
   refresh();
   return { saved: "Tracking updated", at: Date.now() };
 }
@@ -113,8 +115,14 @@ export async function changeStatus(_previous: AdminActionState, form: FormData):
 
   if (stepIndex(to) > stepIndex(from)) {
     if (to === "packed") notifyLater(() => notifyPacked(orderId));
-    if (to === "shipped") notifyLater(() => notifyShipment(orderId));
-    if (to === "delivered") notifyLater(() => notifyDelivered(orderId));
+    if (to === "shipped") {
+      notifyLater(() => notifyShipment(orderId));
+      notifyLater(() => whatsAppShipped(orderId));
+    }
+    if (to === "delivered") {
+      notifyLater(() => notifyDelivered(orderId));
+      notifyLater(() => whatsAppDelivered(orderId));
+    }
   }
   refresh();
   return { saved: `Marked as ${ADMIN_STATUS_LABEL[to].toLowerCase()}`, at: Date.now() };

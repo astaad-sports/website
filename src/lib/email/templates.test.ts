@@ -103,6 +103,7 @@ const order: EmailOrder = {
   couponCode: "GLOVES10",
   discountPaise: 60000,
   isTest: false,
+  whatsappUpdates: false,
   createdAt: new Date("2026-09-24T06:30:00Z"),
   updatedAt: paidAt,
   items: [bat, gloves],

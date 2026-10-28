@@ -662,8 +662,8 @@ export async function retryOrderEmail(emailId: string): Promise<RetryResult> {
 
 /**
  * Run a notifier after the response has gone (Next's after()), so emailing
- * never slows or breaks a payment or an admin action. For Server Actions and
- * Route Handlers.
+ * (or WhatsApp) never slows or breaks a payment or an admin action. For
+ * Server Actions and Route Handlers.
  */
 export function notifyLater(task: () => Promise<unknown>): void {
   try {
@@ -671,11 +671,11 @@ export function notifyLater(task: () => Promise<unknown>): void {
       try {
         await task();
       } catch (error) {
-        console.error(`Order email task failed: ${logReason(error)}`);
+        console.error(`Order notification task failed: ${logReason(error)}`);
       }
     });
   } catch (error) {
     // after() throws outside a request; the caller's own work must still succeed.
-    console.error(`Could not schedule an order email: ${logReason(error)}`);
+    console.error(`Could not schedule an order notification: ${logReason(error)}`);
   }
 }

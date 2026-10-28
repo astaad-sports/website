@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { emailStatus } from "@/lib/email/config";
 import { razorpayStatus } from "@/lib/payments/razorpay";
 import { getFreshSettings } from "@/lib/settings/store";
+import { whatsappStatus } from "@/lib/whatsapp/config";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -20,6 +21,7 @@ export default async function AdminSettingsPage() {
       adminEmail={user.email ?? ""}
       razorpay={razorpayStatus()}
       email={emailStatus()}
+      whatsapp={whatsappStatus()}
     />
   );
 }

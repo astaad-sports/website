@@ -23,6 +23,9 @@ import { formatOrderNumber, formatPaise } from "@/lib/format";
 import { confirmPayment, placeOrder, type CheckoutPayment } from "@/lib/orders/actions";
 import { cn } from "@/lib/utils";
 
+/** The store's WhatsApp is set up, so checkout offers order updates on it (see src/lib/whatsapp). */
+const WHATSAPP_UPDATES = Boolean(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim());
+
 const CHECKOUT_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
 
 interface RazorpaySuccess {
@@ -198,6 +201,7 @@ export function CheckoutView({
       [...FIELDS.map((field) => field.name), "state"].map((name) => [name, String(form.get(name) ?? "")])
     );
     const saveAddress = form.get("saveAddress") === "on";
+    const whatsappUpdates = WHATSAPP_UPDATES && form.get("whatsappUpdates") === "on";
     // A guest's order goes by the email they type; an account's by its own.
     const guestEmail = guest ? String(form.get("email") ?? "") : undefined;
     setError(null);
@@ -205,7 +209,7 @@ export function CheckoutView({
 
     startTransition(async () => {
       const couponCode = coupon?.code;
-      const fingerprint = JSON.stringify({ items, address, guestEmail, shownTotal, couponCode });
+      const fingerprint = JSON.stringify({ items, address, guestEmail, shownTotal, couponCode, whatsappUpdates });
       let payment = placed.current?.fingerprint === fingerprint ? placed.current.payment : null;
       if (!payment) {
         const result = await placeOrder({
@@ -215,6 +219,7 @@ export function CheckoutView({
           expectedTotalPaise: shownTotal,
           couponCode,
           saveAddress,
+          whatsappUpdates,
         });
         if (!result.ok) {
           setError(result.error);
@@ -390,6 +395,13 @@ export function CheckoutView({
             <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start type-body">
               <input type="checkbox" name="saveAddress" defaultChecked className="size-5 shrink-0 accent-foreground" />
               Save this address to my account
+            </label>
+          )}
+          {/* Meta lets the store send order updates only to customers who ask for them. */}
+          {WHATSAPP_UPDATES && (
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 self-start type-body">
+              <input type="checkbox" name="whatsappUpdates" defaultChecked className="size-5 shrink-0 accent-foreground" />
+              Send order updates to this mobile on WhatsApp
             </label>
           )}
         </form>
