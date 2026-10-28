@@ -8,7 +8,7 @@ import { Eyebrow } from "@/components/storefront/eyebrow";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import type { OrderWithItems } from "@/db/orders";
-import { purchaseEvent } from "@/lib/analytics-events";
+import { adsPurchaseConversion, purchaseEvent } from "@/lib/analytics-events";
 import { reviewOptIn } from "@/lib/customer-reviews";
 import { formatOrderDate, formatOrderNumber, formatPaise } from "@/lib/format";
 import { ORDER_STATUS_LABEL, orderStatusTone } from "@/lib/orders/status";
@@ -38,7 +38,7 @@ export async function OrderView({
   const justPlaced = placed && confirmed;
   // Google asks, on the confirmation only, whether it may email a survey about the order.
   const optIn = justPlaced ? reviewOptIn(order) : null;
-  // Google Analytics counts the sale there too. A test order is not a sale.
+  // Google Analytics and Google Ads count the sale there too. A test order is not a sale.
   const purchase =
     justPlaced && !order.isTest
       ? purchaseEvent(
@@ -222,6 +222,13 @@ export async function OrderView({
       <SiteFooter />
       {optIn && <CustomerReviewOptIn optIn={optIn} />}
       {purchase && <TrackEvent name="purchase" params={purchase} once={`astaad-purchase-${order.number}`} />}
+      {purchase && (
+        <TrackEvent
+          name="conversion"
+          params={adsPurchaseConversion(purchase)}
+          once={`astaad-ads-purchase-${order.number}`}
+        />
+      )}
     </>
   );
 }

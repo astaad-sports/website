@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { batCartItem, gearCartItem, priceCart, priceCartItem } from "@/lib/cart";
 import { findStoreBat, findStoreGear, seedProductRows, standardBatConfig, toStoreCatalogue } from "@/lib/products/model";
 
-import { cartEvent, purchaseEvent, viewItemEvent } from "./analytics-events";
+import { adsPurchaseConversion, cartEvent, purchaseEvent, viewItemEvent } from "./analytics-events";
 
 const catalogue = toStoreCatalogue(
   seedProductRows().map((row) => (row.slug === "goat" ? { ...row, sizes: ["6", "SH", "LH"] } : row))
@@ -88,5 +88,14 @@ describe("an order paid", () => {
     const event = purchaseEvent({ ...order, couponCode: null });
     expect(event).not.toHaveProperty("coupon");
     expect(Object.keys(event).sort()).toEqual(["currency", "items", "shipping", "transaction_id", "value"]);
+  });
+
+  test("is a Google Ads conversion with the same value and number", () => {
+    expect(adsPurchaseConversion(purchaseEvent(order))).toEqual({
+      send_to: "AW-18538906934/e3eTCO2cy6odELaKhYhF",
+      value: 18499,
+      currency: "INR",
+      transaction_id: "AST-10019",
+    });
   });
 });

@@ -6,6 +6,7 @@
 // is ever part of an event (see /privacy).
 import type { Order, OrderItem } from "@/db/schema";
 import type { PricedLine } from "@/lib/cart";
+import { ADS_PURCHASE_CONVERSION } from "@/lib/analytics";
 import { formatOrderNumber } from "@/lib/format";
 import { categoryName } from "@/lib/products/model";
 
@@ -126,5 +127,23 @@ export function purchaseEvent(
     shipping: rupees(order.shippingPaise),
     ...(order.couponCode ? { coupon: order.couponCode } : {}),
     items,
+  };
+}
+
+export interface AdsConversionEvent {
+  send_to: string;
+  value: number;
+  currency: "INR";
+  /** As in the purchase event, so Google Ads counts an order once too. */
+  transaction_id: string;
+}
+
+/** A paid order as a Google Ads conversion: the same value and number Analytics gets. */
+export function adsPurchaseConversion(purchase: PurchaseEvent): AdsConversionEvent {
+  return {
+    send_to: ADS_PURCHASE_CONVERSION,
+    value: purchase.value,
+    currency: purchase.currency,
+    transaction_id: purchase.transaction_id,
   };
 }

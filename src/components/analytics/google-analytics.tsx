@@ -3,10 +3,12 @@
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 
+import { GOOGLE_ADS_ID } from "@/lib/analytics";
+
 /**
- * The Google tag (gtag.js) for Google Analytics, loaded once the page is
- * interactive. Analytics counts a page view on load and on each move between
- * pages by itself. The admin is left out: it is the owner at work, not a
+ * The Google tag (gtag.js) for Google Analytics and Google Ads, loaded once
+ * the page is interactive. Analytics counts a page view on load and on each
+ * move between pages by itself; Ads counts the paid orders its ads lead to. The admin is left out: it is the owner at work, not a
  * visitor. The root layout decides whether there is an `id` at all (see
  * analyticsId).
  */
@@ -20,7 +22,8 @@ export function GoogleAnalytics({ id }: { id: string }) {
         {`window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', '${id}');`}
+gtag('config', '${id}');
+gtag('config', '${GOOGLE_ADS_ID}');`}
       </Script>
     </>
   );

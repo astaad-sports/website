@@ -11,7 +11,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/privacy",
 });
 
-const UPDATED = "17 October 2026";
+const UPDATED = "28 October 2026";
 
 /**
  * Privacy policy. Describes what the site actually does: Firebase sign-in,
@@ -19,11 +19,11 @@ const UPDATED = "17 October 2026";
  * courier hand-off, one sign-in cookie and a cart in local storage (copied
  * to a signed-in customer's account), one cart reminder by email (see
  * src/lib/cart-reminders) with a link to stop them,
- * Google Analytics counting visits (see src/lib/analytics.ts) and Google
+ * Google Analytics counting visits and Google Ads counting the orders its
+ * ads lead to (see src/lib/analytics.ts), Google
  * Customer Reviews asking about a survey once an order is paid (see
  * src/lib/customer-reviews.ts) and showing its badge in the footer, and the
- * Google map of the shop in the footer (see src/lib/store-location.ts), with
- * no advertising.
+ * Google map of the shop in the footer (see src/lib/store-location.ts).
  * Update it when any of that changes.
  */
 export default async function PrivacyPage() {
@@ -78,6 +78,11 @@ export default async function PrivacyPage() {
             and an order paid, with the order’s number, its items and its amount. We do not send it your name,
             email address, mobile number or delivery address.
           </li>
+          <li>
+            <strong>Ads:</strong> when you come to us from one of our Google ads, Google Ads notes the visit,
+            and if you then place an order it receives the order’s number and amount, so we can see which ads
+            lead to orders.
+          </li>
         </ul>
       ),
     },
@@ -112,7 +117,7 @@ export default async function PrivacyPage() {
             <li>keep the invoices and records that GST and other laws require.</li>
           </ul>
           <p>
-            We do not sell your data or show you advertising. Apart from that one cart reminder, we will only
+            We do not sell your data. Apart from that one cart reminder, we will only
             send you marketing messages if you ask us to.
           </p>
         </>
@@ -144,6 +149,15 @@ export default async function PrivacyPage() {
             <li>
               <strong>Google Analytics</strong> counts visits and orders, and receives the pages you view, your
               device and browser, your approximate location, and, for an order, its number, items and amount.
+            </li>
+            <li>
+              <strong>Google Ads</strong> runs our ads. It receives your visits to the website, and an order’s
+              number and amount, to count which ads lead to orders, and may use your visits to show our ads to
+              you elsewhere. You can turn off personalised ads in{" "}
+              <a href="https://myadcenter.google.com" target="_blank" rel="noopener noreferrer">
+                Google’s My Ad Center
+              </a>
+              .
             </li>
             <li>
               <strong>Google Customer Reviews</strong> asks, when your order is confirmed, whether Google may
@@ -192,6 +206,11 @@ export default async function PrivacyPage() {
               </a>
               ; the website works the same without them.
             </li>
+            <li>
+              <strong>_gcl_au</strong>, and <strong>_gcl_aw</strong> when you arrive from one of our ads, are set
+              by Google Ads to connect an order with the ad that led to it. They last up to 90 days and can be
+              refused the same way.
+            </li>
           </ul>
           <p>
             Your cart and any coupon you enter are saved in your browser’s local storage, on your device, until
@@ -199,7 +218,7 @@ export default async function PrivacyPage() {
             order confirmation, the Google map of our shop, and Razorpay’s payment window may set their own
             cookies under their own privacy policies, for example to prevent fraud. When the home page shows our
             Instagram posts through Instagram’s own embed, Instagram may set cookies too, under Meta’s privacy
-            policy. We use no advertising cookies.
+            policy.
           </p>
         </>
       ),
