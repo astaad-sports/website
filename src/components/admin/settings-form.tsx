@@ -7,6 +7,7 @@ import { signOut } from "@/lib/auth/actions";
 import type { EmailStatus } from "@/lib/email/config";
 import type { RazorpayStatus } from "@/lib/payments/razorpay";
 import type { WhatsAppStatus } from "@/lib/whatsapp/config";
+import type { TemplateState } from "@/lib/whatsapp/manage";
 import { saveSettings } from "@/lib/settings/admin-actions";
 import { defaultCarrier, SETTINGS_LIMITS, type Settings, type SettingsField } from "@/lib/settings/model";
 import { CARRIERS, type CarrierId } from "@/lib/shipping";
@@ -163,6 +164,7 @@ export function SettingsForm({
   razorpay,
   email,
   whatsapp,
+  whatsappTemplates,
 }: {
   /** As saved, or the defaults before the first save. */
   settings: Settings;
@@ -173,6 +175,8 @@ export function SettingsForm({
   email: EmailStatus;
   /** WhatsApp's status, for the block after it. */
   whatsapp: WhatsAppStatus;
+  /** Where each WhatsApp order template stands with Meta; null when unknown. */
+  whatsappTemplates: TemplateState[] | null;
 }) {
   const [state, save, saving] = useActionState(saveOrReport, {});
   const saved = valuesFor(settings, adminName);
@@ -288,7 +292,7 @@ export function SettingsForm({
               />
             </div>
             <EmailSettings status={email} />
-            <WhatsAppSettings status={whatsapp} />
+            <WhatsAppSettings status={whatsapp} templates={whatsappTemplates} />
             <TextField
               id="field-storeAddress"
               name="storeAddress"

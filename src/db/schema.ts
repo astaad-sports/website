@@ -818,3 +818,39 @@ export const whatsappMessages = pgTable(
 
 export type WhatsAppMessage = typeof whatsappMessages.$inferSelect;
 export type WhatsAppMessageKind = WhatsAppMessage["kind"];
+
+/**
+ * The store's WhatsApp number as Meta's Embedded Signup connected it (the
+ * admin's Connect WhatsApp, src/lib/whatsapp/signup-actions.ts): one row
+ * (id 1). The number stays on the WhatsApp Business app too. The token is
+ * the business token Meta gave for the store's own app; WHATSAPP_ACCESS_TOKEN
+ * and WHATSAPP_PHONE_NUMBER_ID, when set, take its place.
+ */
+export const whatsappAccount = pgTable(
+  "whatsapp_account",
+  {
+    id: integer("id").primaryKey().default(1),
+    businessAccountId: text("business_account_id").notNull(),
+    phoneNumberId: text("phone_number_id").notNull(),
+    /** As Meta shows it, e.g. "+91 88820 74750". */
+    displayNumber: text("display_number"),
+    accessToken: text("access_token").notNull(),
+    connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Meta's request ids for the one-time contacts and chat-history syncs from
+     * the Business app, which must start within 24 hours of connecting. Null
+     * until started; kept for Meta's support.
+     */
+    contactsSyncId: text("contacts_sync_id"),
+    historySyncId: text("history_sync_id"),
+    /** Why a step after connecting failed, for the Settings page. */
+    error: text("error"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [check("whatsapp_account_single_row", sql`${table.id} = 1`)]
+);
+
+export type WhatsAppAccount = typeof whatsappAccount.$inferSelect;

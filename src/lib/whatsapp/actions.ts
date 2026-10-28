@@ -20,7 +20,7 @@ export async function linkWhatsApp(token: string): Promise<void> {
   const waId = await linkWithToken(token, user.id);
   if (!waId) redirect(`/account/whatsapp/${token}`);
 
-  if (whatsappConfigured() && user.email) {
+  if (user.email && (await whatsappConfigured())) {
     const email = user.email;
     // They wrote to the store within the last 30 minutes, so a plain message is allowed.
     after(() =>

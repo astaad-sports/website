@@ -76,7 +76,7 @@ export async function handleWebhook(contents: WebhookContents): Promise<void> {
       console.error(`WhatsApp status ${status.status} not recorded: ${logReason(error)}`)
     );
   }
-  if (!whatsappConfigured()) return;
+  if (!(await whatsappConfigured())) return;
   for (const message of contents.messages) {
     try {
       await answer(message);

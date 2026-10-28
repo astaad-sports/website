@@ -9,9 +9,11 @@ import { statusesBefore, type StatusUpdate } from "@/lib/whatsapp/webhook";
 import { getDb } from "./index";
 import {
   users,
+  whatsappAccount,
   whatsappContacts,
   whatsappLinkTokens,
   whatsappMessages,
+  type WhatsAppAccount,
   type WhatsAppContact,
   type WhatsAppMessage,
   type WhatsAppMessageKind,
@@ -266,4 +268,28 @@ export async function listWhatsAppMessages(orderId: string): Promise<WhatsAppMes
     .from(whatsappMessages)
     .where(eq(whatsappMessages.orderId, orderId))
     .orderBy(asc(whatsappMessages.createdAt), asc(whatsappMessages.id));
+}
+
+/** The number Connect WhatsApp connected, if any. */
+export async function readWhatsAppAccount(): Promise<WhatsAppAccount | undefined> {
+  const [row] = await getDb().select().from(whatsappAccount).where(eq(whatsappAccount.id, 1)).limit(1);
+  return row;
+}
+
+/** Keep a newly connected number, starting its syncs and error afresh. */
+export async function saveWhatsAppAccount(
+  account: Pick<WhatsAppAccount, "businessAccountId" | "phoneNumberId" | "displayNumber" | "accessToken">
+): Promise<void> {
+  const fresh = { ...account, connectedAt: sql`now()`, contactsSyncId: null, historySyncId: null, error: null };
+  await getDb()
+    .insert(whatsappAccount)
+    .values({ id: 1, ...fresh })
+    .onConflictDoUpdate({ target: whatsappAccount.id, set: fresh });
+}
+
+/** What the steps after connecting came to: the syncs' request ids, or why one failed (null clears it). */
+export async function updateWhatsAppAccount(
+  update: Partial<Pick<WhatsAppAccount, "contactsSyncId" | "historySyncId" | "error" | "displayNumber">>
+): Promise<void> {
+  await getDb().update(whatsappAccount).set(update).where(eq(whatsappAccount.id, 1));
 }

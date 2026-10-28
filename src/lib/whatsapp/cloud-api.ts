@@ -1,9 +1,12 @@
 import "server-only";
 
-import { whatsappConfig, whatsappSending } from "./config";
+import { whatsAppCredentials } from "./account";
+import { whatsappConfig } from "./config";
 import { messagePayload, type OutgoingMessage } from "./messages";
 
-/** Meta refused a message, or never answered. */
+export { whatsappConfigured } from "./account";
+
+/** Meta refused a request, or never answered. */
 export class WhatsAppError extends Error {
   /** The HTTP status; null when no answer came (a network error or the timeout). */
   readonly status: number | null;
@@ -22,24 +25,28 @@ interface GraphErrorBody {
   error?: { message?: string; code?: number; error_data?: { details?: string } };
 }
 
-/** True once WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are set. Without them nothing is sent or recorded. */
-export function whatsappConfigured(): boolean {
-  return whatsappSending();
-}
-
-/** POST to the business number's endpoint `path` ("messages"), within 15 seconds. */
-async function post(path: string, body: Record<string, unknown>): Promise<unknown> {
-  const { accessToken, phoneNumberId, graphVersion } = whatsappConfig();
-  if (!accessToken || !phoneNumberId) {
-    throw new Error("WhatsApp is not configured. Set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID.");
-  }
+/**
+ * One Graph API request ("<id>/<edge>", with the version put in front),
+ * within 15 seconds. Resolves with Meta's JSON; throws a WhatsAppError with
+ * Meta's message when it refuses.
+ */
+export async function graph(
+  path: string,
+  { token, method = "GET", body, query }: { token?: string; method?: "GET" | "POST"; body?: unknown; query?: Record<string, string> }
+): Promise<unknown> {
+  const { graphVersion } = whatsappConfig();
+  const url = new URL(`https://graph.facebook.com/${graphVersion}/${path}`);
+  for (const [name, value] of Object.entries(query ?? {})) url.searchParams.set(name, value);
 
   let response: Response;
   try {
-    response = await fetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/${path}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    response = await fetch(url, {
+      method,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),
     });
@@ -66,6 +73,13 @@ async function post(path: string, body: Record<string, unknown>): Promise<unknow
   return response.json().catch(() => ({}));
 }
 
+/** POST to the business number's `edge` ("messages") with the credentials messages go out with. */
+async function postToNumber(edge: string, body: Record<string, unknown>): Promise<unknown> {
+  const credentials = await whatsAppCredentials();
+  if (!credentials) throw new Error("WhatsApp is not connected. Use Connect WhatsApp in Settings.");
+  return graph(`${credentials.phoneNumberId}/${edge}`, { token: credentials.accessToken, method: "POST", body });
+}
+
 /**
  * Send one message to `to` (a waId). Resolves with WhatsApp's id for it
  * (the "wamid" its status webhooks quote). Meta accepting it is not
@@ -73,14 +87,14 @@ async function post(path: string, body: Record<string, unknown>): Promise<unknow
  * status on the webhook. Throws a WhatsAppError when Meta refuses it.
  */
 export async function sendWhatsApp(to: string, message: OutgoingMessage): Promise<{ id: string }> {
-  const body = (await post("messages", messagePayload(to, message))) as { messages?: { id?: string }[] };
+  const body = (await postToNumber("messages", messagePayload(to, message))) as { messages?: { id?: string }[] };
   return { id: body.messages?.[0]?.id ?? "" };
 }
 
 /** Show the customer's message as read (the blue ticks). Best effort: a failure is only logged. */
 export async function markWhatsAppRead(messageId: string): Promise<void> {
   try {
-    await post("messages", { messaging_product: "whatsapp", status: "read", message_id: messageId });
+    await postToNumber("messages", { messaging_product: "whatsapp", status: "read", message_id: messageId });
   } catch (error) {
     console.error(`WhatsApp message not marked read: ${error instanceof Error ? error.message : "unknown error"}`);
   }

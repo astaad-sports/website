@@ -1,15 +1,17 @@
 import type { WhatsAppStatus } from "@/lib/whatsapp/config";
+import type { TemplateState } from "@/lib/whatsapp/manage";
 
 import { ConnectionLabel, DashboardLink, EnvName, Note } from "./settings-payment";
+import { WhatsAppConnect } from "./whatsapp-connect";
 
 const MANAGER_URL = "https://business.facebook.com/wa/manage/message-templates/";
 
 /**
- * Whether WhatsApp order updates and the chat bot work. Like Resend's, the
- * Meta tokens are server settings, so this only reports them and names
- * whatever is missing.
+ * Whether WhatsApp order updates and the chat bot work. The number is
+ * connected here with Connect WhatsApp (Meta's signup); the app's secrets
+ * are server settings, so this only names whichever is missing.
  */
-export function WhatsAppSettings({ status }: { status: WhatsAppStatus }) {
+export function WhatsAppSettings({ status, templates }: { status: WhatsAppStatus; templates: TemplateState[] | null }) {
   const ready = status.sending && status.webhook && status.businessNumber !== null;
   return (
     <div className="flex flex-col gap-1">
@@ -26,15 +28,18 @@ export function WhatsAppSettings({ status }: { status: WhatsAppStatus }) {
       {status.sending ? (
         <Note>
           Customers who tick the box at checkout, buy with Buy now or link WhatsApp to their account get a message
-          when their order is placed, ships and is delivered. Each message template must be approved in WhatsApp
-          Manager first.
+          when their order is placed, ships and is delivered. Each message template must be approved by Meta first.
         </Note>
       ) : (
+        <Note>No WhatsApp messages go out until the store&apos;s number is connected.</Note>
+      )}
+      {status.fromEnv && (
         <Note>
-          No WhatsApp messages go out until <EnvName>WHATSAPP_ACCESS_TOKEN</EnvName> and{" "}
-          <EnvName>WHATSAPP_PHONE_NUMBER_ID</EnvName> are set in the site&apos;s environment variables.
+          Messages go out with <EnvName>WHATSAPP_ACCESS_TOKEN</EnvName> and <EnvName>WHATSAPP_PHONE_NUMBER_ID</EnvName>,
+          which win over a number connected here.
         </Note>
       )}
+      <WhatsAppConnect status={status} templates={templates} />
       {!status.webhook && (
         <Note>
           The bot can&apos;t read messages until <EnvName>WHATSAPP_APP_SECRET</EnvName> and{" "}

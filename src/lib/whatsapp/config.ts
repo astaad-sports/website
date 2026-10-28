@@ -2,19 +2,26 @@
 // name. Pure: tests pass their own environment. Sending is in ./cloud-api.ts.
 
 /** Meta's Graph API version, unless WHATSAPP_GRAPH_VERSION names another. */
-export const DEFAULT_GRAPH_VERSION = "v23.0";
+export const DEFAULT_GRAPH_VERSION = "v26.0";
 
 /** The language the store's templates are approved in (see ./templates.ts). */
 export const DEFAULT_TEMPLATE_LANGUAGE = "en";
 
 export interface WhatsAppConfig {
-  /** WHATSAPP_ACCESS_TOKEN: a System User token with whatsapp_business_messaging. Null means nothing is sent. */
+  /**
+   * WHATSAPP_ACCESS_TOKEN: a System User token with whatsapp_business_messaging.
+   * Optional once Connect WhatsApp has connected the number (see ./account.ts).
+   */
   accessToken: string | null;
-  /** WHATSAPP_PHONE_NUMBER_ID: the business number's id in WhatsApp Manager (not the number itself). */
+  /** WHATSAPP_PHONE_NUMBER_ID: the business number's id in WhatsApp Manager (not the number itself). Optional likewise. */
   phoneNumberId: string | null;
-  /** WHATSAPP_BUSINESS_ACCOUNT_ID: the WABA, for submitting the templates (scripts/whatsapp-templates.ts). */
+  /** WHATSAPP_BUSINESS_ACCOUNT_ID: the WABA, for submitting the templates. Optional likewise. */
   businessAccountId: string | null;
-  /** WHATSAPP_APP_SECRET: the Meta app's secret, which signs every webhook. */
+  /** NEXT_PUBLIC_META_APP_ID: the store's Meta app, which runs Embedded Signup. */
+  appId: string | null;
+  /** NEXT_PUBLIC_WHATSAPP_SIGNUP_CONFIG_ID: the app's Facebook Login for Business configuration for Embedded Signup. */
+  signupConfigId: string | null;
+  /** WHATSAPP_APP_SECRET: the Meta app's secret, which signs every webhook and turns Embedded Signup's code into a token. */
   appSecret: string | null;
   /** WHATSAPP_VERIFY_TOKEN: any value, typed into the app's webhook settings so Meta can check the address. */
   verifyToken: string | null;
@@ -76,6 +83,8 @@ export function whatsappConfig(env: Record<string, string | undefined> = process
     accessToken: setting(env, "WHATSAPP_ACCESS_TOKEN"),
     phoneNumberId: setting(env, "WHATSAPP_PHONE_NUMBER_ID"),
     businessAccountId: setting(env, "WHATSAPP_BUSINESS_ACCOUNT_ID"),
+    appId: setting(env, "NEXT_PUBLIC_META_APP_ID"),
+    signupConfigId: setting(env, "NEXT_PUBLIC_WHATSAPP_SIGNUP_CONFIG_ID"),
     appSecret: setting(env, "WHATSAPP_APP_SECRET"),
     verifyToken: setting(env, "WHATSAPP_VERIFY_TOKEN"),
     graphVersion: setting(env, "WHATSAPP_GRAPH_VERSION") ?? DEFAULT_GRAPH_VERSION,
@@ -85,16 +94,26 @@ export function whatsappConfig(env: Record<string, string | undefined> = process
   };
 }
 
-/** True once the token and phone number id are set: order updates go out. */
-export function whatsappSending(config: WhatsAppConfig = whatsappConfig()): boolean {
-  return config.accessToken !== null && config.phoneNumberId !== null;
+/** The number connected through Connect WhatsApp, as far as the status needs it. */
+export interface ConnectedNumber {
+  displayNumber: string | null;
+  connectedAt: Date;
+  /** Whether the one-time contacts and chat-history syncs started. */
+  synced: boolean;
+  /** Why a step after connecting failed. */
+  error: string | null;
 }
 
 export interface WhatsAppStatus {
-  /** The token and phone number id are set, so templates are sent. */
+  /** A token and phone number id are known (env, or Connect WhatsApp), so messages are sent. */
   sending: boolean;
   /** The app secret and verify token are set, so the webhook (and the bot) works. */
   webhook: boolean;
+  /** What Connect WhatsApp runs Meta's signup with; null until the app id, its configuration and the app secret are set. */
+  signup: { appId: string; configId: string; graphVersion: string } | null;
+  /** WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are set, and win over a connected number. */
+  fromEnv: boolean;
+  connected: ConnectedNumber | null;
   /** The number customers write to, e.g. "+91 88820 74750"; null until NEXT_PUBLIC_WHATSAPP_NUMBER is set. */
   businessNumber: string | null;
   /** How many ADMIN_WHATSAPP_NUMBERS get the new-order alert. */
@@ -102,11 +121,21 @@ export interface WhatsAppStatus {
 }
 
 /** For the admin's Settings page. Never exposes a token. */
-export function whatsappStatus(env: Record<string, string | undefined> = process.env): WhatsAppStatus {
+export function whatsappStatus(
+  connected: ConnectedNumber | null,
+  env: Record<string, string | undefined> = process.env
+): WhatsAppStatus {
   const config = whatsappConfig(env);
+  const fromEnv = config.accessToken !== null && config.phoneNumberId !== null;
   return {
-    sending: whatsappSending(config),
+    sending: fromEnv || connected !== null,
     webhook: config.appSecret !== null && config.verifyToken !== null,
+    signup:
+      config.appId && config.signupConfigId && config.appSecret
+        ? { appId: config.appId, configId: config.signupConfigId, graphVersion: config.graphVersion }
+        : null,
+    fromEnv,
+    connected,
     businessNumber: config.businessNumber ? formatWaId(config.businessNumber) : null,
     adminNumbers: config.adminNumbers.length,
   };

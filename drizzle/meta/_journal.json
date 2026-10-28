@@ -197,6 +197,13 @@
       "when": 1793185406474,
       "tag": "0027_whatsapp",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793186523299,
+      "tag": "0028_whatsapp_account",
+      "breakpoints": true
     }
   ]
 }

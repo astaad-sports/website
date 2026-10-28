@@ -86,7 +86,7 @@ async function run(
   notify: (result: WhatsAppNotifyResult, order: AdminOrder) => Promise<void>
 ): Promise<WhatsAppNotifyResult> {
   const result = { sent: 0, failed: 0 };
-  if (!whatsappConfigured()) return result;
+  if (!(await whatsappConfigured())) return result;
   try {
     const order = await getOrderForEmail(orderId);
     if (order) await notify(result, order);
