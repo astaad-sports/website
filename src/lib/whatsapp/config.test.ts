@@ -52,7 +52,8 @@ describe("whatsappConfig", () => {
       NEXT_PUBLIC_WHATSAPP_NUMBER: "+91 88820 74750",
       ADMIN_WHATSAPP_NUMBERS: "9876543210,8882074750",
     });
-    expect(status).toEqual({ sending: true, webhook: false, businessNumber: "+91 88820 74750", adminNumbers: 2 });
+    // The business number itself is no admin: it can't message itself.
+    expect(status).toEqual({ sending: true, webhook: false, businessNumber: "+91 88820 74750", adminNumbers: 1 });
     expect(JSON.stringify(status)).not.toContain("secret");
   });
 });

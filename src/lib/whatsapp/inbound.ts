@@ -12,6 +12,7 @@ import {
   claimUnaskedMenu,
   createLinkToken,
   getContact,
+  notePersonReplied,
   recordInbound,
   setOptedOut,
   type ContactWithAccount,
@@ -61,9 +62,15 @@ function localMobile(waId: string): string | null {
 
 /**
  * Everything in one webhook delivery: delivery statuses update the order
- * updates they are about; each new message gets the bot's reply. Never throws.
+ * updates they are about; a reply from the WhatsApp Business app quiets the
+ * bot in that chat; each new message gets the bot's reply. Never throws.
  */
 export async function handleWebhook(contents: WebhookContents): Promise<void> {
+  for (const waId of contents.echoes) {
+    await notePersonReplied(waId).catch((error) =>
+      console.error(`WhatsApp Business app reply not noted: ${logReason(error)}`)
+    );
+  }
   for (const status of contents.statuses) {
     await applyWhatsAppStatus(status).catch((error) =>
       console.error(`WhatsApp status ${status.status} not recorded: ${logReason(error)}`)

@@ -20,10 +20,13 @@ export async function GET(request: Request) {
 }
 
 /**
- * WhatsApp webhooks: subscribe the app to the `messages` field. Customers'
- * messages get the bot's replies (see src/lib/whatsapp/inbound.ts), and the
- * delivery statuses of order updates are recorded. Meta signs each delivery
- * with the app secret (WHATSAPP_APP_SECRET); anything unsigned is turned away.
+ * WhatsApp webhooks: subscribe the app to the `messages` field, and to
+ * `smb_message_echoes` while the number is also on the WhatsApp Business app.
+ * Customers' messages get the bot's replies (see src/lib/whatsapp/inbound.ts),
+ * the delivery statuses of order updates are recorded, and a reply from the
+ * Business app keeps the bot out of that chat for a while. Meta signs each
+ * delivery with the app secret (WHATSAPP_APP_SECRET); anything unsigned is
+ * turned away.
  * The work happens after the response, since Meta wants an answer quickly
  * and sends again when it gets none.
  */
@@ -45,7 +48,9 @@ export async function POST(request: Request) {
   }
 
   const contents = readWebhook(body);
-  if (contents.messages.length > 0 || contents.statuses.length > 0) after(() => handleWebhook(contents));
+  if (contents.messages.length + contents.statuses.length + contents.echoes.length > 0) {
+    after(() => handleWebhook(contents));
+  }
   // Acknowledge every signed delivery, handled or not, so Meta does not send it again.
   return Response.json({ received: true });
 }

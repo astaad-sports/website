@@ -743,7 +743,11 @@ export const whatsappContacts = pgTable("whatsapp_contacts", {
   lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
   /** WhatsApp's id for that message, so a webhook delivered twice is answered once. */
   lastMessageId: text("last_message_id"),
-  /** When the bot last sent its menu unasked: a message it cannot read gets the menu at most every 12 hours. */
+  /**
+   * When the bot last sent its menu unasked, or someone at the shop last wrote
+   * from the WhatsApp Business app: a message the bot cannot read gets the
+   * menu only when neither happened in the last 12 hours.
+   */
   menuSentAt: timestamp("menu_sent_at", { withTimezone: true }),
   ...timestamps,
 });

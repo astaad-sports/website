@@ -22,7 +22,11 @@ export interface WhatsAppConfig {
   templateLanguage: string;
   /** NEXT_PUBLIC_WHATSAPP_NUMBER as a waId: the business number customers write to. */
   businessNumber: string | null;
-  /** ADMIN_WHATSAPP_NUMBERS as waIds: they get the new-order alert. */
+  /**
+   * ADMIN_WHATSAPP_NUMBERS as waIds: they get the new-order alert and can SHIP.
+   * Never the business number itself, which can't message itself, and whose
+   * WhatsApp Business app replies reach the store as echoes, not messages.
+   */
   adminNumbers: string[];
 }
 
@@ -67,6 +71,7 @@ export function maskWaId(waId: string): string {
 
 /** How WhatsApp messages are sent, from WHATSAPP_* and ADMIN_WHATSAPP_NUMBERS. A blank value counts as unset. */
 export function whatsappConfig(env: Record<string, string | undefined> = process.env): WhatsAppConfig {
+  const businessNumber = waIdFromPhone(env.NEXT_PUBLIC_WHATSAPP_NUMBER);
   return {
     accessToken: setting(env, "WHATSAPP_ACCESS_TOKEN"),
     phoneNumberId: setting(env, "WHATSAPP_PHONE_NUMBER_ID"),
@@ -75,8 +80,8 @@ export function whatsappConfig(env: Record<string, string | undefined> = process
     verifyToken: setting(env, "WHATSAPP_VERIFY_TOKEN"),
     graphVersion: setting(env, "WHATSAPP_GRAPH_VERSION") ?? DEFAULT_GRAPH_VERSION,
     templateLanguage: setting(env, "WHATSAPP_TEMPLATE_LANGUAGE") ?? DEFAULT_TEMPLATE_LANGUAGE,
-    businessNumber: waIdFromPhone(env.NEXT_PUBLIC_WHATSAPP_NUMBER),
-    adminNumbers: waIdList(env.ADMIN_WHATSAPP_NUMBERS),
+    businessNumber,
+    adminNumbers: waIdList(env.ADMIN_WHATSAPP_NUMBERS).filter((number) => number !== businessNumber),
   };
 }
 

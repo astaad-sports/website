@@ -99,6 +99,18 @@ export async function claimUnaskedMenu(waId: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+/**
+ * Someone at the shop wrote to `waId` from the WhatsApp Business app: a
+ * person is in the chat, so the bot's unasked menu waits 12 hours from now
+ * (see claimUnaskedMenu). Things the customer asks the bot for still get answers.
+ */
+export async function notePersonReplied(waId: string): Promise<void> {
+  await getDb()
+    .insert(whatsappContacts)
+    .values({ waId, menuSentAt: sql`now()` })
+    .onConflictDoUpdate({ target: whatsappContacts.waId, set: { menuSentAt: sql`now()` } });
+}
+
 /** STOP (true) or START (false): whether order updates go to this number. */
 export async function setOptedOut(waId: string, optedOut: boolean): Promise<void> {
   await getDb()

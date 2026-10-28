@@ -36,6 +36,12 @@ export interface StatusUpdate {
 export interface WebhookContents {
   messages: InboundMessage[];
   statuses: StatusUpdate[];
+  /**
+   * The customers (waIds) someone at the shop wrote to from the WhatsApp
+   * Business app, which shares the number with the Cloud API (Meta's
+   * "coexistence"; the `smb_message_echoes` field).
+   */
+  echoes: string[];
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -60,9 +66,9 @@ function statusError(errors: unknown): string | null {
   return [first.code, text(first.title) ?? text(first.message), details].filter(Boolean).join(" ").slice(0, 500) || null;
 }
 
-/** The messages and statuses in a webhook delivery; anything else in it (or anything malformed) is left out. */
+/** The messages, statuses and echoes in a webhook delivery; anything else in it (or anything malformed) is left out. */
 export function readWebhook(body: unknown): WebhookContents {
-  const contents: WebhookContents = { messages: [], statuses: [] };
+  const contents: WebhookContents = { messages: [], statuses: [], echoes: [] };
   for (const entry of list(record(body).entry)) {
     for (const change of list(record(entry).changes)) {
       const value = record(record(change).value);
@@ -87,6 +93,11 @@ export function readWebhook(body: unknown): WebhookContents {
           text: text(record(message.text).body) ?? text(record(message.button).text),
           choice: text(tapped.id) ?? text(record(message.button).payload),
         });
+      }
+
+      for (const raw of list(value.message_echoes)) {
+        const to = text(record(raw).to);
+        if (to && !contents.echoes.includes(to)) contents.echoes.push(to);
       }
 
       for (const raw of list(value.statuses)) {

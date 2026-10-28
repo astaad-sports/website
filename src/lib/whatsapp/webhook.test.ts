@@ -68,11 +68,24 @@ describe("readWebhook", () => {
     ]);
   });
 
+  test("replies from the WhatsApp Business app, once per customer", () => {
+    const contents = readWebhook(
+      delivery({
+        message_echoes: [
+          { from: "918882074750", to: "919876543210", id: "wamid.e1", type: "text", text: { body: "Yes, size 5 is in stock" } },
+          { from: "918882074750", to: "919876543210", id: "wamid.e2", type: "text", text: { body: "Shall I hold one?" } },
+        ],
+      })
+    );
+    expect(contents).toEqual({ messages: [], statuses: [], echoes: ["919876543210"] });
+  });
+
   test("anything malformed is left out rather than thrown", () => {
-    expect(readWebhook(null)).toEqual({ messages: [], statuses: [] });
+    expect(readWebhook(null)).toEqual({ messages: [], statuses: [], echoes: [] });
     expect(readWebhook({ entry: [{ changes: [{ value: { messages: [{ type: "text" }] } }] }] })).toEqual({
       messages: [],
       statuses: [],
+      echoes: [],
     });
   });
 });
