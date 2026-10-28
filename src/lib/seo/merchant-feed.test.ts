@@ -73,7 +73,8 @@ describe("the feed's items", () => {
       },
     ]);
     const plain = byId(items({ goat: { customization: NO_CUSTOMIZATION } }), "goat-sh");
-    expect(plain.highlights).toEqual(["Grade 1 English Willow"]);
+    // One highlight alone is too few for Google, so none is sent.
+    expect(plain.highlights).toEqual([]);
     expect(plain.details.map((detail) => detail.section)).not.toContain("Build");
   });
 

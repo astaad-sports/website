@@ -22,6 +22,8 @@ const GEAR_CATEGORY: Record<GearCategorySlug, number> = {
 
 /** How many photos an item may carry beside its main one. */
 const MORE_PHOTOS = 10;
+/** The fewest product_highlight values Google accepts on an item. */
+const MIN_HIGHLIGHTS = 2;
 
 export interface FeedDetail {
   section: string;
@@ -95,7 +97,8 @@ function productItems(
       ...(fields.color ? { color: fields.color } : {}),
       ...(size ? { size: size.label } : {}),
       ...(fields.material ? { material: fields.material } : {}),
-      highlights: fields.highlights,
+      // Google takes two highlights or none: one alone is "too few values".
+      highlights: fields.highlights.length >= MIN_HIGHLIGHTS ? fields.highlights : [],
       details: fields.details(size),
     };
   });
